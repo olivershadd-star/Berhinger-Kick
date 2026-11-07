@@ -1,0 +1,49 @@
+--- a/AudIO.h
++++ b/AudIO.h
+@@ -43,7 +43,7 @@
+ 
+ // AUDIO Configuration
+ //#define AUDIO_ONLY_CORE                  ( 0 )
+-#define AUDIO_DAW_CORE                   ( 1 )
++#define AUDIO_DAW_CORE                   ( 0 )
+ #define AUDIO_JUCE_EXTENSIONS            ( 1 )
+ 
+ #define AUDIO_DAW_EXTENSIONS             ( 0 )
+--- a/Objects/PlayBack.h
++++ b/Objects/PlayBack.h
+@@ -20,6 +20,12 @@
+ 
+         void reset();
+         void load( const std::string& file );
++        // Desktop adapter: decoding happens outside the render lock.
++        std::unique_ptr<AudioFile<float>> replaceFile(std::unique_ptr<AudioFile<float>> file) {
++            stop(); readIndex = 0;
++            maxSamples = file ? file->getNumSamplesPerChannel() : 0;
++            m_file.swap(file); return file;
++        }
+ 
+         void setVolumeAndPan( float Volume, float Pan );
+         void setBypass( bool Bypass ) { m_bypass.store( Bypass ); };
+--- a/Objects/PlayBack.cpp
++++ b/Objects/PlayBack.cpp
+@@ -34,9 +34,10 @@
+ 
+     void AudioPlayback::process( AudIO::Buffer<float>& buffer )
+     {
++        buffer.clearOutputs(); // Desktop fix: avoid replaying stale samples after EOF.
+         if( m_playing && m_file )
+         {
+-            if( readIndex > maxSamples )
++            if( readIndex >= maxSamples )
+             {
+                 if( m_loop.load() )
+                     readIndex = 0;
+@@ -65,7 +66,7 @@
+                         if( ch0 )
+                             ch0[sample] = ( m_file->samples[0][readIndex] * g0 );
+                         if( ch1 )
+-                            ch1[sample] = ( ( 1 < numChannels ) ? m_file->samples[1][readIndex] * g1 : 0.0 );
++                            ch1[sample] = ( ( 1 < numChannels ) ? m_file->samples[1][readIndex] * g1 : m_file->samples[0][readIndex] * g1 );
+                     }
+                     ++readIndex;
+                 }

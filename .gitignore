@@ -1,0 +1,16 @@
+*.exe
+*.dll
+*.obj
+*.o
+*.a
+*.lib
+*.pdb
+*.raw
+*.f32
+*.kicklab
+/build*/
+/source/build*/
+/test-output*/
+/source/test-output*/
+/dist/
+*.zip

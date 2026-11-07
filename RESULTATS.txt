@@ -1,0 +1,13 @@
+KICK Lab 0.1 — résultats de validation
+
+Compilation Windows x64 MinGW-w64 GCC 12.2 via CMake : réussie.
+Compilation et tests moteur Linux GCC 14.2 : réussis.
+AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic dans les scénarios testés.
+
+PASS: silence, WAV playback, mono, EOF, resampling, mute, 16-pad mixing, sequencer, save/load, invalid input
+
+Interface exécutée sous Wine 8 / Xvfb. Navigation entre onglets, modification de grille, sauvegarde et restauration par les boîtes de dialogue vérifiées.
+Sortie WinMM avec périphérique ALSA de capture : signal PCM non silencieux mesuré pendant la lecture du pattern (pic observé 9711/32767).
+Pas de validation sur un véritable PC Windows ou du matériel audio/MIDI physique.
+
+Archive fournie, SHA-256 : 0cd1651ed1877d4933a5249ea82fdbd55d43f4dd403b63379f66d92f3db9701c

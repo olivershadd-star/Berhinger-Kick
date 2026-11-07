@@ -1,0 +1,25 @@
+KICK Lab 0.1 — prototype indépendant.
+
+AudIO : Copyright (c) MUSIC Tribe, AGPL-3.0-or-later.
+https://github.com/MusicTribeOpenSource/0700-AAM
+Le sous-ensemble nécessaire de la bibliothèque est inclus dans source/vendor/AudIO.
+Le texte de l'AGPL se trouve dans LICENSE et dans source/vendor/AudIO/LICENSE.
+
+AudioFile : Copyright (c) 2017 Adam Stark, licence MIT conservée intégralement
+au début de source/vendor/AudIO/3rdparty/AudioFile.h.
+TinySoundFont : licence MIT conservée dans ses en-têtes ; code présent dans le
+sous-ensemble Objects mais désactivé dans cette version.
+
+Interface Windows, adaptation audio, tests et outils de ce prototype :
+AGPL-3.0-or-later, même licence que le code Music Tribe utilisé.
+Le kit de démonstration a été synthétisé pour ce prototype avec le script fourni.
+Les fichiers WAV de démonstration sont fournis sous CC0-1.0 :
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Binaire Windows compilé avec MinGW-w64 GCC 12.2. Les bibliothèques d'exécution
+GCC/libstdc++ sont liées statiquement sous leurs licences et l'exception GCC
+Runtime Library Exception. Les notices de la chaîne de compilation figurent
+dans source/toolchain-notices/. Aucun JUCE ni Wine n'est distribué dans le binaire.
+
+Behringer, Music Tribe et KICK sont des marques de leurs propriétaires.
+Ce prototype est indépendant et n'est ni approuvé ni commercialisé par Music Tribe.
