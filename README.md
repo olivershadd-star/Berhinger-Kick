@@ -4,7 +4,7 @@ Prototype communautaire indépendant construit à partir du moteur AudIO publié
 
 ## Télécharger la version Windows
 
-[Dernière version et ZIP prêt à lancer](https://github.com/olivershadd-star/kicklab-windows/releases/latest). Télécharger `KickLab-Windows-x64.zip`, puis extraire tout le dossier. Les sources sont incluses dans le ZIP et dans ce dépôt.
+[Dernière version et ZIP prêt à lancer](https://github.com/olivershadd-star/Berhinger-Kick/releases/latest). Télécharger `KickLab-Windows-x64.zip`, puis extraire tout le dossier. Les sources sont incluses dans le ZIP et dans ce dépôt.
 
 ![Interface du prototype KICK Lab](APERCU.png)
 
