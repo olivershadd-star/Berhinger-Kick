@@ -1,4 +1,4 @@
-# KICK Lab 0.1 — prototype Windows avec AudIO
+# KICK Lab 0.1.1 — prototype Windows avec AudIO
 
 Prototype communautaire indépendant construit à partir du moteur AudIO publié dans MusicTribeOpenSource/0700-AAM. Ce projet fait entendre une partie réelle du code publié avec une interface de bureau nouvelle. Il ne reproduit pas l'interface JUCE KICK, son firmware complet ou ses programmes musicaux avancés.
 
@@ -7,6 +7,10 @@ Prototype communautaire indépendant construit à partir du moteur AudIO publié
 [Dernière version et ZIP prêt à lancer](https://github.com/olivershadd-star/Berhinger-Kick/releases/latest). Télécharger `KickLab-Windows-x64.zip`, puis extraire tout le dossier. Les sources sont incluses dans le ZIP et dans ce dépôt.
 
 ![Interface du prototype KICK Lab](APERCU.png)
+
+## Correctif audio 0.1.1
+
+Cette version corrige des blocs silencieux insérés pendant l’activité de l’interface et le réordonnancement possible des buffers WinMM. L’affichage des formes d’onde ne partage plus le verrou du rendu. Le thread audio attend les événements du pilote, utilise MMCSS et prépare quatre buffers de 1 024 trames avant de démarrer (environ 85 ms de réserve, plus la latence du périphérique). Le volume non nul est lissé pour limiter les clics lors des réglages.
 
 ## Démarrage
 
@@ -39,9 +43,9 @@ Les sons fournis sont synthétisés spécialement pour le prototype avec tools/m
 
 ## Limitations
 
-Pas encore de VST3, d'ASIO, d'enregistrement audio, d'effets Airwindows, de moteur de synthèse KICK, de keygroups, d'édition avancée des samples ni d'interface KICK d'origine. La sortie est fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 256 trames. La latence réelle dépend du pilote Windows. Le déclenchement du séquenceur est quantifié au bloc (jusqu'à environ 5,33 ms), sans dérive cumulative du compteur.
+Pas encore de VST3, d'ASIO, d'enregistrement audio, d'effets Airwindows, de moteur de synthèse KICK, de keygroups, d'édition avancée des samples ni d'interface KICK d'origine. La sortie est fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames. La latence réelle dépend du pilote Windows. Le déclenchement du séquenceur est quantifié au bloc (jusqu'à environ 5,33 ms), sans dérive cumulative du compteur.
 
-Le gain de sortie et une saturation de sécurité sont appliqués après le mixage. Un chargement de projet peut provoquer une courte interruption audio. Une seule fenêtre/processus et une seule instance du moteur par processus sont utilisés ; les pools/queues globaux d'AudIO ne sont pas encore adaptés à un plugin multi-instance.
+Le gain de sortie et une saturation de sécurité sont appliqués après le mixage. Le décodage des fichiers et le calcul des formes d’onde sont effectués en dehors des verrous de rendu ; le remplacement effectif d’un sample coupe la voix de ce pad. Une seule fenêtre/processus et une seule instance du moteur par processus sont utilisés ; les pools/queues globaux d'AudIO ne sont pas encore adaptés à un plugin multi-instance.
 
 ## Sources et compilation
 

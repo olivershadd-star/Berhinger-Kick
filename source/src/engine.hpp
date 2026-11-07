@@ -31,7 +31,7 @@ public:
     void setPlaying(bool); void stop();
     void setTempo(double); void setVolume(double);
     Snapshot snapshot();
-    // Exactly Block stereo frames; non-blocking when the UI replaces a clip.
+    // Exactly Block stereo frames; UI waveform copies do not hold render locks.
     void render(float* interleaved);
     bool save(const std::string&,std::string& error);
     bool open(const std::string&,std::string& error);

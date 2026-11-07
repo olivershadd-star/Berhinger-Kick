@@ -67,7 +67,10 @@ struct Engine::Impl {
     std::array<AudIO::AudioPlayback*,Pads> players{};
     std::array<std::atomic<bool>,Pads> pending{};
     Snapshot state;
-    std::mutex mutex;
+    // Waveform/string copies belong to the UI, never the render lock.
+    std::mutex mutex, metadataMutex, audioMutex;
+    std::array<bool,Pads> loaded{};
+    float currentVolume=.65f;
     double untilStep=0;
     int nextStep=0;
     Impl():pool(512*Block) {
@@ -94,10 +97,13 @@ bool Engine::load(int pad,const std::string& path,std::string& error) {
         std::vector<float> waveform(320,0);
         const auto& samples=file->samples[0];
         for(size_t i=0;i<samples.size();++i){size_t j=std::min<size_t>(319,i*320/samples.size());waveform[j]=std::max(waveform[j],std::abs(samples[i]));}
-        {std::lock_guard<std::mutex> lock(impl->mutex);
+        auto name=std::filesystem::u8path(path).stem().u8string();
+        auto storedPath=path;
+        {std::scoped_lock lock(impl->metadataMutex,impl->audioMutex);
          file=impl->players[pad]->replaceFile(std::move(file));
-         impl->state.names[pad]=std::filesystem::u8path(path).stem().u8string();impl->state.paths[pad]=path;
-         impl->state.waveforms[pad]=std::move(waveform);}
+         impl->loaded[pad]=true;
+         impl->state.names[pad].swap(name);impl->state.paths[pad].swap(storedPath);
+         impl->state.waveforms[pad].swap(waveform);}
         return true;
     } catch(const std::exception& e){error=e.what();return false;}
 }
@@ -106,21 +112,31 @@ void Engine::toggle(int p,int s){if(p<0||p>=Pads||s<0||s>=Steps)return;std::lock
 void Engine::clearPattern(){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.pattern={};}
 void Engine::demoPattern(){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.pattern={};for(int s:{0,4,8,12})impl->state.pattern[0][s]=true;for(int s:{4,12})impl->state.pattern[1][s]=true;for(int s=0;s<16;s+=2)impl->state.pattern[2][s]=true;impl->state.pattern[3][14]=true;}
 void Engine::setPlaying(bool b){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.playing=b;}
-void Engine::stop(){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.playing=false;impl->state.step=-1;impl->untilStep=0;impl->nextStep=0;for(int p=0;p<Pads;++p){impl->players[p]->stop();impl->pending[p].store(false);}}
+void Engine::stop(){std::scoped_lock lock(impl->mutex,impl->audioMutex);impl->state.playing=false;impl->state.step=-1;impl->untilStep=0;impl->nextStep=0;for(int p=0;p<Pads;++p){impl->players[p]->stop();impl->pending[p].store(false);}}
 void Engine::setTempo(double t){if(!std::isfinite(t))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.tempo=std::clamp(t,40.,240.);}
 void Engine::setVolume(double v){if(!std::isfinite(v))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.volume=std::clamp(v,0.,1.);}
-Snapshot Engine::snapshot(){std::lock_guard<std::mutex> lock(impl->mutex);return impl->state;}
+Snapshot Engine::snapshot(){
+    Snapshot result;
+    {std::lock_guard<std::mutex> lock(impl->metadataMutex);
+     result.names=impl->state.names;result.paths=impl->state.paths;result.waveforms=impl->state.waveforms;}
+    {std::lock_guard<std::mutex> lock(impl->mutex);
+     result.pattern=impl->state.pattern;result.active=impl->state.active;
+     result.tempo=impl->state.tempo;result.volume=impl->state.volume;
+     result.playing=impl->state.playing;result.step=impl->state.step;result.peak=impl->state.peak;}
+    return result;
+}
 void Engine::render(float* out){
     std::fill(out,out+Block*2,0.f);
-    std::unique_lock<std::mutex> lock(impl->mutex,std::try_to_lock);if(!lock)return;
+    // Never drop an audio block or pause the sample clock because the UI is reading.
+    std::scoped_lock lock(impl->mutex,impl->audioMutex);
     auto& s=impl->state;
-    for(int p=0;p<Pads;++p)if(impl->pending[p].exchange(false)&&!s.paths[p].empty())impl->players[p]->play(true);
+    for(int p=0;p<Pads;++p)if(impl->pending[p].exchange(false)&&impl->loaded[p])impl->players[p]->play(true);
     if(s.playing){
-        if(impl->untilStep<=0){s.step=impl->nextStep;impl->nextStep=(s.step+1)%Steps;for(int p=0;p<Pads;++p)if(s.pattern[p][s.step]&&!s.paths[p].empty())impl->players[p]->play(true);impl->untilStep+=Rate*60./s.tempo/4.;}
+        if(impl->untilStep<=0){s.step=impl->nextStep;impl->nextStep=(s.step+1)%Steps;for(int p=0;p<Pads;++p)if(s.pattern[p][s.step]&&impl->loaded[p])impl->players[p]->play(true);impl->untilStep+=Rate*60./s.tempo/4.;}
         impl->untilStep-=Block;
     }
     impl->graph->process(*impl->buffer);float peak=0;
-    for(int n=0;n<Block;++n)for(int c=0;c<2;++c){float v=impl->buffer->getOutputBuffer(c)[n]*float(s.volume)*.5f;if(!std::isfinite(v))v=0;v=std::clamp(v,-.98f,.98f);out[n*2+c]=v;peak=std::max(peak,std::abs(v));}
+    for(int n=0;n<Block;++n){impl->currentVolume+=(float(s.volume)-impl->currentVolume)*.004f;for(int c=0;c<2;++c){float v=impl->buffer->getOutputBuffer(c)[n]*(s.volume==0?0.f:impl->currentVolume)*.5f;if(!std::isfinite(v))v=0;v=std::clamp(v,-.98f,.98f);out[n*2+c]=v;peak=std::max(peak,std::abs(v));}}
     s.peak=peak;for(int p=0;p<Pads;++p)s.active[p]=impl->players[p]->isPlaying();
 }
 bool Engine::save(const std::string& path,std::string& error){auto s=snapshot();std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<"KICKLAB 1\n"<<s.tempo<<' '<<s.volume<<'\n';for(int p=0;p<Pads;++p){unsigned bits=0;for(int k=0;k<Steps;++k)if(s.pattern[p][k])bits|=1u<<k;f<<bits<<' '<<std::quoted(s.paths[p])<<'\n';}if(!f){error="Erreur d'ecriture.";return false;}return true;}
@@ -131,10 +147,14 @@ bool Engine::open(const std::string& path,std::string& error){
     for(int p=0;p<Pads;++p){unsigned bits;if(!(f>>bits>>std::quoted(s.paths[p]))||bits>65535){error="Pattern invalide.";return false;}for(int k=0;k<Steps;++k)s.pattern[p][k]=(bits&(1u<<k))!=0;}
     std::array<std::unique_ptr<AudioFile<float>>,Pads> clips;
     try{for(int p=0;p<Pads;++p)if(!s.paths[p].empty())clips[p]=decode(s.paths[p]);}catch(const std::exception& e){error=std::string("Projet non charge : ")+e.what();return false;}
+    // Build names and waveforms before acquiring any render-side lock.
+    for(int p=0;p<Pads;++p){if(clips[p]){s.names[p]=std::filesystem::u8path(s.paths[p]).stem().u8string();s.waveforms[p].assign(320,0.f);auto& a=clips[p]->samples[0];for(size_t n=0;n<a.size();++n){size_t j=std::min<size_t>(319,n*320/a.size());s.waveforms[p][j]=std::max(s.waveforms[p][j],std::abs(a[n]));}}else s.names[p]="Vide";}
     std::array<std::unique_ptr<AudioFile<float>>,Pads> old;
-    {std::lock_guard<std::mutex> lock(impl->mutex);
-     for(int p=0;p<Pads;++p){if(clips[p]){s.names[p]=std::filesystem::u8path(s.paths[p]).stem().u8string();s.waveforms[p].assign(320,0.f);auto& a=clips[p]->samples[0];for(size_t n=0;n<a.size();++n){size_t j=std::min<size_t>(319,n*320/a.size());s.waveforms[p][j]=std::max(s.waveforms[p][j],std::abs(a[n]));}}else s.names[p]="Vide";old[p]=impl->players[p]->replaceFile(std::move(clips[p]));impl->pending[p].store(false);}
-     impl->state=std::move(s);impl->untilStep=0;impl->nextStep=0;}
+    {std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);
+     for(int p=0;p<Pads;++p){impl->loaded[p]=bool(clips[p]);old[p]=impl->players[p]->replaceFile(std::move(clips[p]));impl->pending[p].store(false);}
+     std::swap(impl->state,s);impl->untilStep=0;impl->nextStep=0;}
+    // Retired clips and metadata are destroyed here, on the loading thread.
+
     return true;
 }
 }

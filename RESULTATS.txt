@@ -11,3 +11,5 @@ Sortie WinMM avec périphérique ALSA de capture : signal PCM non silencieux mes
 Pas de validation sur un véritable PC Windows ou du matériel audio/MIDI physique.
 
 Archive fournie, SHA-256 : 0cd1651ed1877d4933a5249ea82fdbd55d43f4dd403b63379f66d92f3db9701c
+
+Correctif 0.1.1 : le test de continuité audio avec trois lecteurs concurrents de l’état graphique échoue sur le moteur 0.1.0 et passe sur 0.1.1. Test de remise en file au passage de la fin du tableau de buffers : réussi. Le nouveau binaire doit encore être confirmé sur le matériel audio de l’utilisateur.

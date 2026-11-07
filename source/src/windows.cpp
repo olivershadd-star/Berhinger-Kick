@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <mmsystem.h>
+#include <avrt.h>
 #include <commdlg.h>
 #include <shellapi.h>
 #include <array>
@@ -15,6 +16,7 @@
 #include <algorithm>
 #include <cmath>
 #include "engine.hpp"
+#include "audio_queue.hpp"
 
 namespace {
 std::wstring wide(const std::string& s){if(s.empty())return {};int n=MultiByteToWideChar(CP_UTF8,0,s.data(),int(s.size()),nullptr,0);std::wstring r(n,0);MultiByteToWideChar(CP_UTF8,0,s.data(),int(s.size()),r.data(),n);return r;}
@@ -37,14 +39,52 @@ public:
 private:
     lab::Engine& engine;std::thread thread;std::atomic<bool> alive{false};
     void run(UINT id){
+        // Windows scheduling is not a sample clock. Wait for the driver instead
+        // of Sleep(1), which may take a full scheduler tick under UI load.
+        HANDLE ready=CreateEventW(nullptr,FALSE,FALSE,nullptr);
+        if(!ready){error=MMSYSERR_NOMEM;return;}
+        DWORD taskIndex=0;
+        HANDLE task=AvSetMmThreadCharacteristicsW(L"Pro Audio",&taskIndex);
+        if(task)AvSetMmThreadPriority(task,AVRT_PRIORITY_HIGH);
+        constexpr int Frames=lab::Block*4, Buffers=4;
         WAVEFORMATEX fmt{};fmt.wFormatTag=WAVE_FORMAT_PCM;fmt.nChannels=2;fmt.nSamplesPerSec=lab::Rate;fmt.wBitsPerSample=16;fmt.nBlockAlign=4;fmt.nAvgBytesPerSec=lab::Rate*4;
-        HWAVEOUT device{};MMRESULT result=waveOutOpen(&device,id,&fmt,0,0,CALLBACK_NULL);
-        if(result){error=result;return;}
-        std::array<WAVEHDR,4> headers{};std::array<std::array<short,lab::Block*2>,4> data{};std::array<bool,4> queued{},prepared{};
-        for(int b=0;b<4;++b){headers[b].lpData=reinterpret_cast<char*>(data[b].data());headers[b].dwBufferLength=sizeof(data[b]);result=waveOutPrepareHeader(device,&headers[b],sizeof(WAVEHDR));if(result){error=result;alive=false;break;}prepared[b]=true;}
-        running=alive.load();float buffer[lab::Block*2];
-        while(alive){for(int b=0;b<4&&alive;++b){if(!queued[b]||(headers[b].dwFlags&WHDR_DONE)){engine.render(buffer);for(int i=0;i<lab::Block*2;++i)data[b][i]=short(std::lround(buffer[i]*32767));result=waveOutWrite(device,&headers[b],sizeof(WAVEHDR));if(result){error=result;alive=false;break;}queued[b]=true;}}Sleep(1);}
-        waveOutReset(device);for(int b=0;b<4;++b)if(prepared[b])waveOutUnprepareHeader(device,&headers[b],sizeof(WAVEHDR));waveOutClose(device);running=false;
+        HWAVEOUT device{};MMRESULT result=waveOutOpen(&device,id,&fmt,reinterpret_cast<DWORD_PTR>(ready),0,CALLBACK_EVENT);
+        if(result){error=result;if(task)AvRevertMmThreadCharacteristics(task);CloseHandle(ready);return;}
+        std::array<WAVEHDR,Buffers> headers{};
+        std::array<std::array<short,Frames*2>,Buffers> data{};
+        std::array<bool,Buffers> prepared{};
+        auto fill=[&](int b){
+            float block[lab::Block*2];
+            for(int offset=0;offset<Frames;offset+=lab::Block){
+                engine.render(block);
+                for(int i=0;i<lab::Block*2;++i)data[b][offset*2+i]=short(std::lround(block[i]*32767));
+            }
+        };
+        // Prime the entire queue before playback starts.
+        result=waveOutPause(device);
+        if(result){error=result;alive=false;}
+        for(int b=0;b<Buffers&&alive;++b){
+            headers[b].lpData=reinterpret_cast<char*>(data[b].data());headers[b].dwBufferLength=sizeof(data[b]);
+            result=waveOutPrepareHeader(device,&headers[b],sizeof(WAVEHDR));
+            if(result){error=result;alive=false;break;}prepared[b]=true;
+            fill(b);result=waveOutWrite(device,&headers[b],sizeof(WAVEHDR));
+            if(result){error=result;alive=false;break;}
+        }
+        if(alive){result=waveOutRestart(device);if(result){error=result;alive=false;}}
+        running=alive.load();
+        // Refill in chronological order, including when multiple buffers finish
+        // across the end of the ring during a single wakeup.
+        lab::AudioQueue<Buffers> queue;
+        while(alive){
+            if(!queue.refill([&](std::size_t index){return alive&&(headers[index].dwFlags&WHDR_DONE);},
+                [&](std::size_t index){fill(int(index));result=waveOutWrite(device,&headers[index],sizeof(WAVEHDR));if(result){error=result;return false;}return true;}))alive=false;
+            if(alive)WaitForSingleObject(ready,50);
+        }
+        waveOutReset(device);
+        for(int b=0;b<Buffers;++b)if(prepared[b])waveOutUnprepareHeader(device,&headers[b],sizeof(WAVEHDR));
+        waveOutClose(device);running=false;
+        if(task)AvRevertMmThreadCharacteristics(task);
+        CloseHandle(ready);
     }
 };
 
