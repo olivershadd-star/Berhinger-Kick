@@ -1,4 +1,4 @@
-# KICK Lab 0.1.1 — prototype Windows avec AudIO
+# KICK Lab 0.1.2 — prototype Windows avec AudIO
 
 Prototype communautaire indépendant construit à partir du moteur AudIO publié dans MusicTribeOpenSource/0700-AAM. Ce projet fait entendre une partie réelle du code publié avec une interface de bureau nouvelle. Il ne reproduit pas l'interface JUCE KICK, son firmware complet ou ses programmes musicaux avancés.
 
@@ -7,6 +7,10 @@ Prototype communautaire indépendant construit à partir du moteur AudIO publié
 [Dernière version et ZIP prêt à lancer](https://github.com/olivershadd-star/Berhinger-Kick/releases/latest). Télécharger `KickLab-Windows-x64.zip`, puis extraire tout le dossier. Les sources sont incluses dans le ZIP et dans ce dépôt.
 
 ![Interface du prototype KICK Lab](APERCU.png)
+
+## Affichage 0.1.2
+
+L’interface utilise maintenant toute la zone de la fenêtre après redimensionnement ou maximisation. Les zones de clic suivent les pads et les boutons. La prise en compte du changement de densité d’affichage entre écrans Windows a été ajoutée. Le lancement reste portable, sans installation.
 
 ## Correctif audio 0.1.1
 

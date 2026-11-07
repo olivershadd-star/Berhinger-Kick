@@ -137,7 +137,7 @@ public:
         SetMapMode(dc,MM_ANISOTROPIC);SetWindowExtEx(dc,1200,800,nullptr);SetViewportExtEx(dc,width,height,nullptr);
         fill(dc,{0,0,1200,800},bg);text(dc,{28,18,170,40},L"KICK / LAB",30,ink,FW_BOLD);
         text(dc,{218,20,670,24},L"EXPLORATION DU MOTEUR AudIO",12,accent,FW_SEMIBOLD);
-        text(dc,{218,43,680,22},L"Prototype communautaire • interface expérimentale • Windows x64",13,muted);
+        text(dc,{218,43,680,22},L"Prototype 0.1.2 • interface expérimentale • Windows x64",13,muted);
         button(dc,{930,26,100,32},L"Jouer",tab==0);button(dc,{1038,26,134,32},L"Sous le capot",tab==1);
         fill(dc,{28,83,1144,1},line);
         if(tab){paintInfo(dc);return;}
@@ -180,7 +180,35 @@ case WM_CREATE:app->initialise(h);return 0;
 case WM_SIZE:app->width=std::max(1,int(LOWORD(l)));app->height=std::max(1,int(HIWORD(l)));InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_GETMINMAXINFO:{auto* m=reinterpret_cast<MINMAXINFO*>(l);m->ptMinTrackSize={960,680};return 0;}
 case WM_ERASEBKGND:return 1;
-case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(h,&ps);HDC buffer=CreateCompatibleDC(dc);HBITMAP bitmap=CreateCompatibleBitmap(dc,app->width,app->height);auto old=SelectObject(buffer,bitmap);app->paint(buffer);BitBlt(dc,0,0,app->width,app->height,buffer,0,0,SRCCOPY);SelectObject(buffer,old);DeleteObject(bitmap);DeleteDC(buffer);EndPaint(h,&ps);return 0;}
+case WM_PAINT:{
+    PAINTSTRUCT ps;HDC dc=BeginPaint(h,&ps);
+    RECT client{};GetClientRect(h,&client);
+    app->width=std::max(1,int(client.right-client.left));
+    app->height=std::max(1,int(client.bottom-client.top));
+    HDC buffer=CreateCompatibleDC(dc);
+    HBITMAP bitmap=CreateCompatibleBitmap(dc,app->width,app->height);
+    if(buffer&&bitmap){
+        auto old=SelectObject(buffer,bitmap);
+        // Painting maps the 1200x800 design into the full client area.
+        // Restore pixel coordinates before copying: BitBlt also interprets the
+        // source DC mapping, so leaving it scaled cancels/distorts the resize.
+        int saved=SaveDC(buffer);
+        app->paint(buffer);
+        if(saved)RestoreDC(buffer,saved);else SetMapMode(buffer,MM_TEXT);
+        BitBlt(dc,0,0,app->width,app->height,buffer,0,0,SRCCOPY);
+        SelectObject(buffer,old);
+    }
+    if(bitmap)DeleteObject(bitmap);
+    if(buffer)DeleteDC(buffer);
+    EndPaint(h,&ps);return 0;
+}
+case WM_DPICHANGED:{
+    auto* suggested=reinterpret_cast<RECT*>(l);
+    SetWindowPos(h,nullptr,suggested->left,suggested->top,
+        suggested->right-suggested->left,suggested->bottom-suggested->top,
+        SWP_NOZORDER|SWP_NOACTIVATE);
+    return 0;
+}
 case WM_TIMER:if(app->smoke&&GetTickCount64()>app->flashed[0]){DestroyWindow(h);return 0;}InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:app->click(GET_X_LPARAM(l)*1200/app->width,GET_Y_LPARAM(l)*800/app->height,msg==WM_RBUTTONDOWN);InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_MOUSEWHEEL:app->engine.setTempo(app->engine.snapshot().tempo+(GET_WHEEL_DELTA_WPARAM(w)>0?1:-1));InvalidateRect(h,nullptr,FALSE);return 0;
@@ -191,11 +219,16 @@ case WM_DESTROY:KillTimer(h,1);app->closeMidi();app->audio.stop();PostQuitMessag
 }
 int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
     try{
-        SetProcessDPIAware();App app;app.smoke=std::wstring(command).find(L"--smoke-test")!=std::wstring::npos;
+        // Use physical client dimensions on each monitor (Windows 10/11), with
+        // a fallback for systems where the newer awareness API is unavailable.
+        using SetDpiContext=BOOL(WINAPI*)(HANDLE);
+        auto setDpi=reinterpret_cast<SetDpiContext>(GetProcAddress(GetModuleHandleW(L"user32.dll"),"SetProcessDpiAwarenessContext"));
+        if(!setDpi||!setDpi(reinterpret_cast<HANDLE>(static_cast<INT_PTR>(-4))))SetProcessDPIAware();
+        App app;app.smoke=std::wstring(command).find(L"--smoke-test")!=std::wstring::npos;
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,1200,800};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.1.2 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }
