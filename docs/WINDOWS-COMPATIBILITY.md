@@ -22,7 +22,7 @@ Les types d'énumération `mt::Recorder::Direction` et `Mode` reprennent les val
 
 ## Compilations distinctes
 
-- `port/checks` vérifie le transport audio et compile séparément des unités originales : `common`, `interface`, `project`, `audio_file_manager`. Compiler des objets ne valide pas leur édition de liens ou leur fonctionnement dans l'application.
+- `port/checks` vérifie le transport audio et compile séparément des unités originales : `common`, `interface`, `project`, `audio_file_manager`, ainsi que sept modules de contrôles, composants, en-têtes, sélecteurs, éditeurs de programmes et mixage de l’interface originale. Compiler des objets ne valide pas leur édition de liens ou leur fonctionnement dans l'application.
 - Le CMake racine prépare désormais le portage et invoque la cible originale `Kick` sous Windows. Il ne s'arrête plus volontairement sur l'inventaire des modules absents du snapshot immuable.
 - Le workflow manuel `Original KICK application — Windows integration build` exécute cette compilation complète. Il conserve des diagnostics en cas d'échec et ne publie aucun faux exécutable.
 
@@ -30,6 +30,6 @@ Les types d'énumération `mt::Recorder::Direction` et `Mode` reprennent les val
 
 Au-delà des constantes, `mt::SampleRecorder` et le moteur `mt::Looper` ne sont pas définis dans l'archive ; `mt_audio_recorder.h/.cpp` les utilisent. Les commandes du looper (dont undo/redo) ne sont pas intégralement fournies par l'ancien `AudIO::AudioRecorder`. Un simple alias serait trompeur.
 
-`drum_voice.h/.cpp` attend aussi des types `Filter`, `FilterType`, `ADSR`, `ADSRType` et les fonctions de mise à l'échelle d'enveloppes. L'AudIO publié contient des primitives de filtre et d'ADSR, mais leur interface et les fonctionnalités attendues diffèrent. Il faut analyser et adapter ces contrats ; aucun filtre ni looper factice n'a été ajouté pour obtenir artificiellement une compilation réussie.
+`drum_voice.h/.cpp` attend aussi les types de traitement `Filter`, `FilterType` et `ADSR`. Les variantes `ADSRType` et les fonctions de mise à l’échelle existent déjà dans `mt_audio_timebase_types.h`. L'AudIO publié contient des primitives de filtre et d'ADSR, mais leur interface et les fonctionnalités attendues diffèrent. Il faut analyser et adapter ces contrats ; aucun filtre ni looper factice n'a été ajouté pour obtenir artificiellement une compilation réussie.
 
 Il n'existe donc pas encore de `Kick.exe` complet validé. Les erreurs de compilation sont utilisées comme liste de travail, sans les confondre avec des fonctions portées.
