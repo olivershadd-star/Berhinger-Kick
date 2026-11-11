@@ -1,0 +1,20 @@
+name: Windows platform adapter checks (not a KICK application build)
+on:
+  push:
+    branches: [port/kick-original-windows, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-platform:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify immutable original sources
+        run: python tools/audit_original.py --verify-original
+      - name: Configure platform checks with JUCE 7.0.12
+        run: cmake -S port/checks -B build-platform -DKICK_CHECK_AUDIO_DEVICE=ON
+      - name: Compile device bridge and buffer checks
+        run: cmake --build build-platform --config Release --parallel 2
+      - name: Check variable device buffers against original AudIO buffers
+        run: ctest --test-dir build-platform -C Release --output-on-failure

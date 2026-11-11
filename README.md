@@ -31,6 +31,24 @@ Quatre éléments empêchent actuellement la configuration du projet original :
 
 Leur absence est détectée par la préparation du portage. Aucun remplacement musical, aucune interface factice et aucun exécutable KICK de substitution ne sont générés pour masquer un blocage.
 
+## Adaptations Windows en cours
+
+Un premier adaptateur `mt::AudioDevice` relie l'interface publique `AudIO::IAudioDevice` à JUCE. Il conserve les blocs de **480 échantillons** imposés par `DawEngine.cpp` et adapte les tailles de tampon du périphérique sans perdre ni rejouer d'échantillons. Il ne remplace aucune fonction musicale. Sa compilation Windows est vérifiée séparément ; il n'est **pas encore intégré ni validé dans KICK**.
+
+`tools/stage_windows_port.py` prépare une copie des sources avec un journal des modifications techniques : identifiants de modules JUCE, exclusion Windows du port série Linux absent, compatibilité C++ Airwindows et déclaration de `<thread>`. Le snapshot original reste intact. Ce script ne produit pas encore d'application compilable.
+
+La tentative de compiler l'en-tête de l'interface originale révèle aussi des définitions absentes dans `AudIO_constants` : `MIDI`, `MIDI_CH`, `POLYPHONY`, `GAIN`, `PAN`. Certaines concernent directement les valeurs musicales. Le fichier de compatibilité actuel ne fournit que la taille de bloc vérifiée ; il ne prétend pas restaurer tout ce module.
+
+Pour vérifier uniquement le transport des tampons audio :
+
+```sh
+cmake -S port/checks -B build-platform
+cmake --build build-platform --config Release
+ctest --test-dir build-platform -C Release --output-on-failure
+```
+
+Sous Windows, ajouter `-DKICK_CHECK_AUDIO_DEVICE=ON` à la configuration compile également le véritable adaptateur JUCE/AudIO. **Ces vérifications ne produisent pas `Kick.exe`.**
+
 ## Vérifier la base
 
 Avec Python 3 :
