@@ -1,75 +1,96 @@
-<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>KICK Lab — démarrage</title><style>body{background:#0e1117;color:#e9eff8;font:17px/1.65 system-ui,sans-serif;margin:0}main{max-width:1050px;margin:auto;padding:48px 26px}small{color:#4cd9b8;letter-spacing:.12em}h1{font-size:44px;margin:.3em 0}h2{margin-top:2em}a{color:#4cd9b8}section{background:#171c25;border:1px solid #2b3544;border-radius:16px;padding:24px;margin:24px 0}img{width:100%;border-radius:12px}li{margin:10px 0}code{background:#242c38;padding:3px 7px;border-radius:4px}pre{white-space:pre-wrap;font:14px/1.8 ui-monospace,monospace;color:#b8c5d8}audio{width:100%}.note{color:#a5b3c7}</style><main><small>PROTOTYPE COMMUNAUTAIRE / WINDOWS X64</small><h1>KICK / LAB</h1><p><strong>Version 0.1.2 — interface redimensionnable.</strong> La fenêtre agrandie utilise maintenant toute sa surface et les zones de clic restent alignées. Le lancement reste portable. Les corrections audio de 0.1.1 sont conservées. Buffers remis en file dans l’ordre, attente pilotée par le périphérique et séparation des copies graphiques du rendu audio.</p><p>Une première prise en main du moteur AudIO, avec 16 pads et un séquenceur simple.</p><section><h2 style="margin-top:0">Pour essayer</h2><ol><li>Extraire <strong>tout le ZIP</strong> dans un dossier.</li><li>Double-cliquer sur <code>KickLab.exe</code>. Conserver le dossier <code>samples</code> à côté.</li><li>Cliquer sur <strong>Jouer</strong> : un pattern et 16 sons de démonstration sont déjà chargés.</li></ol><p>Clic sur un pad : jouer. Clic droit : charger ton WAV. Clic dans la grille : modifier le rythme. Espace : lecture/pause. Échap : arrêt.</p><p class="note">Windows 10/11 x64. Aucun outil de développement nécessaire pour lancer le programme fourni. Si aucun son ne sort, sélectionner une sortie avec le bouton Audio, puis vérifier le volume Windows.</p></section><img src="APERCU.png" alt="Capture réelle du prototype exécuté sous Wine"><section><h2 style="margin-top:0">Écouter le kit avant de lancer</h2><audio controls src="DEMO.wav"></audio><p class="note">Rendu AudIO de huit secondes. Sons synthétiques créés pour ce prototype ; aucun sample d’usine Behringer.</p></section><section><h2 style="margin-top:0">Pour chipoter sur le code</h2><p><a href="source/src/engine.cpp">engine.cpp</a> : raccordement du moteur et samples.<br><a href="source/src/windows.cpp">windows.cpp</a> : interface, MIDI et sortie Windows.<br><a href="source/vendor/AudIO/">vendor/AudIO</a> : code Music Tribe réutilisé.<br><a href="source/BUILD-WINDOWS.bat">BUILD-WINDOWS.bat</a> : reconstruire après installation des outils C++.</p><p>Le bouton <strong>Sous le capot</strong> explique les composants d’origine et les ajouts.</p></section><section><h2 style="margin-top:0">Ce que cette version permet de vérifier</h2><p>L’exécutable Windows a été compilé et exécuté sous Wine ; son interface et le flux audio ont été testés. Il reste à le valider sur un vrai PC Windows, avec ta carte son et ton matériel MIDI.</p><p>Le moteur et le mixage viennent d’AudIO. L’interface et le séquenceur sont nouveaux. L’interface KICK d’origine, les effets Airwindows et le VST3 restent à porter.</p></section><details><summary>Documentation technique, compilation et licences</summary><pre># KICK Lab 0.1.2 — prototype Windows avec AudIO
+<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>KICK Lab 0.2.0 — samples et effets</title><style>body{background:#0e1117;color:#e9eff8;font:17px/1.65 system-ui,sans-serif;margin:0}main{max-width:1100px;margin:auto;padding:48px 26px}small{color:#4cd9b8;letter-spacing:.12em}h1{font-size:44px;margin:.3em 0}a{color:#4cd9b8}section{background:#171c25;border:1px solid #2b3544;border-radius:16px;padding:24px;margin:24px 0}img{width:100%;border-radius:12px}li{margin:10px 0}code{background:#242c38;padding:3px 7px;border-radius:4px}pre{white-space:pre-wrap;font:14px/1.8 ui-monospace,monospace;color:#b8c5d8}.note{color:#a5b3c7}</style><main><small>VERSION 0.2.0 / WINDOWS PORTABLE</small><h1>KICK / LAB</h1><p>Découpe, accordage et deux effets Airwindows indépendants sur chaque pad.</p><section><h2>Pour démarrer</h2><ol><li>Extraire tout le ZIP, puis ouvrir <code>KickLab.exe</code>. Garder le dossier <code>samples</code> à côté.</li><li>Dans <strong>Jouer</strong>, cliquer sur un pad ou lancer le pattern.</li><li>Ouvrir <strong>Sample &amp; FX</strong>, puis sélectionner le pad à travailler.</li><li>Glisser les repères de début/fin et régler volume, accordage ou fondus.</li><li>Essayer <strong>Lowpass</strong> et <strong>PurestDrive</strong>. Le bouton <strong>Bypass</strong> permet de comparer sans les effets.</li></ol><p>Aucune installation. Le numéro 0.2.0 apparaît dans la fenêtre. Le redimensionnement et les corrections audio précédentes sont conservés.</p></section><img src="APERCU-SAMPLE.png" alt="Éditeur de sample et effets Airwindows du prototype"><section><h2>À savoir en jouant</h2><p>La découpe, l’accordage et les fondus s’appliquent au prochain déclenchement. Le volume et les effets évoluent en direct. L’accordage change aussi la durée du sample : ce n’est pas du time-stretch.</p><p>Réinitialiser conserve le WAV mais remet les réglages à zéro. Charger un nouveau WAV remet également les réglages de ce pad à zéro.</p><p>Enregistrer sauvegarde les réglages et les chemins des samples. Les anciens projets restent lisibles ; les nouveaux projets nécessitent cette version.</p></section><section><h2>Explorer les sources</h2><p><a href="source/src/engine.cpp">engine.cpp</a> : chargement et projets.<br><a href="source/src/pad_voice.hpp">pad_voice.hpp</a> : lecteur et chaîne d’effets.<br><a href="source/src/editor_ui.inc">editor_ui.inc</a> : interface de l’éditeur.<br><a href="source/vendor/AudIO/airwindows/">Airwindows</a> : sources Lowpass et PurestDrive reprises de 0700-AAM.</p><p class="note">Le moteur AudIO et les deux effets sont réutilisés du dépôt publié. L’éditeur Windows est une interface nouvelle, pas l’éditeur JUCE KICK complet.</p></section><details><summary>Documentation complète, compilation et limites</summary><pre># KICK Lab 0.2.0 — sampler et effets Windows
 
-Prototype communautaire indépendant construit à partir du moteur AudIO publié dans MusicTribeOpenSource/0700-AAM. Ce projet fait entendre une partie réelle du code publié avec une interface de bureau nouvelle. Il ne reproduit pas l&#x27;interface JUCE KICK, son firmware complet ou ses programmes musicaux avancés.
+Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-## Démarrage
+**[Télécharger la dernière version Windows portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/latest)**
 
-1. Extraire entièrement l&#x27;archive ZIP dans un dossier accessible en écriture.
-2. Ouvrir KickLab.exe sous Windows 10/11 x64. Le dossier samples doit rester à côté.
-3. Cliquer sur Jouer : le pattern de démonstration est déjà chargé.
-4. Cliquer sur les pads ou jouer au clavier. Clic droit sur un pad : charger un WAV.
-5. Choisir une sortie avec le bouton Audio si nécessaire. Un appareil exclusivement ASIO n&#x27;est pas directement pris en charge : choisir une sortie Windows exposée par son pilote.
+Cette version ajoute un éditeur de sample et deux effets par pad. Ce n&#x27;est pas encore le firmware complet ni l&#x27;interface JUCE KICK d&#x27;origine.
 
-Aucune installation, aucun Python et aucun JUCE requis pour lancer le binaire fourni.
+![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
-## Utilisation
+## Pour essayer
 
-- 16 pads, un lecteur one-shot par pad. Un nouveau déclenchement du même pad relance son sample ; pas de polyphonie interne à un pad.
-- Séquenceur de 16 pas sur une mesure, doubles croches ; cliquer dans la grille pour activer/désactiver un pas.
-- Espace : lecture/pause ; Échap : arrêt et coupure des voix.
-- Raccourcis des pads, rangée par rangée : A Z E R / Q S D F / W X C V / 1 2 3 4. Les lettres fonctionnent selon les touches logiques Windows ; la rangée numérique demande éventuellement Maj sur AZERTY. Le clic reste disponible.
-- Tempo : boutons − et +, ou molette. Volume : cliquer sur la barre Master.
-- MIDI : sélectionner une entrée ; notes 36 à 51, tous canaux, Note On à vélocité non nulle. Vélocité fixe pour le rendu ; Note Off, CC et horloge MIDI non gérés.
-- WAV : PCM 16/24/32 bits ou flottant 32 bits, mono/stéréo, 8 à 192 kHz, jusqu&#x27;à 30 s et 32 Mo par fichier. Pas de WAV extensible, MP3, FLAC ou AIFF dans l&#x27;interface de ce prototype.
-- Les WAV sont convertis à 48 kHz par interpolation linéaire au chargement. Cette conversion simple n&#x27;est pas destinée au mastering.
-- Enregistrer/Ouvrir : fichiers .kicklab. Ils contiennent les pas, le tempo, le volume et les chemins absolus des WAV, sans incorporer les samples. Conserver les WAV à leur emplacement. Ce format n&#x27;est pas le format des projets de la machine KICK.
-- Les projets ne sont chargés que si tous leurs samples sont disponibles ; un échec conserve le projet en cours.
+1. Extraire entièrement le ZIP dans un dossier accessible en écriture.
+2. Ouvrir **KickLab.exe**, en gardant le dossier **samples** à côté.
+3. Dans **Jouer**, lancer le pattern ou cliquer sur les pads.
+4. Dans **Sample &amp; FX**, sélectionner un pad pour travailler son son.
 
-## Ce qui est réutilisé
+Windows 10/11 x64, sans installation. Aucun compilateur, Python ou JUCE nécessaire pour lancer l&#x27;exécutable fourni. La fenêtre reste redimensionnable. Si aucun son ne sort, choisir une sortie Windows avec le bouton Audio de l&#x27;onglet Jouer.
 
-Le traitement suit : AudIO::Design → 16 AudIO::AudioPlayback → AudIO::Bus → buffers stéréo. Le décodeur AudioFile livré dans le dépôt est utilisé après validation et normalisation de l&#x27;en-tête WAV. Le reste de l&#x27;application (interface Win32, séquenceur simple, entrée MIDI, adaptation WinMM, sauvegarde) est nouveau.
+## Sample &amp; FX
 
-Les sons fournis sont synthétisés spécialement pour le prototype avec tools/make_kit.py. Ce ne sont pas des samples d&#x27;usine Behringer et ils ne permettent pas de juger du son du futur produit.
+- **Début / fin** : glisser les deux repères sur la forme d&#x27;onde. Le WAV original n&#x27;est pas modifié.
+- **Volume** : réglage indépendant par pad, de 0 à 200 %, lissé pendant la lecture.
+- **Accordage** : de −24 à +24 demi-tons. Il s&#x27;agit d&#x27;une transposition par vitesse de lecture : la durée change aussi, sans time-stretch.
+- **Fondus** : de 0 à 20 ms au début et à la fin, limités à la moitié de la zone lue. Valeur initiale : 2 ms.
+- **Lowpass / ouverture** : véritable effet Airwindows Lowpass, en pourcentage d&#x27;ouverture (pas une fréquence calibrée en Hz). À 100 %, le filtre est contourné.
+- **PurestDrive / saturation** : véritable effet Airwindows PurestDrive, avec gain d&#x27;entrée jusqu&#x27;à ×4 et compensation en sortie dans l&#x27;adaptation. À 0 %, la saturation est contournée.
+- **Bypass** : compare la lecture sans filtre/saturation, en conservant volume, accordage et découpe.
+- **Réinitialiser ce pad** : remet les réglages à leur valeur initiale et conserve son sample.
+- **Écouter le pad** : déclenche un one-shot. **Couper** arrête les voix.
 
-## Limitations
+La découpe, l&#x27;accordage et les fondus sont appliqués au prochain déclenchement. Le volume et les effets évoluent pendant la lecture, avec lissage. La chaîne est : lecteur AudIO étendu → Lowpass → PurestDrive → volume du pad → bus AudIO → volume général.
 
-Pas encore de VST3, d&#x27;ASIO, d&#x27;enregistrement audio, d&#x27;effets Airwindows, de moteur de synthèse KICK, de keygroups, d&#x27;édition avancée des samples ni d&#x27;interface KICK d&#x27;origine. La sortie est fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames. La latence réelle dépend du pilote Windows. Le déclenchement du séquenceur est quantifié au bloc (jusqu&#x27;à environ 5,33 ms), sans dérive cumulative du compteur.
+Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la voix de ce pad ; les autres pads continuent. Un nouveau déclenchement relance le sample : cette version n&#x27;a qu&#x27;une voix par pad.
 
-Le gain de sortie et une saturation de sécurité sont appliqués après le mixage. Un chargement de projet peut provoquer une courte interruption audio. Une seule fenêtre/processus et une seule instance du moteur par processus sont utilisés ; les pools/queues globaux d&#x27;AudIO ne sont pas encore adaptés à un plugin multi-instance.
+## Séquenceur, clavier et MIDI
 
-## Sources et compilation
+- 16 pads et 16 pas sur une mesure, doubles croches. Cliquer dans la grille pour activer/désactiver un pas.
+- Espace : lecture/pause du séquenceur. Échap : arrêt et coupure des voix.
+- Pads au clavier, par rangée : **A Z E R / Q S D F / W X C V / 1 2 3 4**. Le clic est toujours disponible.
+- Tempo : boutons − / + ou molette. Volume général : barre Master.
+- Clic droit sur un pad : charger un WAV. Glisser-déposer un WAV sur un pad ou sur l&#x27;éditeur est également possible.
+- MIDI : sélectionner une entrée avec le bouton MIDI de Jouer ; notes 36 à 51, tous canaux. Vélocité fixe, Note Off, CC et horloge MIDI non gérés.
 
-Les sources complètes nécessaires à cette version sont dans source/. Le code du dépôt d&#x27;origine nécessaire au moteur est inclus dans source/vendor/AudIO, avec sa licence. La totalité du firmware original n&#x27;est pas recopiée dans cette archive.
+## WAV et projets
 
-Sur Windows, installer CMake et Visual Studio 2022 Build Tools avec le composant Développement Desktop en C++, puis exécuter source/BUILD-WINDOWS.bat. La voie MSVC est préparée mais n&#x27;a pas été exécutée dans l&#x27;environnement de test ; le binaire livré a été compilé avec MinGW-w64 GCC 12.2.
+WAV PCM 16/24/32 bits ou flottant 32 bits, mono/stéréo, de 8 à 192 kHz, jusqu&#x27;à 30 secondes et 32 Mo par fichier. Les WAV sont convertis à 48 kHz au chargement par interpolation linéaire. WAV extensible, MP3, FLAC et AIFF ne sont pas pris en charge dans cette interface.
 
-Avec MinGW-w64 installé et CMake :
+**Enregistrer / Ouvrir** sauvegarde le pattern, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement. Un chargement échoué conserve le projet courant.
+
+Les projets des versions 0.1.x sont lisibles. Les nouveaux projets utilisent **KICKLAB 2** pour conserver l&#x27;édition et les effets ; ils ne s&#x27;ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
+
+## Code réutilisé et adaptations
+
+- **AudIO** : graphe `Design`, lecteur `AudioPlayback`, bus et mixage.
+- **AudioFile** : décodeur WAV livré dans le dépôt, après validation et normalisation de l&#x27;en-tête.
+- **Airwindows Lowpass / PurestDrive** : sources originales et adaptation `AudioEffectX` fournies dans 0700-AAM. Les deux effets sont construits avant le rendu et restent indépendants pour chaque pad.
+- **Ajouts du prototype** : interface Win32, éditeur, extension du lecteur (découpe, interpolation pour la hauteur, fondus), séquenceur simple, MIDI, sortie WinMM, persistance et tests.
+
+L&#x27;éditeur JUCE complet et les classes de voix KICK dépendent encore des couches manquantes. Cette version étend le lecteur AudIO qui fonctionne déjà sur Windows ; elle ne prétend pas porter l&#x27;éditeur ou le séquenceur KICK complet. Voir `source/vendor/AudIO/DESKTOP-CHANGES.patch`.
+
+Le kit fourni a été synthétisé pour ce prototype. Aucun sample d&#x27;usine Behringer n&#x27;est inclus, et ces sons ne permettent pas de juger du son du futur produit.
+
+## Stabilité audio et limites
+
+Les corrections de 0.1.1 et 0.1.2 sont conservées : ordre des buffers, attente par événements du pilote, priorité MMCSS, séparation des copies graphiques et du rendu, interface redimensionnable.
+
+Sortie fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames (environ 85 ms de réserve, plus le pilote). Pas d&#x27;ASIO ni de VST3 pour l&#x27;instant. Le séquenceur est quantifié au bloc de 256 trames (environ 5,33 ms), sans dérive cumulative du compteur. Le volume général et une saturation de sécurité protègent la sortie ; une accumulation de pads très forts peut néanmoins être écrêtée.
+
+Pas encore de kits avec médias intégrés, de séquenceur KICK avancé, de keygroups, d&#x27;enregistrement, de synthétiseurs KICK ni de banque complète d&#x27;effets. Une seule instance du moteur est utilisée par processus ; les pools globaux d&#x27;AudIO ne sont pas encore adaptés à un plugin multi-instance.
+
+## Développer
+
+Les sources nécessaires sont incluses dans **source/**, avec les licences. Les fichiers principaux :
+
+- `source/src/engine.cpp` : chargement, réglages et persistance.
+- `source/src/pad_voice.hpp` : lecteur étendu et chaîne des deux effets.
+- `source/src/editor_ui.inc` : commandes et dessin de l&#x27;éditeur.
+- `source/src/windows.cpp` : fenêtre, pads, MIDI et sortie Windows.
+
+Sur Windows : installer CMake et Visual Studio 2022 Build Tools avec Développement Desktop C++, puis lancer `source/BUILD-WINDOWS.bat`. La compilation MSVC et les tests sont également exécutés par GitHub Actions.
 
 ```sh
-cmake -S source -B build -G &quot;MinGW Makefiles&quot; -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-ctest --test-dir build --output-on-failure
+cmake -S source -B build -A x64
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-Depuis Linux, les tests du moteur peuvent aussi être construits avec cmake -S source -B build, cmake --build build et ctest --test-dir build --output-on-failure. Pour une compilation croisée Windows, passer CMAKE_SYSTEM_NAME=Windows et le compilateur x86_64-w64-mingw32-g++.
+Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les principaux fichiers à modifier sont source/src/engine.cpp pour le raccordement à AudIO et source/src/windows.cpp pour l&#x27;interface, le MIDI et la sortie audio. Les modifications du code d&#x27;origine sont listées dans source/vendor/AudIO/DESKTOP-CHANGES.patch.
+Les vérifications audio couvrent la lecture WAV, les bornes de découpe, la durée et la fréquence à l&#x27;octave, les fades, les effets et le bypass, la persistance v2, les projets v1, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l&#x27;utilisateur.
 
-## Vérifications réalisées
+## Licences
 
-- Compilation Linux GCC 14.2 et Windows x64 MinGW-w64 GCC 12.2.
-- Tests du moteur : silence initial, lecture WAV, mono en stéréo, fin de sample sans résidu, conversion 44,1 → 48 kHz, volume nul, mixage de 16 pads, séquenceur, pause, sauvegarde/rechargement et rejet de fichiers invalides.
-- Même suite exécutée sur le binaire Windows sous Wine 8.
-- Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic sur ces scénarios.
-- Affichage et interactions de l&#x27;exécutable Windows sous Wine/Xvfb : pads/grille, onglets et sauvegarde/rechargement par les boîtes de dialogue.
-- Sortie WinMM exécutée sous Wine avec un périphérique ALSA de capture de test : signal non silencieux capturé pendant la lecture.
-- Pas de test sur une véritable installation Windows, sur une carte son physique ou avec un contrôleur MIDI physique. La validation sur le PC de l&#x27;utilisateur reste nécessaire.
-
-DEMO.wav est un rendu hors ligne de huit secondes du kit et du pattern, calculé avec cette intégration AudIO.
-
-## Origine et licences
-
-Dépôt : https://github.com/MusicTribeOpenSource/0700-AAM
-Archive analysée : 0700-AAM-main.zip.
-Code Music Tribe et modifications de cette version : AGPL-3.0-or-later. Voir LICENSE et NOTICES.txt. AudioFile garde sa licence MIT dans son en-tête. Les noms Behringer et KICK restent des marques de leurs propriétaires ; ce prototype n&#x27;est pas un produit officiel Music Tribe.
-</pre></details><p class="note">Prototype indépendant sous AGPL-3.0-or-later. Voir <a href="LICENSE">LICENSE</a> et <a href="NOTICES.txt">NOTICES.txt</a>. <a href="https://github.com/MusicTribeOpenSource/0700-AAM">Dépôt Music Tribe d’origine</a>.</p></main></html>
+Code Music Tribe et modifications : **AGPL-3.0-or-later**. Airwindows et AudioFile conservent leur **licence MIT**. Voir LICENSE et NOTICES.txt. Les noms Behringer et KICK restent des marques de leurs propriétaires. Prototype indépendant, non officiel.
+</pre></details><p class="note">Prototype communautaire indépendant sous AGPL-3.0-or-later. Airwindows et AudioFile : MIT. Voir <a href="LICENSE">LICENSE</a> et <a href="NOTICES.txt">NOTICES.txt</a>.</p></main></html>

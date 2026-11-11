@@ -20,7 +20,7 @@ void editorPointer(int x,int){
 }
 void editorClick(int x,int y,bool right){
     for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y)){selected=p;if(right)load(choose(false,false));else play(p);return;}
-    if(Box{52,230,1096,138}.contains(x,y)){
+    if(Box{44,226,1112,150}.contains(x,y)){
         auto e=engine.snapshot().edits[selected];double p=(x-52)/1096.;
         editorDrag=std::abs(p-e.start)<=std::abs(p-e.end)?6:7;
     }else for(int id=1;id<=5;++id)if(editorSlider(id).contains(x,y)){editorDrag=id;break;}

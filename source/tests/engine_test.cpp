@@ -21,8 +21,9 @@ int main(int argc,char**argv){try{
     Engine e;float block[Block*2];std::string error;
     e.render(block);for(float v:block)check(v==0,"empty engine is not silent");
     check(e.load(0,path("mono.wav"),error),error.c_str());e.trigger(0);e.render(block);
+    // The short clip now has 2 ms fades plus the engine startup ramp.
     double energy=0;for(int n=0;n<Block;++n){check(block[n*2]==block[n*2+1],"mono is not duplicated");energy+=block[n*2]*block[n*2];}check(energy>1e-5,"playback is silent with short fade");
-    e.render(block);for(int n=44;n<Block;++n)check(block[n*2]==0&&block[n*2+1]==0,"stale samples after EOF");e.render(block);for(float v:block)check(v==0,"one-shot does not stop");
+    e.render(block);check(block[43*2]==0,"end fade is not silent at boundary");for(int n=44;n<Block;++n)check(block[n*2]==0&&block[n*2+1]==0,"stale samples after EOF");e.render(block);for(float v:block)check(v==0,"one-shot does not stop");
     check(e.load(1,path("resample.wav"),error),error.c_str());e.trigger(1);int active=0;for(int b=0;b<24;++b){e.render(block);for(int n=0;n<Block;++n)if(std::abs(block[n*2])>.00001)++active;}check(active>4500&&active<4801,"44.1 kHz conversion duration incorrect");
     e.trigger(0);e.setVolume(0);e.render(block);for(float v:block)check(v==0,"master mute failed");e.setVolume(.65);e.stop();
     for(int p=0;p<Pads;++p)check(e.load(p,path("long.wav"),error),error.c_str());for(int p=0;p<Pads;++p)e.trigger(p);e.render(block);for(float v:block)check(std::isfinite(v)&&std::abs(v)<=.98f,"mixing overflow");
@@ -50,6 +51,10 @@ int main(int argc,char**argv){try{
         return result;
     };
     PadEdit dry;dry.fadeMs=0;auto clean=measure(dry);double dryEnergy=0;for(float v:clean)dryEnergy+=v*v;
+    auto half=dry;half.gain=.5;auto halfSignal=measure(half);double halfEnergy=0;for(float v:halfSignal)halfEnergy+=v*v;
+    check(std::abs(halfEnergy/dryEnergy-.25)<1e-5,"per-pad gain is incorrect");
+    auto muted=dry;muted.gain=0;auto silence=measure(muted);double muteEnergy=0;for(float v:silence)muteEnergy+=v*v;
+    check(muteEnergy<dryEnergy*1e-12,"per-pad mute leaves audible signal");
     auto filtered=dry;filtered.filterOpen=.1;auto low=measure(filtered);double lowEnergy=0;for(float v:low)lowEnergy+=v*v;
     check(lowEnergy<dryEnergy*.2,"Airwindows lowpass does not attenuate highs");
     auto saturated=dry;saturated.drive=1;auto drive=measure(saturated);double changed=0;
@@ -60,7 +65,7 @@ int main(int argc,char**argv){try{
     check(bypassDifference<dryEnergy*1e-8,"FX bypass changes dry signal");
     edit={};edit.start=.12;edit.end=.83;edit.gain=.75;edit.semitones=-7;edit.fadeMs=4.5;edit.filterOpen=.4;edit.drive=.8;edit.bypass=true;e.setEdit(0,edit);
     check(e.save(path("edited.kicklab"),error),error.c_str());e.setEdit(0,{});check(e.open(path("edited.kicklab"),error),error.c_str());auto restored=e.snapshot().edits[0];
-    check(restored.start==edit.start&&restored.end==edit.end&&restored.semitones==-7&&restored.drive==.8&&restored.bypass,"edited project roundtrip failed");
+    check(restored.start==edit.start&&restored.end==edit.end&&restored.semitones==-7&&restored.gain==.75&&restored.fadeMs==4.5&&restored.filterOpen==.4&&restored.drive==.8&&restored.bypass,"edited project roundtrip failed");
     check(e.open(path("sparse.kicklab"),error),error.c_str());check(e.snapshot().edits[0].drive==0,"v1 project did not restore default edits");
     std::cout<<"PASS: trim, octave pitch, Airwindows filter/drive/bypass, pad settings persistence and v1 compatibility\n";
     // Batched driver completions across the ring boundary must preserve time order.
