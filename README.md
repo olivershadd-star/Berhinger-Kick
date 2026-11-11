@@ -36,7 +36,7 @@ Les adaptations de compilation sont maintenant préparées dans une copie des so
 - Liaison `mt::AudioDevice` entre l'interface publique `AudIO::IAudioDevice` et JUCE ; blocs de 480 échantillons conservés et adaptation des tailles de tampon du périphérique.
 - Module de constantes de compatibilité, types d'énumération d'enregistrement, valeurs vides attendues par les modèles et corrections techniques de compilation. Certaines limites et valeurs par défaut restent **provisoires**, explicitement documentées dans [WINDOWS-COMPATIBILITY.md](docs/WINDOWS-COMPATIBILITY.md).
 - Préparation traçable des sources originales et de leurs dépendances locales, sans requête vers le serveur interne fictif d'AudIO.
-- Vérifications séparées des unités originales `common`, `interface`, `project` et `audio_file_manager`, en plus du pont audio. Une compilation d'objets ne valide pas l'application complète.
+- Vérifications séparées des unités originales `common`, `interface`, `project`, `audio_file_manager`, `input_events` et sept modules d’interface, en plus du pont audio. Une compilation d'objets ne valide pas l'application complète.
 
 Les nouvelles erreurs concernent notamment les implémentations attendues de `SampleRecorder`, du moteur `Looper`, des filtres et des enveloppes des voix. Aucun remplacement silencieux de ces fonctions n'est fourni pour masquer ces erreurs.
 
@@ -48,7 +48,7 @@ cmake --build build-platform --config Release
 ctest --test-dir build-platform -C Release --output-on-failure
 ```
 
-Sous Windows, ajouter `-DKICK_CHECK_AUDIO_DEVICE=ON` compile aussi l'adaptateur JUCE/AudIO et quatre unités originales. Ces vérifications ne produisent pas `Kick.exe`.
+Sous Windows, ajouter `-DKICK_CHECK_AUDIO_DEVICE=ON` compile aussi l'adaptateur JUCE/AudIO et les unités originales sélectionnées de modèles, d’interface et d’événements. Ces vérifications ne produisent pas `Kick.exe`.
 
 Pour tenter l'intégration de l'application originale sous Windows :
 

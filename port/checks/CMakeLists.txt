@@ -60,7 +60,7 @@ if(KICK_CHECK_AUDIO_DEVICE)
         set(TargetName Kick)
         set(TargetCompany MusicTribe)
         configure_file("${staged}/Kick/config.h.in" "${staged}/Kick/config.h" @ONLY)
-        foreach(module IN ITEMS common interface project audio_file_manager
+        foreach(module IN ITEMS common interface project audio_file_manager input_events
             kick_ui_common kick_ui_controls kick_ui_components kick_ui_header
             kick_ui_selectors program_edit_ui kick_ui_channel_mixer)
             if(EXISTS "${staged}/Kick/modules/${module}/${module}.cpp")

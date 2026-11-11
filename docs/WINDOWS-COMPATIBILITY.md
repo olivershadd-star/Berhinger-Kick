@@ -22,7 +22,7 @@ Les types d'énumération `mt::Recorder::Direction` et `Mode` reprennent les val
 
 ## Compilations distinctes
 
-- `port/checks` vérifie le transport audio et compile séparément des unités originales : `common`, `interface`, `project`, `audio_file_manager`, ainsi que sept modules de contrôles, composants, en-têtes, sélecteurs, éditeurs de programmes et mixage de l’interface originale. Compiler des objets ne valide pas leur édition de liens ou leur fonctionnement dans l'application.
+- `port/checks` vérifie le transport audio et compile séparément des unités originales : `common`, `interface`, `project`, `audio_file_manager`, `input_events`, ainsi que sept modules de contrôles, composants, en-têtes, sélecteurs, éditeurs de programmes et mixage de l’interface originale. Compiler des objets ne valide pas leur édition de liens ou leur fonctionnement dans l'application.
 - Le CMake racine prépare désormais le portage et invoque la cible originale `Kick` sous Windows. Il ne s'arrête plus volontairement sur l'inventaire des modules absents du snapshot immuable.
 - Le workflow manuel `Original KICK application — Windows integration build` exécute cette compilation complète. Il conserve des diagnostics en cas d'échec et ne publie aucun faux exécutable.
 
@@ -33,3 +33,10 @@ Au-delà des constantes, `mt::SampleRecorder` et le moteur `mt::Looper` ne sont 
 `drum_voice.h/.cpp` attend aussi les types de traitement `Filter`, `FilterType` et `ADSR`. Les variantes `ADSRType` et les fonctions de mise à l’échelle existent déjà dans `mt_audio_timebase_types.h`. L'AudIO publié contient des primitives de filtre et d'ADSR, mais leur interface et les fonctionnalités attendues diffèrent. Il faut analyser et adapter ces contrats ; aucun filtre ni looper factice n'a été ajouté pour obtenir artificiellement une compilation réussie.
 
 Il n'existe donc pas encore de `Kick.exe` complet validé. Les erreurs de compilation sont utilisées comme liste de travail, sans les confondre avec des fonctions portées.
+
+
+## Résultats constatés
+
+La [construction native de l’application](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43025638621) a bien configuré JUCE, AudIO local, ComProtocol local et la cible `Kick`. Elle échoue dans le code des enregistreurs/looper et des traitements de voix non définis. Une erreur indépendante d’inclusion de `juce_events` dans `input_events` a été corrigée à partir de ce journal.
+
+La [vérification native des quatre premières unités originales](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43025633935) est réussie avec MSVC. Les unités supplémentaires d’interface et d’événements sont ajoutées aux vérifications suivantes. Les tests de transport audio restent réussis. Aucun de ces résultats ne constitue une validation sonore ou visuelle de l’application complète.

@@ -3,5 +3,10 @@
     "file": "Kick/modules/kick_ui_controls/source/kick_attachments.h",
     "old": "juce::var( UNKNOWN_VALUE )",
     "new": "juce::var()"
+  },
+  {
+    "file": "Kick/modules/input_events/input_events.h",
+    "old": "    #include <PktMgr/PktMgr.hpp>",
+    "new": "    #include <PktMgr/PktMgr.hpp>\n    #include <juce_events/juce_events.h>"
   }
 ]
