@@ -2,7 +2,7 @@
 """Original synthetic demo content; no Behringer factory samples."""
 from pathlib import Path
 import math, random, wave, struct
-root=Path(__file__).resolve().parents[1]/'samples';root.mkdir(exist_ok=True)
+root=Path(__file__).resolve().parents[1]/'demo-kit';root.mkdir(exist_ok=True)
 names=['Kick','Snare','Closed-Hat','Open-Hat','Clap','Low-Tom','Mid-Tom','High-Tom','Rim','Shaker','Claves','Cowbell','Bass-C','Bass-E','Bass-G','Chime']
 r=random.Random(700)
 for i,name in enumerate(names):

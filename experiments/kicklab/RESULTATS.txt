@@ -8,7 +8,7 @@ Scénarios : découpe sans lecture au-delà de la fin ; octave (fréquence et du
 
 Interface exécutée sous Wine : glisser les bornes, déplacer les curseurs, sauver puis recharger les mêmes réglages par la boîte de dialogue, et afficher l’éditeur à 1920×1080 : réussis.
 
-0.2.1 conserve le moteur et le format KICKLAB 2 de la version validée. Les boutons Ouvrir/Enregistrer indiquent maintenant explicitement qu'ils concernent le projet. Les doublons Couper les voix, Écouter le pad et Couper ont été retirés ; les pads et Stop conservent ces actions.
+0.2.1 conserve le moteur et le format KICKLAB 2 de la version validée. Les boutons Ouvrir/Enregistrer indiquent maintenant explicitement qu'ils concernent le projet. Les doublons Couper les voix, Écouter le pad et Couper ont été retirés ; les pads et Stop conservent ces actions. Le kit de démonstration est séparé de la Factory Sample Library vide ; un WAV chargé peut être copié dans une catégorie de cette bibliothèque.
 
 Le nouveau code doit encore être essayé avec la carte son et le matériel MIDI physique de l’utilisateur. Le benchmark local de 16 pads et 32 instances d’effets traite une seconde d’audio en environ 39 ms ; cette mesure sur le serveur n’est pas une garantie de performance sur une autre machine.
 

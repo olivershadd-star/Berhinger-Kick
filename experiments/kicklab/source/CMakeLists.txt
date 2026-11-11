@@ -14,7 +14,7 @@ if(WIN32)
         target_link_options(KickLab PRIVATE -static -municode)
     endif()
     add_custom_command(TARGET KickLab POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/samples $<TARGET_FILE_DIR:KickLab>/samples)
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/demo-kit $<TARGET_FILE_DIR:KickLab>/demo-kit)
 endif()
 if(MSVC)
     target_compile_options(kicklab_engine PRIVATE /utf-8)

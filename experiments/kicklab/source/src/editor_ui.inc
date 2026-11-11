@@ -19,7 +19,7 @@ void editorPointer(int x,int){
     engine.setEdit(selected,edit);
 }
 void editorClick(int x,int y,bool right){
-    for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y)){selected=p;if(right)load(choose(false,false));else play(p);return;}
+    for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y)){selected=p;if(right)sampleMenu();else play(p);return;}
     if(Box{44,226,1112,150}.contains(x,y)){
         auto e=engine.snapshot().edits[selected];double p=(x-52)/1096.;
         editorDrag=std::abs(p-e.start)<=std::abs(p-e.end)?6:7;
@@ -27,8 +27,9 @@ void editorClick(int x,int y,bool right){
     if(editorDrag){SetCapture(window);editorPointer(x,y);return;}
     if(Box{970,443,178,32}.contains(x,y)){auto e=engine.snapshot().edits[selected];e.bypass=!e.bypass;engine.setEdit(selected,e);}
     else if(Box{28,690,200,42}.contains(x,y))engine.setEdit(selected,{});
-    else if(Box{244,690,180,42}.contains(x,y))load(choose(false,false));
+    else if(Box{244,690,180,42}.contains(x,y))sampleMenu();
     else if(Box{440,690,200,42}.contains(x,y))project(true);
+    else if(Box{656,690,250,42}.contains(x,y))savePadToLibrary();
 }
 std::wstring decimal(double value,int precision=2){wchar_t buffer[64];std::swprintf(buffer,64,L"%.*f",precision,value);return buffer;}
 void paintEditorSlider(HDC dc,int id,const std::wstring& name,const std::wstring& value,double ratio){
@@ -63,6 +64,6 @@ void paintEditor(HDC dc){
     paintEditorSlider(dc,5,L"PurestDrive · saturation",edit.drive<=.0001?L"Désactivée":decimal(edit.drive*100,0)+L" %",edit.drive);
     text(dc,{636,631,500,21},L"Filtre → saturation · réglages indépendants par pad",12,muted);
     button(dc,{28,690,200,42},L"Réinitialiser ce pad");button(dc,{244,690,180,42},L"Charger un WAV");
-    button(dc,{440,690,200,42},L"Enregistrer projet");
+    button(dc,{440,690,200,42},L"Enregistrer projet");button(dc,{656,690,250,42},L"Ajouter à la bibliothèque");
     text(dc,{28,751,1144,32},L"Glisser les repères ou les curseurs. Découpe et accordage : au prochain déclenchement. Volume et effets : en direct.",13,muted);
 }

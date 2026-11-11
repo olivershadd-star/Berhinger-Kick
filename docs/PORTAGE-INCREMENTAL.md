@@ -19,12 +19,13 @@ Une catégorie visible dans l'interface ne prouve donc pas qu'un instrument, un 
 ## Ordre d'intégration
 
 1. **Commandes sans doublon** : clarifier projet, transport et audition sans modifier le moteur sonore.
-2. **Potentiomètres** : remplacer les longues barres par des commandes rotatives liées aux paramètres du moteur.
-3. **Effets et inserts** : porter les quatre slots du modèle KICK, puis intégrer une famille d'effets à la fois. Les paramètres doivent être visibles, sélectionnables et contournables sans molette matérielle.
-4. **Enveloppes** : porter l'AHDSR d'amplitude, puis les enveloppes de filtre et de hauteur déjà présentes dans les voix KICK.
-5. **Transport et longueur de séquence** : reprendre les modèles de temps KICK tout en conservant le rendu WinMM. Les pages et longueurs doivent être accessibles à la souris.
-6. **Looper et export WAV** : reprendre l'enregistreur KICK déjà implémenté plutôt que créer un format audio parallèle.
-7. **Programmes et mixage** : porter progressivement Keygroup, Clip, Audio, les mixeurs et le mode Song lorsque leurs dépendances sont validées.
+2. **Bibliothèque de samples** : reprendre le dossier Sounds, le choix Factory/ordinateur et l'ajout d'assets. La bibliothèque personnelle démarre sans les sons d'usine retirés de la publication.
+3. **Potentiomètres** : remplacer les longues barres par des commandes rotatives liées aux paramètres du moteur.
+4. **Effets et inserts** : porter les quatre slots du modèle KICK, puis intégrer une famille d'effets à la fois. Les paramètres doivent être visibles, sélectionnables et contournables sans molette matérielle.
+5. **Enveloppes** : porter l'AHDSR d'amplitude, puis les enveloppes de filtre et de hauteur déjà présentes dans les voix KICK.
+6. **Transport et longueur de séquence** : reprendre les modèles de temps KICK tout en conservant le rendu WinMM. Les pages et longueurs doivent être accessibles à la souris.
+7. **Looper et export WAV** : reprendre l'enregistreur KICK déjà implémenté plutôt que créer un format audio parallèle.
+8. **Programmes et mixage** : porter progressivement Keygroup, Clip, Audio, les mixeurs et le mode Song lorsque leurs dépendances sont validées.
 
 ## Critères obligatoires pour chaque étape
 

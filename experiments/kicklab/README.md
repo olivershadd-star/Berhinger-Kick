@@ -1,21 +1,23 @@
 > **Base active du portage progressif.** Cette application conserve la sortie WinMM et le moteur AudIO déjà validés. Les modules KICK publiés y seront intégrés un par un, avec une commande souris pour toute fonction qui dépend normalement du matériel.
 
-# KICK Lab 0.2.1 — commandes clarifiées
+# KICK Lab 0.2.1 — bibliothèque de samples
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
 **[Télécharger la dernière version Windows portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.2.1)**
 
-Cette version conserve l'éditeur de sample et les deux effets par pad. Elle clarifie les commandes de projet et supprime les commandes qui faisaient double emploi avec les pads et le bouton Stop.
+Cette version conserve l'éditeur de sample et les deux effets par pad. Elle ajoute la structure de bibliothèque prévue par KICK, clarifie les commandes de projet et supprime les commandes qui faisaient double emploi avec les pads et le bouton Stop.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
 ## Pour essayer
 
 1. Extraire entièrement le ZIP dans un dossier accessible en écriture.
-2. Ouvrir **KickLab.exe**, en gardant le dossier **samples** à côté.
+2. Ouvrir **KickLab.exe**, en gardant le dossier **demo-kit** à côté. Le dossier **samples** de la bibliothèque est créé automatiquement.
 3. Dans **Jouer**, lancer le pattern ou cliquer sur les pads.
 4. Dans **Sample & FX**, sélectionner un pad pour travailler son son.
+
+Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
 Windows 10/11 x64, sans installation. Aucun compilateur, Python ou JUCE nécessaire pour lancer l'exécutable fourni. La fenêtre reste redimensionnable. Si aucun son ne sort, choisir une sortie Windows avec le bouton Audio de l'onglet Jouer.
 
@@ -30,6 +32,7 @@ Windows 10/11 x64, sans installation. Aucun compilateur, Python ou JUCE nécessa
 - **Bypass** : compare la lecture sans filtre/saturation, en conservant volume, accordage et découpe.
 - **Réinitialiser ce pad** : remet les réglages à leur valeur initiale et conserve son sample.
 - Cliquer directement sur un pad déclenche son one-shot. **Stop** arrête le transport et les voix.
+- **Ajouter à la bibliothèque** : copie le WAV source du pad dans Kicks, Snares, Hats, Percussions, Basses, Pads, Leads, FX ou Autres, puis rattache le pad à cette copie en conservant ses réglages. Les effets ne sont pas rendus dans le WAV copié.
 
 La découpe, l'accordage et les fondus sont appliqués au prochain déclenchement. Le volume et les effets évoluent pendant la lecture, avec lissage. La chaîne est : lecteur AudIO étendu → Lowpass → PurestDrive → volume du pad → bus AudIO → volume général.
 
@@ -47,6 +50,8 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 ## WAV et projets
 
 WAV PCM 16/24/32 bits ou flottant 32 bits, mono/stéréo, de 8 à 192 kHz, jusqu'à 30 secondes et 32 Mo par fichier. Les WAV sont convertis à 48 kHz au chargement par interpolation linéaire. WAV extensible, MP3, FLAC et AIFF ne sont pas pris en charge dans cette interface.
+
+**Bibliothèque / WAV** propose trois chemins : parcourir la Factory Sample Library locale, importer un WAV depuis un autre emplacement du PC, ou ouvrir directement le dossier de la bibliothèque dans l'Explorateur. L'application crée les catégories au premier démarrage. Les samples d'usine Music Tribe ne font pas partie du dépôt public.
 
 **Enregistrer projet / Ouvrir projet** sauvegarde le pattern, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Le nom du fichier enregistré ou chargé est confirmé dans la barre d'état. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement. Un chargement échoué conserve le projet courant.
 

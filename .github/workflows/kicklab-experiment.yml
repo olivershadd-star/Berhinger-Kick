@@ -28,12 +28,21 @@ jobs:
         run: cmake --build build --config Release --parallel 2
       - name: Test audio engine
         run: ctest --test-dir build -C Release --output-on-failure
+      - name: Smoke-test sample library UI
+        shell: pwsh
+        run: |
+          $app = "build/incremental-port/Release/KickLab.exe"
+          $process = Start-Process $app -ArgumentList "--smoke-test" -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw "KickLab UI exited with $($process.ExitCode)" }
+          foreach ($category in "Kicks","Snares","Hats","Percussions","Basses","Pads","Leads","FX","Autres") {
+            if (-not (Test-Path "build/incremental-port/Release/samples/$category")) { throw "Missing library category: $category" }
+          }
       - name: Assemble prototype
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist/KickLab | Out-Null
           Copy-Item build/incremental-port/Release/KickLab.exe,build/incremental-port/Release/KickLab-Test.exe dist/KickLab/
-          Copy-Item samples,source dist/KickLab/ -Recurse
+          Copy-Item demo-kit,source dist/KickLab/ -Recurse
           Copy-Item README.md,LIRE-MOI.html,NOTICES.txt,RESULTATS.txt,APERCU.png,APERCU-SAMPLE.png,DEMO.wav dist/KickLab/
           Copy-Item source/LICENSE dist/KickLab/LICENSE
       - uses: actions/upload-artifact@v4
