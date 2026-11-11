@@ -22,15 +22,14 @@ jobs:
         run: python tools/audit_original.py --verify-original --json audit/source-audit.json
       - name: Configure inventory without building an application
         run: cmake -S . -B build-audit -DKICK_AUDIT_ONLY=ON
-      - name: Confirm that missing dependencies block a normal build
+      - name: Inventory the missing dependencies in the pristine release
         shell: python
         run: |
           import subprocess
-          result = subprocess.run(['cmake', '-S', '.', '-B', 'build-blocked'], capture_output=True, text=True)
+          result = subprocess.run(['python', 'tools/audit_original.py', '--strict', '--verify-original'], capture_output=True, text=True)
           print(result.stdout)
           print(result.stderr)
-          assert result.returncode != 0, 'A missing-dependency build must not succeed'
-          assert 'No application was built' in result.stdout + result.stderr
+          assert result.returncode == 2, 'Expected a dependency gap in the pristine published snapshot'
       - uses: actions/upload-artifact@v4
         with:
           name: original-kick-audit-${{ matrix.os }}

@@ -30,5 +30,41 @@ if(KICK_CHECK_AUDIO_DEVICE)
     target_include_directories(audio_device_compile PRIVATE "${PORT_ROOT}/modules" "${AUDIO_ROOT}" "${KICK_JUCE_SOURCE}/modules")
     target_compile_definitions(audio_device_compile PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
         JUCE_STANDALONE_APPLICATION=1 JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+    option(KICK_CHECK_ORIGINAL_MODULES "Compile original project, interfaces and sample renderer" ON)
+    if(KICK_CHECK_ORIGINAL_MODULES)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        set(staged "${CMAKE_CURRENT_BINARY_DIR}/staging")
+        execute_process(COMMAND "${Python3_EXECUTABLE}" "${REPO_ROOT}/tools/stage_windows_port.py"
+            --destination "${staged}" RESULT_VARIABLE stage_result)
+        if(NOT stage_result EQUAL 0)
+            message(FATAL_ERROR "Original module staging failed; choose a fresh build directory")
+        endif()
+        set(PROJECT_VERSION_MAJOR 0)
+        set(PROJECT_VERSION_MINOR 3)
+        set(PROJECT_VERSION_PATCH 3)
+        set(TargetSrc_DIR ".")
+        set(TargetName Kick)
+        set(TargetCompany MusicTribe)
+        configure_file("${staged}/Kick/config.h.in" "${staged}/Kick/config.h" @ONLY)
+        foreach(module IN ITEMS common interface project audio_file_manager)
+            if(module STREQUAL "common")
+                set(module_file "${staged}/Kick/modules/common/common.cpp")
+            else()
+                set(module_file "${staged}/Kick/modules/engine/${module}/${module}.cpp")
+            endif()
+            add_library(original_${module}_compile OBJECT "${module_file}")
+            target_include_directories(original_${module}_compile PRIVATE
+                "${staged}/port_modules" "${staged}/AudIO" "${staged}/Kick"
+                "${staged}/Kick/modules" "${staged}/Kick/modules/3rdParty"
+                "${staged}/Kick/modules/engine" "${staged}/ComProtocol"
+                "${KICK_JUCE_SOURCE}/modules")
+            target_compile_definitions(original_${module}_compile PRIVATE
+                JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1 JUCE_STANDALONE_APPLICATION=1
+                JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 _USE_MATH_DEFINES)
+            if(MSVC)
+                target_compile_options(original_${module}_compile PRIVATE /bigobj /utf-8)
+            endif()
+        endforeach()
+    endif()
 endif()
 message(STATUS "Platform checks only: this project does not produce Kick.exe")

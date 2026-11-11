@@ -1,0 +1,7 @@
+[
+  {
+    "file": "Kick/modules/kick_ui_controls/source/kick_attachments.h",
+    "old": "juce::var( UNKNOWN_VALUE )",
+    "new": "juce::var()"
+  }
+]

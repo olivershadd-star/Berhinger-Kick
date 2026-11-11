@@ -8,10 +8,20 @@ p.add_argument('--destination', type=Path, required=True)
 a = p.parse_args()
 dst = a.destination.resolve()
 src = ROOT/'upstream/0700-AAM'
-if dst == ROOT or ROOT in dst.parents or dst == src or src in dst.parents:
-    p.error('Use a separate build staging directory outside the repository')
+if dst == ROOT or dst == src or src in dst.parents:
+    p.error('Staging must not overwrite the repository or immutable upstream sources')
+def digest_tree(root):
+    return {f.relative_to(root).as_posix():hashlib.sha256(f.read_bytes()).hexdigest()
+            for f in sorted(root.rglob('*')) if f.is_file()}
+recipe = {'upstream':digest_tree(src), 'modules':digest_tree(ROOT/'port/modules'),
+          'patches':digest_tree(ROOT/'port/patches'),
+          'script':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+stamp = dst/'staging-inputs.json'
 if dst.exists():
-    p.error('Destination already exists; choose a fresh staging directory')
+    if stamp.is_file() and json.loads(stamp.read_text()) == recipe:
+        print(f'Reusing staged port: {dst}')
+        raise SystemExit(0)
+    p.error('Staging inputs changed or destination is not ours; choose a fresh build directory')
 shutil.copytree(src, dst)
 changes=[]
 def edit(relative, old, new):
@@ -60,5 +70,9 @@ if fixed == t: raise RuntimeError('Airwindows compatibility patch context absent
 f.write_text(fixed);changes.append(str(f.relative_to(dst)))
 # Core amalgamation uses std::this_thread without declaring <thread>.
 f=dst/'AudIO/AudIO/AudIO.cpp';f.write_text('#include <thread>\n'+f.read_text());changes.append(str(f.relative_to(dst)))
+# Additional exact-context compiler compatibility patches, kept reviewable.
+for patch in json.loads((ROOT/'port/patches/compatibility.json').read_text()):
+    edit(patch['file'], patch['old'], patch['new'])
 (dst/'port-changes.json').write_text(json.dumps({'modified':sorted(set(changes)), 'adapter_source':'port/modules', 'purpose':'Windows build and device adaptation; original musical code retained'},indent=2))
+stamp.write_text(json.dumps(recipe, sort_keys=True))
 print(dst)

@@ -15,3 +15,10 @@
 #include <AudIO_constants/AudIO_constants.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "AudioDevice.h"
+
+#include "RecorderTypes.h"
+
+namespace EMPTY {
+inline const juce::AudioBuffer<float> SampleBuffer{};
+inline const juce::String String{};
+}

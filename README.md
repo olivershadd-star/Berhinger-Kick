@@ -29,17 +29,18 @@ Quatre éléments empêchent actuellement la configuration du projet original :
 - le module `AudIO_juce`, dont dépend l'intégration du périphérique audio ;
 - `juce_serialport`, retiré de la publication mais toujours référencé.
 
-Leur absence est détectée par la préparation du portage. Aucun remplacement musical, aucune interface factice et aucun exécutable KICK de substitution ne sont générés pour masquer un blocage.
+Les adaptations de compilation sont maintenant préparées dans une copie des sources. Le CMake racine lance la **véritable cible `Kick`** sous Windows ; l'inventaire des dépendances originales manquantes ne constitue plus un arrêt préalable obligatoire. La compilation de l'application reste incomplète.
 
 ## Adaptations Windows en cours
 
-Un premier adaptateur `mt::AudioDevice` relie l'interface publique `AudIO::IAudioDevice` à JUCE. Il conserve les blocs de **480 échantillons** imposés par `DawEngine.cpp` et adapte les tailles de tampon du périphérique sans perdre ni rejouer d'échantillons. Il ne remplace aucune fonction musicale. Sa compilation Windows est vérifiée séparément ; il n'est **pas encore intégré ni validé dans KICK**.
+- Liaison `mt::AudioDevice` entre l'interface publique `AudIO::IAudioDevice` et JUCE ; blocs de 480 échantillons conservés et adaptation des tailles de tampon du périphérique.
+- Module de constantes de compatibilité, types d'énumération d'enregistrement, valeurs vides attendues par les modèles et corrections techniques de compilation. Certaines limites et valeurs par défaut restent **provisoires**, explicitement documentées dans [WINDOWS-COMPATIBILITY.md](docs/WINDOWS-COMPATIBILITY.md).
+- Préparation traçable des sources originales et de leurs dépendances locales, sans requête vers le serveur interne fictif d'AudIO.
+- Vérifications séparées des unités originales `common`, `interface`, `project` et `audio_file_manager`, en plus du pont audio. Une compilation d'objets ne valide pas l'application complète.
 
-`tools/stage_windows_port.py` prépare une copie des sources avec un journal des modifications techniques : identifiants de modules JUCE, exclusion Windows du port série Linux absent, compatibilité C++ Airwindows et déclaration de `<thread>`. Le snapshot original reste intact. Ce script ne produit pas encore d'application compilable.
+Les nouvelles erreurs concernent notamment les implémentations attendues de `SampleRecorder`, du moteur `Looper`, des filtres et des enveloppes des voix. Aucun remplacement silencieux de ces fonctions n'est fourni pour masquer ces erreurs.
 
-La tentative de compiler l'en-tête de l'interface originale révèle aussi des définitions absentes dans `AudIO_constants` : `MIDI`, `MIDI_CH`, `POLYPHONY`, `GAIN`, `PAN`. Certaines concernent directement les valeurs musicales. Le fichier de compatibilité actuel ne fournit que la taille de bloc vérifiée ; il ne prétend pas restaurer tout ce module.
-
-Pour vérifier uniquement le transport des tampons audio :
+Pour les vérifications de transport audio :
 
 ```sh
 cmake -S port/checks -B build-platform
@@ -47,7 +48,15 @@ cmake --build build-platform --config Release
 ctest --test-dir build-platform -C Release --output-on-failure
 ```
 
-Sous Windows, ajouter `-DKICK_CHECK_AUDIO_DEVICE=ON` à la configuration compile également le véritable adaptateur JUCE/AudIO. **Ces vérifications ne produisent pas `Kick.exe`.**
+Sous Windows, ajouter `-DKICK_CHECK_AUDIO_DEVICE=ON` compile aussi l'adaptateur JUCE/AudIO et quatre unités originales. Ces vérifications ne produisent pas `Kick.exe`.
+
+Pour tenter l'intégration de l'application originale sous Windows :
+
+```powershell
+./port/windows/build.ps1
+```
+
+Cette commande n'est pas encore une livraison fonctionnelle : lire les erreurs de compilation et les limites documentées.
 
 ## Vérifier la base
 
@@ -71,7 +80,7 @@ Avec CMake :
 cmake -S . -B build-audit -DKICK_AUDIT_ONLY=ON
 ```
 
-Cette dernière commande ne construit aucune application. La configuration normale sans `KICK_AUDIT_ONLY` est volontairement bloquée par les dépendances absentes. Quand les sources originales complètes seront disponibles, `port/windows/build.ps1` préparera une copie de compilation et invoquera la cible originale `Kick` ; cela ne garantit pas encore que toutes les adaptations Windows seront faites.
+Cette dernière commande ne construit aucune application. L'audit strict décrit les absences du snapshot original, indépendamment des adaptations du portage. Sous Windows, la configuration normale prépare désormais les sources adaptées et tente la compilation réelle de `Kick`.
 
 ## Méthode retenue
 

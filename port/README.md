@@ -1,12 +1,11 @@
-# Couche de portage
+# Couche de portage Windows
 
-Ce dossier reçoit uniquement les adaptations techniques nécessaires à Windows : configuration de compilation, périphérique audio JUCE/AudIO, entrée clavier/souris vers les commandes d'origine, chemins et emballage portable.
+Ce dossier reçoit uniquement les adaptations nécessaires à Windows et la compatibilité avec les dépendances non publiées. L'application visée reste `Kick/apps/kick/Main.cpp` et son écran `kick_ui::KickHome`. Le séquenceur, les modèles, les voix et les écrans ne sont pas remplacés par le prototype KICK Lab.
 
-Aucun séquenceur, éditeur, format de projet ou effet musical de remplacement ne doit être ajouté ici. L'application visée est `Kick/apps/kick/Main.cpp` et son écran `kick_ui::KickHome`, pas `KickLab.exe` et pas le simulateur `kickem` sans réparation préalable.
+`modules/AudIO_juce` contient le périphérique JUCE/AudIO et le transport des blocs audio. Les tests utilisent le véritable `AudIO::Buffer<float>` pour vérifier la continuité des échantillons avec des tailles de tampon irrégulières.
 
-État actuel : les dépendances originales manquantes empêchent encore la compilation. `build.ps1` s'arrête sur ce diagnostic ; ce n'est pas un lancement de KICK.
+`modules/AudIO_constants` fournit les constantes nécessaires à l'intégration. Certaines valeurs non retrouvées sont provisoires : elles sont identifiées dans [WINDOWS-COMPATIBILITY.md](../docs/WINDOWS-COMPATIBILITY.md), sans prétendre être les valeurs originales de Behringer.
 
+`tools/stage_windows_port.py --destination <dossier neuf>` prépare une copie avec les corrections techniques consignées dans `port-changes.json`. Une nouvelle invocation réutilise la copie si ses entrées sont identiques ; si elles ont changé, employer un nouveau dossier de compilation.
 
-Les premières adaptations se trouvent dans `modules/AudIO_juce`. Le test `tests/fixed_block_bridge.cpp` utilise le vrai `AudIO::Buffer<float>` et son pool mémoire pour vérifier la continuité stéréo avec des tampons de tailles irrégulières, la pause, la réinitialisation et l'absence d'entrées. Il n'exécute pas le moteur musical complet.
-
-`modules/AudIO_constants` est **partiel** : seule la taille de bloc est prouvée par le code publié. Les nombres de canaux, de bus et les constantes musicales manquantes ne sont pas inventés. `tools/stage_windows_port.py --destination <dossier neuf hors dépôt>` prépare la copie de travail et écrit `port-changes.json` ; cette préparation n'est pas une preuve de compilation de l'application.
+`windows/build.ps1` tente désormais de compiler la cible originale `Kick`. Le travail reste incomplet, notamment pour les contrats d'enregistrement, de looper et de traitement des voix absents de l'archive. Aucun exécutable complet n'est encore validé.

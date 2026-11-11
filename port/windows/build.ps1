@@ -1,17 +1,13 @@
 param(
-    [string]$AudioSource = "",
-    [string]$SerialPortSource = "",
     [string]$JuceSource = "",
     [string]$BuildDirectory = "build-original-windows"
 )
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
 $Arguments = @("-S", $Root, "-B", $BuildDirectory, "-A", "x64")
-if ($AudioSource) { $Arguments += "-DKICK_AUDIO_SOURCE=$AudioSource" }
-if ($SerialPortSource) { $Arguments += "-DKICK_SERIALPORT_SOURCE=$SerialPortSource" }
 if ($JuceSource) { $Arguments += "-DKICK_JUCE_SOURCE=$JuceSource" }
 & cmake @Arguments
-if ($LASTEXITCODE -ne 0) { throw "KICK original bloque : voir les dependances signalees. Aucun executable de substitution n'a ete cree." }
+if ($LASTEXITCODE -ne 0) { throw "Preparation de KICK impossible : voir le diagnostic CMake." }
 & cmake --build $BuildDirectory --config Release
-if ($LASTEXITCODE -ne 0) { throw "La compilation du code original a echoue. Ne pas presenter cette etape comme un portage fonctionnel." }
-Write-Host "Compilation terminee. L'interface, le son et les projets KICK doivent encore etre verifies avant toute publication portable."
+if ($LASTEXITCODE -ne 0) { throw "Compilation originale incomplete : voir les erreurs du compilateur. Aucun ZIP portable valide n'a ete produit." }
+Write-Host "Compilation terminee. Verifier encore l'interface, le son et les projets avant publication portable."
