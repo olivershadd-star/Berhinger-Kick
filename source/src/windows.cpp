@@ -15,6 +15,7 @@
 #include <string>
 #include <algorithm>
 #include <cmath>
+#include <cwchar>
 #include "engine.hpp"
 #include "audio_queue.hpp"
 
@@ -107,9 +108,11 @@ public:
     void play(int p){selected=p;engine.trigger(p);flashed[p]=GetTickCount64()+130;}
     void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(key==VK_SPACE){auto s=engine.snapshot();engine.setPlaying(!s.playing);}else if(key==VK_ESCAPE)engine.stop();else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){play(p);break;}InvalidateRect(window,nullptr,FALSE);}
     Box padBox(int p)const{return {44+(p%4)*88,260+(p/4)*88,78,78};}
+    #include "editor_ui.inc"
     void click(int x,int y,bool right){
-        if(Box{930,26,100,32}.contains(x,y)){tab=0;return;}if(Box{1038,26,134,32}.contains(x,y)){tab=1;return;}
-        if(tab){if(Box{52,624,250,42}.contains(x,y))ShellExecuteW(window,L"open",(base/L"source").c_str(),nullptr,nullptr,SW_SHOWNORMAL);if(Box{322,624,250,42}.contains(x,y))ShellExecuteW(window,L"open",L"https://github.com/MusicTribeOpenSource/0700-AAM",nullptr,nullptr,SW_SHOWNORMAL);return;}
+        if(Box{800,26,106,32}.contains(x,y)){tab=0;return;}if(Box{916,26,136,32}.contains(x,y)){tab=1;return;}if(Box{1062,26,110,32}.contains(x,y)){tab=2;return;}
+        if(tab==1){editorClick(x,y,right);return;}
+        if(tab==2){if(Box{52,624,250,42}.contains(x,y))ShellExecuteW(window,L"open",(base/L"source").c_str(),nullptr,nullptr,SW_SHOWNORMAL);if(Box{322,624,250,42}.contains(x,y))ShellExecuteW(window,L"open",L"https://github.com/MusicTribeOpenSource/0700-AAM",nullptr,nullptr,SW_SHOWNORMAL);return;}
         if(Box{28,106,110,42}.contains(x,y)){auto s=engine.snapshot();engine.setPlaying(!s.playing);}
         else if(Box{148,106,80,42}.contains(x,y))engine.stop();
         else if(Box{245,106,36,42}.contains(x,y))engine.setTempo(engine.snapshot().tempo-1);
@@ -131,16 +134,16 @@ public:
     }
     void fill(HDC dc,Box b,COLORREF c){auto r=b.rect();HBRUSH brush=CreateSolidBrush(c);FillRect(dc,&r,brush);DeleteObject(brush);}
     void round(HDC dc,Box b,COLORREF c,COLORREF edge=line){HBRUSH brush=CreateSolidBrush(c);HPEN pen=CreatePen(PS_SOLID,1,edge);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,pen);RoundRect(dc,b.x,b.y,b.x+b.w,b.y+b.h,12,12);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(pen);}
-    void text(HDC dc,Box b,const std::wstring& str,int size=15,COLORREF c=ink,int weight=FW_NORMAL,UINT format=DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS){HFONT font=CreateFontW(-size,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");auto old=SelectObject(dc,font);SetTextColor(dc,c);SetBkMode(dc,TRANSPARENT);auto r=b.rect();DrawTextW(dc,str.c_str(),int(str.size()),&r,format);SelectObject(dc,old);DeleteObject(font);}
+    void text(HDC dc,Box b,const std::wstring& str,int size=15,COLORREF c=ink,int weight=FW_NORMAL,UINT format=DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS){HFONT font=CreateFontW(-size,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");auto old=SelectObject(dc,font);SetTextColor(dc,c);SetBkMode(dc,TRANSPARENT);auto r=b.rect();DrawTextW(dc,str.c_str(),int(str.size()),&r,format|DT_NOPREFIX);SelectObject(dc,old);DeleteObject(font);}
     void button(HDC dc,Box b,const std::wstring& name,bool on=false){round(dc,b,on?accent:RGB(31,38,50),on?accent:line);text(dc,b,name,14,on?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     void paint(HDC dc){
         SetMapMode(dc,MM_ANISOTROPIC);SetWindowExtEx(dc,1200,800,nullptr);SetViewportExtEx(dc,width,height,nullptr);
         fill(dc,{0,0,1200,800},bg);text(dc,{28,18,170,40},L"KICK / LAB",30,ink,FW_BOLD);
-        text(dc,{218,20,670,24},L"EXPLORATION DU MOTEUR AudIO",12,accent,FW_SEMIBOLD);
-        text(dc,{218,43,680,22},L"Prototype 0.1.2 • interface expérimentale • Windows x64",13,muted);
-        button(dc,{930,26,100,32},L"Jouer",tab==0);button(dc,{1038,26,134,32},L"Sous le capot",tab==1);
+        text(dc,{218,20,550,24},L"EXPLORATION DU MOTEUR AudIO",12,accent,FW_SEMIBOLD);
+        text(dc,{218,43,550,22},L"Prototype 0.2.0 • interface expérimentale • Windows x64",13,muted);
+        button(dc,{800,26,106,32},L"Jouer",tab==0);button(dc,{916,26,136,32},L"Sample & FX",tab==1);button(dc,{1062,26,110,32},L"Code",tab==2);
         fill(dc,{28,83,1144,1},line);
-        if(tab){paintInfo(dc);return;}
+        if(tab==1){paintEditor(dc);return;}if(tab==2){paintInfo(dc);return;}
         auto s=engine.snapshot();
         button(dc,{28,106,110,42},s.playing?L"Pause":L"Jouer",s.playing);button(dc,{148,106,80,42},L"Stop");
         button(dc,{245,106,36,42},L"−");text(dc,{283,106,86,24},number(int(s.tempo)),23,ink,FW_SEMIBOLD,DT_CENTER|DT_SINGLELINE);text(dc,{283,131,86,14},L"BPM",10,muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);button(dc,{371,106,36,42},L"+");
@@ -162,12 +165,12 @@ public:
         round(dc,{28,108,1144,594},panel);text(dc,{52,129,1080,40},L"Un premier accès au code. Pas encore la groovebox complète.",25,ink,FW_SEMIBOLD);
         text(dc,{52,184,1080,30},L"CE QUI VIENT DU DÉPÔT MUSIC TRIBE",13,accent,FW_SEMIBOLD);
         text(dc,{52,221,1080,28},L"AudIO::Design → 16 lecteurs AudioPlayback → AudIO::Bus → sortie stéréo",20,ink,FW_SEMIBOLD);
-        text(dc,{52,258,1080,27},L"Le graphe audio, les lecteurs, le mixage et AudioFile sont issus de l’archive 0700-AAM.",16,muted);
+        text(dc,{52,258,1080,27},L"AudIO, AudioFile et les effets Airwindows Lowpass / PurestDrive viennent de 0700-AAM.",16,muted);
         text(dc,{52,310,1080,28},L"AJOUTS DE CE PROTOTYPE",13,accent,FW_SEMIBOLD);
-        text(dc,{52,344,1080,28},L"Interface Windows, pads, séquenceur simple, MIDI, sortie WinMM et projets .kicklab.",16,ink);
+        text(dc,{52,344,1080,28},L"Interface Windows, éditeur de sample, séquenceur simple, MIDI et sortie WinMM.",16,ink);
         text(dc,{52,377,1080,28},L"Kit de sons de démonstration créé pour ce prototype. Aucun sample d’usine Behringer.",16,muted);
         text(dc,{52,426,1080,28},L"CE QUI RESTE À PORTER",13,RGB(241,184,88),FW_SEMIBOLD);
-        text(dc,{52,460,1080,28},L"L’interface JUCE KICK, ses programmes avancés, son séquenceur et les effets Airwindows.",16,ink);
+        text(dc,{52,460,1080,28},L"L’interface JUCE KICK, ses programmes avancés et sa banque complète d’effets.",16,ink);
         text(dc,{52,493,1080,28},L"Ce programme autonome n’est pas un VST3 et n’émule pas le firmware de la machine.",16,muted);
         text(dc,{52,542,1080,28},L"Pour chipoter : source/src/engine.cpp et windows.cpp. Détails dans LIRE-MOI.html.",16,ink);
         text(dc,{52,574,1080,28},L"Sources sous AGPL-3.0-or-later. Prototype indépendant, non officiel.",14,muted);
@@ -211,9 +214,12 @@ case WM_DPICHANGED:{
 }
 case WM_TIMER:if(app->smoke&&GetTickCount64()>app->flashed[0]){DestroyWindow(h);return 0;}InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:app->click(GET_X_LPARAM(l)*1200/app->width,GET_Y_LPARAM(l)*800/app->height,msg==WM_RBUTTONDOWN);InvalidateRect(h,nullptr,FALSE);return 0;
+case WM_MOUSEMOVE:if(app->editorDrag){app->editorPointer(GET_X_LPARAM(l)*1200/app->width,GET_Y_LPARAM(l)*800/app->height);InvalidateRect(h,nullptr,FALSE);}return 0;
+case WM_LBUTTONUP:if(app->editorDrag){app->editorDrag=0;ReleaseCapture();}return 0;
+case WM_CAPTURECHANGED:app->editorDrag=0;return 0;
 case WM_MOUSEWHEEL:app->engine.setTempo(app->engine.snapshot().tempo+(GET_WHEEL_DELTA_WPARAM(w)>0?1:-1));InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_KEYDOWN:app->key(w,l);return 0;
-case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selected=p;if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
+case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(app->tab==0){for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selected=p;}else if(app->tab==1){for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y))app->selected=p;}if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
 case WM_DESTROY:KillTimer(h,1);app->closeMidi();app->audio.stop();PostQuitMessage(0);return 0;
 }return DefWindowProcW(h,msg,w,l);}
 }
@@ -228,7 +234,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,1200,800};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.1.2 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.2.0 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }

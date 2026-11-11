@@ -13,7 +13,7 @@
 #include <iomanip>
 using namespace lab;
 void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
-void wav(const std::string& file,int rate,int channels,int frames){std::ofstream f(std::filesystem::u8path(file),std::ios::binary);auto u16=[&](unsigned n){char b[2]={char(n),char(n>>8)};f.write(b,2);};auto u32=[&](unsigned n){u16(n);u16(n>>16);};f.write("RIFF",4);u32(36+frames*channels*2);f.write("WAVEfmt ",8);u32(16);u16(1);u16(channels);u32(rate);u32(rate*channels*2);u16(channels*2);u16(16);f.write("data",4);u32(frames*channels*2);for(int n=0;n<frames;++n)for(int c=0;c<channels;++c)u16(static_cast<uint16_t>(int16_t(8000*std::sin(2*3.141592653589793*440*n/rate))));}
+void wav(const std::string& file,int rate,int channels,int frames,double frequency=440){std::ofstream f(std::filesystem::u8path(file),std::ios::binary);auto u16=[&](unsigned n){char b[2]={char(n),char(n>>8)};f.write(b,2);};auto u32=[&](unsigned n){u16(n);u16(n>>16);};f.write("RIFF",4);u32(36+frames*channels*2);f.write("WAVEfmt ",8);u32(16);u16(1);u16(channels);u32(rate);u32(rate*channels*2);u16(channels*2);u16(16);f.write("data",4);u32(frames*channels*2);for(int n=0;n<frames;++n)for(int c=0;c<channels;++c)u16(static_cast<uint16_t>(int16_t(8000*std::sin(2*3.141592653589793*frequency*n/rate))));}
 int main(int argc,char**argv){try{
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
@@ -21,7 +21,7 @@ int main(int argc,char**argv){try{
     Engine e;float block[Block*2];std::string error;
     e.render(block);for(float v:block)check(v==0,"empty engine is not silent");
     check(e.load(0,path("mono.wav"),error),error.c_str());e.trigger(0);e.render(block);
-    double energy=0;for(int n=0;n<Block;++n){check(block[n*2]==block[n*2+1],"mono is not duplicated");energy+=block[n*2]*block[n*2];}check(energy>.001,"playback is silent");
+    double energy=0;for(int n=0;n<Block;++n){check(block[n*2]==block[n*2+1],"mono is not duplicated");energy+=block[n*2]*block[n*2];}check(energy>1e-5,"playback is silent with short fade");
     e.render(block);for(int n=44;n<Block;++n)check(block[n*2]==0&&block[n*2+1]==0,"stale samples after EOF");e.render(block);for(float v:block)check(v==0,"one-shot does not stop");
     check(e.load(1,path("resample.wav"),error),error.c_str());e.trigger(1);int active=0;for(int b=0;b<24;++b){e.render(block);for(int n=0;n<Block;++n)if(std::abs(block[n*2])>.00001)++active;}check(active>4500&&active<4801,"44.1 kHz conversion duration incorrect");
     e.trigger(0);e.setVolume(0);e.render(block);for(float v:block)check(v==0,"master mute failed");e.setVolume(.65);e.stop();
@@ -34,6 +34,35 @@ int main(int argc,char**argv){try{
     {std::ofstream f(std::filesystem::u8path(path("sparse.kicklab")));f<<"KICKLAB 1\n120 0.65\n";for(int p=0;p<Pads;++p)f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<'\n';}
     check(e.open(path("sparse.kicklab"),error),error.c_str());
     check(e.snapshot().paths[1].empty(),"loading sparse project retained old clip");
+    // Trim, pitch and fades use actual rendered samples, not UI metadata.
+    PadEdit edit;edit.start=.25;edit.end=.5;edit.fadeMs=0;e.setEdit(0,edit);e.stop();e.trigger(0);
+    int nonzero=0;for(int b=0;b<60;++b){e.render(block);for(int n=0;n<Block;++n){if(std::abs(block[n*2])>1e-5)++nonzero;if(b*Block+n>=12000)check(block[n*2]==0,"trim leaked beyond end");}}
+    check(nonzero>11500&&nonzero<12001,"trim duration incorrect");
+    edit.start=0;edit.end=1;edit.semitones=12;e.setEdit(0,edit);e.stop();e.trigger(0);
+    int crossings=0;float previous=0;
+    for(int b=0;b<100;++b){e.render(block);for(int n=0;n<Block;++n){float v=block[n*2];if(previous<=0&&v>1e-5)++crossings;previous=v;if(b*Block+n>=24000)check(v==0,"pitch octave duration incorrect");}}
+    check(crossings>=438&&crossings<=442,"octave pitch does not double frequency");
+    wav(path("high.wav"),48000,2,48000,8000);
+    auto measure=[&](const PadEdit& settings){
+        check(e.load(0,path("high.wav"),error),error.c_str());e.setEdit(0,settings);e.stop();e.trigger(0);
+        std::vector<float> result;
+        for(int b=0;b<96;++b){e.render(block);if(b>=32)result.insert(result.end(),block,block+Block*2);}
+        return result;
+    };
+    PadEdit dry;dry.fadeMs=0;auto clean=measure(dry);double dryEnergy=0;for(float v:clean)dryEnergy+=v*v;
+    auto filtered=dry;filtered.filterOpen=.1;auto low=measure(filtered);double lowEnergy=0;for(float v:low)lowEnergy+=v*v;
+    check(lowEnergy<dryEnergy*.2,"Airwindows lowpass does not attenuate highs");
+    auto saturated=dry;saturated.drive=1;auto drive=measure(saturated);double changed=0;
+    for(size_t i=0;i<clean.size();++i){check(std::isfinite(drive[i]),"drive output is not finite");changed+=std::pow(clean[i]-drive[i],2);}
+    check(changed>dryEnergy*.0001,"Airwindows drive does not change waveform");
+    saturated.bypass=true;auto bypass=measure(saturated);double bypassDifference=0;
+    for(size_t i=0;i<clean.size();++i)bypassDifference+=std::pow(clean[i]-bypass[i],2);
+    check(bypassDifference<dryEnergy*1e-8,"FX bypass changes dry signal");
+    edit={};edit.start=.12;edit.end=.83;edit.gain=.75;edit.semitones=-7;edit.fadeMs=4.5;edit.filterOpen=.4;edit.drive=.8;edit.bypass=true;e.setEdit(0,edit);
+    check(e.save(path("edited.kicklab"),error),error.c_str());e.setEdit(0,{});check(e.open(path("edited.kicklab"),error),error.c_str());auto restored=e.snapshot().edits[0];
+    check(restored.start==edit.start&&restored.end==edit.end&&restored.semitones==-7&&restored.drive==.8&&restored.bypass,"edited project roundtrip failed");
+    check(e.open(path("sparse.kicklab"),error),error.c_str());check(e.snapshot().edits[0].drive==0,"v1 project did not restore default edits");
+    std::cout<<"PASS: trim, octave pitch, Airwindows filter/drive/bypass, pad settings persistence and v1 compatibility\n";
     // Batched driver completions across the ring boundary must preserve time order.
     AudioQueue<4> queue;std::array<bool,4> ready={true,true,true,false};std::vector<int> submitted;
     auto submit=[&](size_t b){submitted.push_back(int(b));ready[b]=false;return true;};

@@ -1,4 +1,4 @@
-KICK Lab 0.1.2 — prototype indépendant.
+KICK Lab 0.2.0 — prototype indépendant.
 
 AudIO : Copyright (c) MUSIC Tribe, AGPL-3.0-or-later.
 https://github.com/MusicTribeOpenSource/0700-AAM
@@ -23,3 +23,10 @@ dans source/toolchain-notices/. Aucun JUCE ni Wine n'est distribué dans le bina
 
 Behringer, Music Tribe et KICK sont des marques de leurs propriétaires.
 Ce prototype est indépendant et n'est ni approuvé ni commercialisé par Music Tribe.
+
+Airwindows Lowpass et PurestDrive : Copyright Chris Johnson / Airwindows,
+licence MIT. Sources reprises de 0700-AAM, conservées dans
+source/vendor/AudIO/airwindows/src. Licence intégrale :
+source/vendor/AudIO/airwindows/LICENSE. Les adaptations de liaison à AudIO
+sont conservées ; deux corrections de déclarations portables figurent dans
+DESKTOP-CHANGES.patch.

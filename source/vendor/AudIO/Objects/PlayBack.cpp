@@ -32,49 +32,29 @@ namespace AudIO
         vp.prepareToPlay( samplerate, blocksize );
     }
 
+    // Extended desktop reader: sample-accurate boundaries, pitch by linear
+    // interpolation, and symmetric fades in output-frame time.
     void AudioPlayback::process( AudIO::Buffer<float>& buffer )
     {
-        buffer.clearOutputs(); // Desktop fix: avoid replaying stale samples after EOF.
-        if( m_playing && m_file )
-        {
-            if( readIndex >= maxSamples )
-            {
-                if( m_loop.load() )
-                    readIndex = 0;
-                else
-                    m_playing.store( false );
-            }
-
-            if( m_mute.load() || m_bypass.load() )
-            {
-                readIndex += blockSize();
-                buffer.clearOutputs();
-            }
-            else
-            {
-                auto numChannels = m_file->getNumChannels();
-                auto g0          = m_mute.load() ? 0.f : vp.getGain( 0 );
-                auto g1          = m_mute.load() ? 0.f : vp.getGain( 1 );
-
-                auto ch0 = buffer.getOutputBuffer( 0 );
-                auto ch1 = buffer.getOutputBuffer( 1 );
-
-                for( uint32_t sample = 0; sample < blockSize(); ++sample )
-                {
-                    if( readIndex < maxSamples )
-                    {
-                        if( ch0 )
-                            ch0[sample] = ( m_file->samples[0][readIndex] * g0 );
-                        if( ch1 )
-                            ch1[sample] = ( ( 1 < numChannels ) ? m_file->samples[1][readIndex] * g1 : m_file->samples[0][readIndex] * g1 );
-                    }
-                    ++readIndex;
+        buffer.clearOutputs();
+        if(!m_playing || !m_file || maxSamples<=0) return;
+        const int begin=std::min(maxSamples-1,int(sliceStart*maxSamples));
+        const int end=std::clamp(int(std::ceil(sliceEnd*maxSamples)),begin+1,maxSamples);
+        const double fade=std::min(fadeFrames,(end-begin)/pitchRatio*.5);
+        for(uint32_t sample=0;sample<blockSize();++sample){
+            if(readIndex>=end){if(m_loop.load())readIndex=begin;else{m_playing=false;break;}}
+            readIndex=std::max(readIndex,double(begin));
+            const int a=int(readIndex),b=std::min(a+1,end-1);const double f=readIndex-a;
+            double envelope=1;
+            if(fade>0){envelope=std::clamp(std::min((readIndex-begin)/pitchRatio,(end-1-readIndex)/pitchRatio)/fade,0.0,1.0);}
+            if(!m_mute.load() && !m_bypass.load()){
+                for(uint32_t ch=0;ch<buffer.getNumOutputChannels();++ch){
+                    auto out=buffer.getOutputBuffer(ch);if(!out)continue;
+                    const auto& data=m_file->samples[std::min<int>(ch,m_file->getNumChannels()-1)];
+                    out[sample]=float((data[a]*(1-f)+data[b]*f)*envelope*vp.getGain(ch));
                 }
             }
-        }
-        else
-        {
-            buffer.clearOutputs();
+            readIndex+=pitchRatio;
         }
     }
 
@@ -87,9 +67,9 @@ namespace AudIO
     void AudioPlayback::play( bool FromBegin )
     {
         if( FromBegin )
-            readIndex = 0;
+            readIndex = std::min(std::max(0,maxSamples-1),int(sliceStart*maxSamples));
 
-        m_playing.store( true );
+        m_playing.store( maxSamples>0 );
     }
 
     void AudioPlayback::stop()

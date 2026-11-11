@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include "AudIO.cpp"
 #include "Objects/PlayBack.cpp"
+#include "pad_voice.hpp"
 
 namespace lab {
 namespace {
@@ -64,7 +65,7 @@ struct Engine::Impl {
     std::vector<float> pool;
     std::unique_ptr<AudIO::Design> graph;
     std::unique_ptr<AudIO::Buffer<float>> buffer;
-    std::array<AudIO::AudioPlayback*,Pads> players{};
+    std::array<PadPlayback*,Pads> players{};
     std::array<std::atomic<bool>,Pads> pending{};
     Snapshot state;
     // Waveform/string copies belong to the UI, never the render lock.
@@ -78,7 +79,7 @@ struct Engine::Impl {
         graph=std::make_unique<AudIO::Design>(0,2);
         auto bus=graph->createBus();
         for(int i=0;i<Pads;++i) {
-            auto player=std::make_unique<AudIO::AudioPlayback>();players[i]=player.get();
+            auto player=std::make_unique<PadPlayback>();players[i]=player.get();
             auto id=graph->createObject(std::move(player));
             if(!graph->sendToBus(bus,id,1.f)) throw std::runtime_error("Echec du routage AudIO.");
             state.names[i]="Vide";
@@ -99,15 +100,30 @@ bool Engine::load(int pad,const std::string& path,std::string& error) {
         for(size_t i=0;i<samples.size();++i){size_t j=std::min<size_t>(319,i*320/samples.size());waveform[j]=std::max(waveform[j],std::abs(samples[i]));}
         auto name=std::filesystem::u8path(path).stem().u8string();
         auto storedPath=path;
-        {std::scoped_lock lock(impl->metadataMutex,impl->audioMutex);
+        auto effects=std::make_unique<PadEffects>();
+        const double duration=double(samples.size())/Rate;
+        {std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);
          file=impl->players[pad]->replaceFile(std::move(file));
          impl->loaded[pad]=true;
          impl->state.names[pad].swap(name);impl->state.paths[pad].swap(storedPath);
-         impl->state.waveforms[pad].swap(waveform);}
+         impl->state.waveforms[pad].swap(waveform);
+         impl->state.durations[pad]=duration;impl->state.edits[pad]={};
+         impl->players[pad]->edit={};impl->players[pad]->effects.swap(effects);impl->players[pad]->resetMix();}
         return true;
     } catch(const std::exception& e){error=e.what();return false;}
 }
 void Engine::trigger(int pad){if(pad>=0&&pad<Pads)impl->pending[pad].store(true);}
+void Engine::setEdit(int pad,const PadEdit& requested){
+    if(pad<0||pad>=Pads)return;
+    const double values[]={requested.start,requested.end,requested.gain,requested.semitones,requested.fadeMs,requested.filterOpen,requested.drive};
+    for(double v:values)if(!std::isfinite(v))return;
+    PadEdit edit=requested;
+    edit.start=std::clamp(edit.start,0.,.999);edit.end=std::clamp(edit.end,edit.start+.001,1.);
+    edit.gain=std::clamp(edit.gain,0.,2.);edit.semitones=std::clamp(edit.semitones,-24.,24.);
+    edit.fadeMs=std::clamp(edit.fadeMs,0.,20.);edit.filterOpen=std::clamp(edit.filterOpen,0.,1.);edit.drive=std::clamp(edit.drive,0.,1.);
+    std::scoped_lock lock(impl->mutex,impl->audioMutex);
+    impl->state.edits[pad]=edit;impl->players[pad]->edit=edit;
+}
 void Engine::toggle(int p,int s){if(p<0||p>=Pads||s<0||s>=Steps)return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.pattern[p][s]=!impl->state.pattern[p][s];}
 void Engine::clearPattern(){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.pattern={};}
 void Engine::demoPattern(){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.pattern={};for(int s:{0,4,8,12})impl->state.pattern[0][s]=true;for(int s:{4,12})impl->state.pattern[1][s]=true;for(int s=0;s<16;s+=2)impl->state.pattern[2][s]=true;impl->state.pattern[3][14]=true;}
@@ -118,9 +134,9 @@ void Engine::setVolume(double v){if(!std::isfinite(v))return;std::lock_guard<std
 Snapshot Engine::snapshot(){
     Snapshot result;
     {std::lock_guard<std::mutex> lock(impl->metadataMutex);
-     result.names=impl->state.names;result.paths=impl->state.paths;result.waveforms=impl->state.waveforms;}
+     result.names=impl->state.names;result.paths=impl->state.paths;result.waveforms=impl->state.waveforms;result.durations=impl->state.durations;}
     {std::lock_guard<std::mutex> lock(impl->mutex);
-     result.pattern=impl->state.pattern;result.active=impl->state.active;
+     result.pattern=impl->state.pattern;result.active=impl->state.active;result.edits=impl->state.edits;result.progress=impl->state.progress;
      result.tempo=impl->state.tempo;result.volume=impl->state.volume;
      result.playing=impl->state.playing;result.step=impl->state.step;result.peak=impl->state.peak;}
     return result;
@@ -130,28 +146,32 @@ void Engine::render(float* out){
     // Never drop an audio block or pause the sample clock because the UI is reading.
     std::scoped_lock lock(impl->mutex,impl->audioMutex);
     auto& s=impl->state;
-    for(int p=0;p<Pads;++p)if(impl->pending[p].exchange(false)&&impl->loaded[p])impl->players[p]->play(true);
+    for(int p=0;p<Pads;++p)if(impl->pending[p].exchange(false)&&impl->loaded[p])impl->players[p]->trigger();
     if(s.playing){
-        if(impl->untilStep<=0){s.step=impl->nextStep;impl->nextStep=(s.step+1)%Steps;for(int p=0;p<Pads;++p)if(s.pattern[p][s.step]&&impl->loaded[p])impl->players[p]->play(true);impl->untilStep+=Rate*60./s.tempo/4.;}
+        if(impl->untilStep<=0){s.step=impl->nextStep;impl->nextStep=(s.step+1)%Steps;for(int p=0;p<Pads;++p)if(s.pattern[p][s.step]&&impl->loaded[p])impl->players[p]->trigger();impl->untilStep+=Rate*60./s.tempo/4.;}
         impl->untilStep-=Block;
     }
     impl->graph->process(*impl->buffer);float peak=0;
     for(int n=0;n<Block;++n){impl->currentVolume+=(float(s.volume)-impl->currentVolume)*.004f;for(int c=0;c<2;++c){float v=impl->buffer->getOutputBuffer(c)[n]*(s.volume==0?0.f:impl->currentVolume)*.5f;if(!std::isfinite(v))v=0;v=std::clamp(v,-.98f,.98f);out[n*2+c]=v;peak=std::max(peak,std::abs(v));}}
-    s.peak=peak;for(int p=0;p<Pads;++p)s.active[p]=impl->players[p]->isPlaying();
+    s.peak=peak;for(int p=0;p<Pads;++p){s.active[p]=impl->players[p]->isPlaying();s.progress[p]=impl->players[p]->progress();}
 }
-bool Engine::save(const std::string& path,std::string& error){auto s=snapshot();std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<"KICKLAB 1\n"<<s.tempo<<' '<<s.volume<<'\n';for(int p=0;p<Pads;++p){unsigned bits=0;for(int k=0;k<Steps;++k)if(s.pattern[p][k])bits|=1u<<k;f<<bits<<' '<<std::quoted(s.paths[p])<<'\n';}if(!f){error="Erreur d'ecriture.";return false;}return true;}
+bool Engine::save(const std::string& path,std::string& error){auto s=snapshot();std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 2\n"<<s.tempo<<' '<<s.volume<<'\n';for(int p=0;p<Pads;++p){unsigned bits=0;for(int k=0;k<Steps;++k)if(s.pattern[p][k])bits|=1u<<k;f<<bits<<' '<<std::quoted(s.paths[p])<<' '<<s.edits[p].start<<' '<<s.edits[p].end<<' '<<s.edits[p].gain<<' '<<s.edits[p].semitones<<' '<<s.edits[p].fadeMs<<' '<<s.edits[p].filterOpen<<' '<<s.edits[p].drive<<' '<<s.edits[p].bypass<<'\n';}if(!f){error="Erreur d'ecriture.";return false;}return true;}
 bool Engine::open(const std::string& path,std::string& error){
     std::ifstream f(std::filesystem::u8path(path),std::ios::ate);if(!f||f.tellg()>65536){error="Projet introuvable ou trop volumineux.";return false;}f.seekg(0);
     std::string tag;int version;Snapshot s;
-    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||version!=1||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
-    for(int p=0;p<Pads;++p){unsigned bits;if(!(f>>bits>>std::quoted(s.paths[p]))||bits>65535){error="Pattern invalide.";return false;}for(int k=0;k<Steps;++k)s.pattern[p][k]=(bits&(1u<<k))!=0;}
+    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version!=1&&version!=2)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
+    for(int p=0;p<Pads;++p){unsigned bits;if(!(f>>bits>>std::quoted(s.paths[p]))||bits>65535){error="Pattern invalide.";return false;}for(int k=0;k<Steps;++k)s.pattern[p][k]=(bits&(1u<<k))!=0;
+        if(version==2){auto& e=s.edits[p];if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs>>e.filterOpen>>e.drive>>e.bypass)){error="Reglages du pad invalides.";return false;}
+        const double v[]={e.start,e.end,e.gain,e.semitones,e.fadeMs,e.filterOpen,e.drive};for(double x:v)if(!std::isfinite(x)){error="Reglages non finis.";return false;}
+        if(e.start<0||e.end>1||e.end-e.start<.000999||e.gain<0||e.gain>2||e.semitones< -24||e.semitones>24||e.fadeMs<0||e.fadeMs>20||e.filterOpen<0||e.filterOpen>1||e.drive<0||e.drive>1){error="Reglages hors limites.";return false;}}}
     std::array<std::unique_ptr<AudioFile<float>>,Pads> clips;
     try{for(int p=0;p<Pads;++p)if(!s.paths[p].empty())clips[p]=decode(s.paths[p]);}catch(const std::exception& e){error=std::string("Projet non charge : ")+e.what();return false;}
     // Build names and waveforms before acquiring any render-side lock.
-    for(int p=0;p<Pads;++p){if(clips[p]){s.names[p]=std::filesystem::u8path(s.paths[p]).stem().u8string();s.waveforms[p].assign(320,0.f);auto& a=clips[p]->samples[0];for(size_t n=0;n<a.size();++n){size_t j=std::min<size_t>(319,n*320/a.size());s.waveforms[p][j]=std::max(s.waveforms[p][j],std::abs(a[n]));}}else s.names[p]="Vide";}
+    for(int p=0;p<Pads;++p){if(clips[p]){s.durations[p]=double(clips[p]->getNumSamplesPerChannel())/Rate;s.names[p]=std::filesystem::u8path(s.paths[p]).stem().u8string();s.waveforms[p].assign(320,0.f);auto& a=clips[p]->samples[0];for(size_t n=0;n<a.size();++n){size_t j=std::min<size_t>(319,n*320/a.size());s.waveforms[p][j]=std::max(s.waveforms[p][j],std::abs(a[n]));}}else s.names[p]="Vide";}
+    std::array<std::unique_ptr<PadEffects>,Pads> fx;for(auto& item:fx)item=std::make_unique<PadEffects>();
     std::array<std::unique_ptr<AudioFile<float>>,Pads> old;
     {std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);
-     for(int p=0;p<Pads;++p){impl->loaded[p]=bool(clips[p]);old[p]=impl->players[p]->replaceFile(std::move(clips[p]));impl->pending[p].store(false);}
+     for(int p=0;p<Pads;++p){impl->loaded[p]=bool(clips[p]);old[p]=impl->players[p]->replaceFile(std::move(clips[p]));impl->pending[p].store(false);impl->players[p]->edit=s.edits[p];impl->players[p]->effects.swap(fx[p]);impl->players[p]->resetMix();}
      std::swap(impl->state,s);impl->untilStep=0;impl->nextStep=0;}
     // Retired clips and metadata are destroyed here, on the loading thread.
 
