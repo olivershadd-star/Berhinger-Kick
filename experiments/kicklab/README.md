@@ -1,12 +1,12 @@
 > **Base active du portage progressif.** Cette application conserve la sortie WinMM et le moteur AudIO déjà validés. Les modules KICK publiés y seront intégrés un par un, avec une commande souris pour toute fonction qui dépend normalement du matériel.
 
-# KICK Lab 0.2.0 — sampler et effets Windows
+# KICK Lab 0.2.1 — commandes clarifiées
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-**[Télécharger la dernière version Windows portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.2.0)**
+**[Télécharger la dernière version Windows portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.2.1)**
 
-Cette version ajoute un éditeur de sample et deux effets par pad. Ce n'est pas encore le firmware complet ni l'interface JUCE KICK d'origine.
+Cette version conserve l'éditeur de sample et les deux effets par pad. Elle clarifie les commandes de projet et supprime les commandes qui faisaient double emploi avec les pads et le bouton Stop.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
@@ -29,7 +29,7 @@ Windows 10/11 x64, sans installation. Aucun compilateur, Python ou JUCE nécessa
 - **PurestDrive / saturation** : véritable effet Airwindows PurestDrive, avec gain d'entrée jusqu'à ×4 et compensation en sortie dans l'adaptation. À 0 %, la saturation est contournée.
 - **Bypass** : compare la lecture sans filtre/saturation, en conservant volume, accordage et découpe.
 - **Réinitialiser ce pad** : remet les réglages à leur valeur initiale et conserve son sample.
-- **Écouter le pad** : déclenche un one-shot. **Couper** arrête les voix.
+- Cliquer directement sur un pad déclenche son one-shot. **Stop** arrête le transport et les voix.
 
 La découpe, l'accordage et les fondus sont appliqués au prochain déclenchement. Le volume et les effets évoluent pendant la lecture, avec lissage. La chaîne est : lecteur AudIO étendu → Lowpass → PurestDrive → volume du pad → bus AudIO → volume général.
 
@@ -48,7 +48,7 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 
 WAV PCM 16/24/32 bits ou flottant 32 bits, mono/stéréo, de 8 à 192 kHz, jusqu'à 30 secondes et 32 Mo par fichier. Les WAV sont convertis à 48 kHz au chargement par interpolation linéaire. WAV extensible, MP3, FLAC et AIFF ne sont pas pris en charge dans cette interface.
 
-**Enregistrer / Ouvrir** sauvegarde le pattern, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement. Un chargement échoué conserve le projet courant.
+**Enregistrer projet / Ouvrir projet** sauvegarde le pattern, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Le nom du fichier enregistré ou chargé est confirmé dans la barre d'état. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement. Un chargement échoué conserve le projet courant.
 
 Les projets des versions 0.1.x sont lisibles. Les nouveaux projets utilisent **KICKLAB 2** pour conserver l'édition et les effets ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
 

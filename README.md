@@ -4,7 +4,7 @@ Ce dépôt adapte le code KICK publié par Music Tribe à un ordinateur Windows 
 
 ## Version recommandée
 
-**[Télécharger KICK Lab Windows 0.2.0 — base portable fonctionnelle](https://github.com/olivershadd-star/Berhinger-Kick/raw/v0.2.0/downloads/KickLab-Windows-x64-0.2.0.zip)**
+**[Télécharger KICK Lab Windows 0.2.1 — commandes clarifiées](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.2.1)**
 
 Cette base possède une sortie audio Windows fonctionnelle, seize pads cliquables, le chargement de WAV, un séquenceur 16 pas, l'éditeur de sample et les effets AudIO/Airwindows déjà intégrés. Elle reste une étape intermédiaire du portage.
 
@@ -36,7 +36,7 @@ Le port complet expérimental est conservé sur la branche [`port/kick-original-
 
 Le dépôt public ne contient aucun sample d'usine, aucun son de métronome et pratiquement aucun contenu de programme. Les cinq démos livrées sont de petits fichiers de projet presque vides. L'interface originale attend aussi la surface matérielle pour plusieurs sélections.
 
-La base 0.2.0 utilise directement WinMM avec quatre buffers stéréo à 48 kHz. La préversion complète l'avait remplacé par un périphérique JUCE et un nouvel adaptateur de blocs AudIO. Ce remplacement simultané du périphérique, du moteur et de l'interface a supprimé la base sonore connue et rendu les problèmes impossibles à isoler. Cette voie n'est plus la voie principale.
+La base 0.2.1 utilise directement WinMM avec quatre buffers stéréo à 48 kHz. La préversion complète l'avait remplacé par un périphérique JUCE et un nouvel adaptateur de blocs AudIO. Ce remplacement simultané du périphérique, du moteur et de l'interface a supprimé la base sonore connue et rendu les problèmes impossibles à isoler. Cette voie n'est plus la voie principale.
 
 ## Construire la base active
 

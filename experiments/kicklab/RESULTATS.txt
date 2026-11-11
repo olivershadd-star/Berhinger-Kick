@@ -1,4 +1,4 @@
-KICK Lab 0.2.0 — validation de l’éditeur et des effets
+KICK Lab 0.2.1 — validation des commandes de projet
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Compilation MinGW-w64 x64, tests du binaire Windows sous Wine : réussis.
@@ -7,6 +7,8 @@ Tests Linux avec ASan/UBSan : aucun diagnostic sur les scénarios exécutés.
 Scénarios : découpe sans lecture au-delà de la fin ; octave (fréquence et durée) ; gain individuel et volume nul ; fin fondue ; atténuation des aigus par Airwindows Lowpass ; modification du signal par PurestDrive ; bypass ; sauvegarde/rechargement v2 ; compatibilité v1 ; remise en file des buffers ; continuité sous activité graphique.
 
 Interface exécutée sous Wine : glisser les bornes, déplacer les curseurs, sauver puis recharger les mêmes réglages par la boîte de dialogue, et afficher l’éditeur à 1920×1080 : réussis.
+
+0.2.1 conserve le moteur et le format KICKLAB 2 de la version validée. Les boutons Ouvrir/Enregistrer indiquent maintenant explicitement qu'ils concernent le projet. Les doublons Couper les voix, Écouter le pad et Couper ont été retirés ; les pads et Stop conservent ces actions.
 
 Le nouveau code doit encore être essayé avec la carte son et le matériel MIDI physique de l’utilisateur. Le benchmark local de 16 pads et 32 instances d’effets traite une seconde d’audio en environ 39 ms ; cette mesure sur le serveur n’est pas une garantie de performance sur une autre machine.
 

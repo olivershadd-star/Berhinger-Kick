@@ -27,10 +27,8 @@ void editorClick(int x,int y,bool right){
     if(editorDrag){SetCapture(window);editorPointer(x,y);return;}
     if(Box{970,443,178,32}.contains(x,y)){auto e=engine.snapshot().edits[selected];e.bypass=!e.bypass;engine.setEdit(selected,e);}
     else if(Box{28,690,200,42}.contains(x,y))engine.setEdit(selected,{});
-    else if(Box{244,690,150,42}.contains(x,y))play(selected);
-    else if(Box{410,690,180,42}.contains(x,y))load(choose(false,false));
-    else if(Box{606,690,130,42}.contains(x,y))engine.stop();
-    else if(Box{752,690,180,42}.contains(x,y))project(true);
+    else if(Box{244,690,180,42}.contains(x,y))load(choose(false,false));
+    else if(Box{440,690,200,42}.contains(x,y))project(true);
 }
 std::wstring decimal(double value,int precision=2){wchar_t buffer[64];std::swprintf(buffer,64,L"%.*f",precision,value);return buffer;}
 void paintEditorSlider(HDC dc,int id,const std::wstring& name,const std::wstring& value,double ratio){
@@ -64,7 +62,7 @@ void paintEditor(HDC dc){
     paintEditorSlider(dc,4,L"Lowpass · ouverture",edit.filterOpen>=.9999?L"Ouvert / bypass":decimal(edit.filterOpen*100,0)+L" %",edit.filterOpen);
     paintEditorSlider(dc,5,L"PurestDrive · saturation",edit.drive<=.0001?L"Désactivée":decimal(edit.drive*100,0)+L" %",edit.drive);
     text(dc,{636,631,500,21},L"Filtre → saturation · réglages indépendants par pad",12,muted);
-    button(dc,{28,690,200,42},L"Réinitialiser ce pad");button(dc,{244,690,150,42},L"Écouter le pad");
-    button(dc,{410,690,180,42},L"Charger un WAV");button(dc,{606,690,130,42},L"Couper");button(dc,{752,690,180,42},L"Enregistrer");
+    button(dc,{28,690,200,42},L"Réinitialiser ce pad");button(dc,{244,690,180,42},L"Charger un WAV");
+    button(dc,{440,690,200,42},L"Enregistrer projet");
     text(dc,{28,751,1144,32},L"Glisser les repères ou les curseurs. Découpe et accordage : au prochain déclenchement. Volume et effets : en direct.",13,muted);
 }
