@@ -11,10 +11,12 @@
 */
 #pragma once
 #include <thread>
+#include <AudIO/3rdparty/AudioFile.h>
 #include <AudIO/AudIO.h>
 #include <AudIO_constants/AudIO_constants.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "AudioDevice.h"
+#include "VoiceDsp.h"
 
 #include "RecorderTypes.h"
 

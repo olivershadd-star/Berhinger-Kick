@@ -36,9 +36,9 @@ Les adaptations de compilation sont maintenant préparées dans une copie des so
 - Liaison `mt::AudioDevice` entre l'interface publique `AudIO::IAudioDevice` et JUCE ; blocs de 480 échantillons conservés et adaptation des tailles de tampon du périphérique.
 - Module de constantes de compatibilité, types d'énumération d'enregistrement, valeurs vides attendues par les modèles et corrections techniques de compilation. Certaines limites et valeurs par défaut restent **provisoires**, explicitement documentées dans [WINDOWS-COMPATIBILITY.md](docs/WINDOWS-COMPATIBILITY.md).
 - Préparation traçable des sources originales et de leurs dépendances locales, sans requête vers le serveur interne fictif d'AudIO.
-- Vérifications séparées des unités originales `common`, `interface`, `project`, `audio_file_manager`, `input_events` et sept modules d’interface, en plus du pont audio. Une compilation d'objets ne valide pas l'application complète.
+- Vérifications séparées des unités originales de modèles, projets, samples, programmes, moteur, événements et interface, en plus du pont audio. Une compilation d'objets ne valide pas l'application complète.
 
-Les nouvelles erreurs concernent notamment les implémentations attendues de `SampleRecorder`, du moteur `Looper`, des filtres et des enveloppes des voix. Aucun remplacement silencieux de ces fonctions n'est fourni pour masquer ces erreurs.
+Les contrats de `SampleRecorder`, du moteur `Looper`, des filtres et des enveloppes des voix sont maintenant reliés aux primitives AudIO publiées. Le looper ne possède pas encore son historique undo/redo et l’application complète doit encore passer l’édition de liens et les essais d’exécution.
 
 Pour les vérifications de transport audio :
 

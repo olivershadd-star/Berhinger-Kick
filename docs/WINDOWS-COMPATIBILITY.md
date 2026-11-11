@@ -28,9 +28,11 @@ Les types d'énumération `mt::Recorder::Direction` et `Mode` reprennent les val
 
 ## Dépendances découvertes en compilant les vraies unités
 
-Au-delà des constantes, `mt::SampleRecorder` et le moteur `mt::Looper` ne sont pas définis dans l'archive ; `mt_audio_recorder.h/.cpp` les utilisent. Les commandes du looper (dont undo/redo) ne sont pas intégralement fournies par l'ancien `AudIO::AudioRecorder`. Un simple alias serait trompeur.
+Au-delà des constantes, `mt::SampleRecorder` et le moteur `mt::Looper` ne sont pas définis dans l'archive ; `mt_audio_recorder.h/.cpp` les utilisent. Le sampler/enregistreur attendu est maintenant relié à `AudIO::DRecorder`, déjà présent dans la publication mais désactivé par configuration. `SampleRecorder` adapte ses noms de méthodes à ceux utilisés par KICK. Le looper réutilise ce moteur d’enregistrement et expose le contrat attendu par l’interface. Les piles undo/redo du looper ne sont pas encore restaurées : les deux commandes sont actuellement sans effet et empêchent toujours de qualifier ce portage de complet.
 
-`drum_voice.h/.cpp` attend aussi les types de traitement `Filter`, `FilterType` et `ADSR`. Les variantes `ADSRType` et les fonctions de mise à l’échelle existent déjà dans `mt_audio_timebase_types.h`. L'AudIO publié contient des primitives de filtre et d'ADSR, mais leur interface et les fonctionnalités attendues diffèrent. Il faut analyser et adapter ces contrats ; aucun filtre ni looper factice n'a été ajouté pour obtenir artificiellement une compilation réussie.
+`drum_voice.h/.cpp` attend aussi les types de traitement `Filter`, `FilterType` et `ADSR`. Les variantes `ADSRType` et les fonctions de mise à l’échelle existent déjà dans `mt_audio_timebase_types.h`. L’adaptateur restaure ce contrat au-dessus des primitives AudIO publiées : l’ADSR délègue au DSP AudIO et le filtre reprend sa topologie avec un état indépendant par canal.
+
+Deux fonctions de `MTAudioProgram` renvoyaient l’adresse d’un objet local détruit. La copie de compilation conserve désormais l’objet interrogé dans le programme. `MTAudioInterface::getAssetName` renvoie également une chaîne par valeur, conformément au gestionnaire d’assets, plutôt qu’une référence vers une valeur temporaire.
 
 Il n'existe donc pas encore de `Kick.exe` complet validé. Les erreurs de compilation sont utilisées comme liste de travail, sans les confondre avec des fonctions portées.
 

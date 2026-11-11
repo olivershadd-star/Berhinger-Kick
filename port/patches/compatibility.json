@@ -8,5 +8,35 @@
     "file": "Kick/modules/input_events/input_events.h",
     "old": "    #include <PktMgr/PktMgr.hpp>",
     "new": "    #include <PktMgr/PktMgr.hpp>\n    #include <juce_events/juce_events.h>"
+  },
+  {
+    "file": "AudIO/AudIO/AudIO.h",
+    "old": "#define AUDIO_OBJECT_AUDIO_FILE_RECORDER ( 0 )",
+    "new": "#define AUDIO_OBJECT_AUDIO_FILE_RECORDER ( 1 )"
+  },
+  {
+    "file": "Kick/modules/engine/audio_program/source/mt_audio_audio_program.h",
+    "old": "        std::vector<std::unique_ptr<MTIAudio>> selectedLists;\n        juce::ValueTree                        sampleTree;",
+    "new": "        std::vector<std::unique_ptr<MTIAudio>> selectedLists;\n        std::unique_ptr<MTIAudio>              queriedAudio;\n        juce::ValueTree                        sampleTree;"
+  },
+  {
+    "file": "Kick/modules/engine/audio_program/source/mt_audio_audio_program.cpp",
+    "old": "            MTIAudio audioSample( audio, um );\n\n            if( Start == audioSample.startTime.get() )\n                return &audioSample;",
+    "new": "            auto audioSample = std::make_unique<MTIAudio>( audio, um );\n\n            if( Start == audioSample->startTime.get() )\n            {\n                queriedAudio = std::move( audioSample );\n                return queriedAudio.get();\n            }"
+  },
+  {
+    "file": "Kick/modules/engine/audio_program/source/mt_audio_audio_program.cpp",
+    "old": "            MTIAudio audioSample( audio, um );\n\n            if( Start >= audioSample.startTime.get() && ( Start <= ( audioSample.startTime.get() + audioSample.length.get() ) ) )\n                return &audioSample;",
+    "new": "            auto audioSample = std::make_unique<MTIAudio>( audio, um );\n\n            if( Start >= audioSample->startTime.get() && ( Start <= ( audioSample->startTime.get() + audioSample->length.get() ) ) )\n            {\n                queriedAudio = std::move( audioSample );\n                return queriedAudio.get();\n            }"
+  },
+  {
+    "file": "Kick/modules/engine/interface/source/mt_audio_interface.h",
+    "old": "        const juce::String&              getAssetName( AssetTypes Type, int Index );",
+    "new": "        juce::String                     getAssetName( AssetTypes Type, int Index );"
+  },
+  {
+    "file": "Kick/modules/engine/audio_engine/engine/mt_audio_interface.cpp",
+    "old": "    const juce::String&              MTAudioInterface::getAssetName( AssetTypes Type, int Index ) { return manager->getAssetName( Type, Index ); }",
+    "new": "    juce::String                     MTAudioInterface::getAssetName( AssetTypes Type, int Index ) { return manager->getAssetName( Type, Index ); }"
   }
 ]
