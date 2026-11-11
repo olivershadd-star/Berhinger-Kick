@@ -1,0 +1,17 @@
+KICK 0.3.3 — aperçu du portage Windows communautaire
+
+Lancez Kick.exe directement. Les ressources, projets, préférences et samples
+restent à côté de l’exécutable : aucune installation n’est nécessaire.
+
+Cette archive sert aux essais du portage de l’application KICK publiée par
+Music Tribe. Elle n’est pas une version officielle de Behringer/Music Tribe.
+
+Limites connues de cet aperçu :
+- l’historique Annuler/Rétablir du looper n’est pas encore restauré ;
+- la communication série avec la surface matérielle Linux est désactivée ;
+- quelques valeurs de configuration absentes de la publication sont encore
+  provisoires et doivent être comparées à la machine réelle.
+
+Le séquenceur, les modèles de projet, les programmes, les écrans et le moteur
+AudIO proviennent des sources KICK publiées. Signalez les étapes exactes qui
+provoquent un plantage, un silence ou un son anormal.

@@ -16,6 +16,44 @@ jobs:
         run: cmake -S . -B build-original -A x64
       - name: Compile original Kick target
         run: cmake --build build-original --config Release
+      - name: Assemble portable directory
+        shell: pwsh
+        run: |
+          $source = "build-original/original-build"
+          $portable = "portable/Kick-Windows"
+          New-Item -ItemType Directory -Force -Path $portable | Out-Null
+          Copy-Item "$source/Kick.exe" "$portable/Kick.exe"
+          foreach ($directory in @("assets", "templates", "demos")) {
+            Copy-Item "$source/$directory" "$portable/$directory" -Recurse
+          }
+          foreach ($directory in @("samples", "projects", "logs", "prefs")) {
+            New-Item -ItemType Directory -Force -Path "$portable/$directory" | Out-Null
+          }
+          Copy-Item "port/windows/LISEZ-MOI.txt" "$portable/LISEZ-MOI.txt"
+          $hash = (Get-FileHash "$portable/Kick.exe" -Algorithm SHA256).Hash.ToLower()
+          "$hash *Kick.exe" | Set-Content "$portable/SHA256.txt"
+      - name: Smoke-test original KICK process
+        shell: pwsh
+        run: |
+          $portable = (Resolve-Path "portable/Kick-Windows").Path
+          $process = Start-Process -FilePath "$portable/Kick.exe" -WorkingDirectory $portable -PassThru
+          Start-Sleep -Seconds 20
+          if ($process.HasExited) {
+            Write-Host "Kick exited during the 20-second startup check with code $($process.ExitCode)."
+            Get-ChildItem "$portable/logs" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName }
+            throw "Original KICK did not remain running."
+          }
+          Stop-Process -Id $process.Id -Force
+          $process.WaitForExit()
+      - name: Create portable ZIP
+        shell: pwsh
+        run: Compress-Archive -Path portable/Kick-Windows -DestinationPath portable/Kick-Windows-0.3.3-preview.zip
+      - name: Upload portable preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kick-Windows-0.3.3-preview
+          path: portable/Kick-Windows-0.3.3-preview.zip
+          if-no-files-found: error
       - name: Keep integration diagnostics even when compilation fails
         if: always()
         uses: actions/upload-artifact@v4
@@ -25,3 +63,4 @@ jobs:
             build-original/source-audit.json
             build-original/staging/port-changes.json
             build-original/original-build/CMakeFiles/CMakeConfigureLog.yaml
+            portable/Kick-Windows/logs/**
