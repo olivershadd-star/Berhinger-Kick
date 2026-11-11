@@ -1,5 +1,7 @@
 # Adaptations Windows : valeurs et limites de fidélité
 
+> Référence de la tentative d'intégration globale. Cette voie est conservée sur `port/kick-original-windows` et n'est plus la base de la version jouable. Voir [PORTAGE-INCREMENTAL.md](PORTAGE-INCREMENTAL.md).
+
 Les sources `upstream/` ne sont pas modifiées. Les adaptations sont appliquées à une copie et consignées dans `port-changes.json`.
 
 ## Configuration restaurée

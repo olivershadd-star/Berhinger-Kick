@@ -1,4 +1,6 @@
-# Réanalyse de 0700-AAM et recentrage du projet
+# Réanalyse historique du port complet
+
+> Ce document décrit la tentative d'intégration globale, désormais conservée sur la branche `port/kick-original-windows`. Après les essais utilisateur sans matériel, la voie active est le [portage progressif](PORTAGE-INCREMENTAL.md) fondé sur la sortie WinMM fonctionnelle.
 
 ## Conclusion actuelle
 

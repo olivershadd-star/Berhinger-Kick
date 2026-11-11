@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Configure original application with Windows adapters
-        run: cmake -S . -B build-original -A x64
+        run: cmake -S . -B build-original -A x64 -DKICK_BUILD_ORIGINAL_REFERENCE=ON
       - name: Compile original Kick target
         run: cmake --build build-original --config Release
       - name: Assemble portable directory

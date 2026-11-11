@@ -1,5 +1,16 @@
-name: Experimental KICK Lab archive (not original KICK)
+name: KICK Windows incremental base
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/kicklab/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/kicklab-experiment.yml'
+  pull_request:
+    paths:
+      - 'experiments/kicklab/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/kicklab-experiment.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure x64
-        run: cmake -S source -B build -A x64
+        run: cmake -S ../.. -B build -A x64
       - name: Build
         run: cmake --build build --config Release --parallel 2
       - name: Test audio engine
@@ -21,7 +32,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist/KickLab | Out-Null
-          Copy-Item build/Release/KickLab.exe,build/Release/KickLab-Test.exe dist/KickLab/
+          Copy-Item build/incremental-port/Release/KickLab.exe,build/incremental-port/Release/KickLab-Test.exe dist/KickLab/
           Copy-Item samples,source dist/KickLab/ -Recurse
           Copy-Item README.md,LIRE-MOI.html,LICENSE,NOTICES.txt,RESULTATS.txt,APERCU.png,APERCU-SAMPLE.png,DEMO.wav dist/KickLab/
       - uses: actions/upload-artifact@v4

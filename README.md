@@ -1,103 +1,55 @@
-# KICK — portage Windows du code original
+# KICK Windows — portage progressif
 
-L'objectif de ce dépôt est de faire fonctionner **l'application KICK publiée par Music Tribe sous Windows, en version portable**, avec son interface et ses fonctions existantes.
+Ce dépôt adapte le code KICK publié par Music Tribe à un ordinateur Windows **sans surface matérielle KICK**. Le travail repart de la dernière base réellement jouable : moteur AudIO, sortie Windows WinMM, pads à la souris, samples, séquenceur et effets déjà testés.
 
-La cible originale `Kick.exe` compile et passe maintenant l'édition de liens avec MSVC sur Windows. Le premier paquet portable est publié pour les essais ; il reste une **préversion technique**, pas encore une version fonctionnelle certifiée. Les ZIP KICK Lab 0.1–0.2 restent des expérimentations indépendantes ; ils ne constituent pas un portage de la groovebox. Leur développement musical est arrêté dans cette direction.
+## Version recommandée
 
-## Préversion portable
+**[Télécharger KICK Lab Windows 0.2.0 — base portable fonctionnelle](https://github.com/olivershadd-star/Berhinger-Kick/raw/v0.2.0/downloads/KickLab-Windows-x64-0.2.0.zip)**
 
-[Télécharger KICK original Windows 0.3.3 — préversion](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.3.3-preview/Kick-Windows-0.3.3-preview.zip)
+Cette base possède une sortie audio Windows fonctionnelle, seize pads cliquables, le chargement de WAV, un séquenceur 16 pas, l'éditeur de sample et les effets AudIO/Airwindows déjà intégrés. Elle reste une étape intermédiaire du portage.
 
-Le paquet contient l'exécutable 64 bits et les ressources originales. La construction, l'édition de liens, l'intégrité du paquet et l'ouverture de l'écran original **Projects** sont validées. La reproduction audio sur un périphérique Windows réel et le parcours complet des fonctions ne le sont pas encore.
+La préversion `v0.3.3-preview` qui chargeait toute l'interface originale d'un seul coup est conservée comme **référence technique uniquement**. Elle dépend encore de commandes matérielles, ne contient pas les programmes ni les samples retirés de la publication et n'est pas recommandée pour jouer.
+
+## Méthode de travail
+
+Chaque évolution part désormais de la base sonore ci-dessus :
+
+1. sélectionner une fonction précise déjà présente dans le code KICK publié ;
+2. porter son modèle et son traitement sans remplacer tout le moteur ;
+3. fournir une commande souris ou clavier lorsqu'elle dépend d'un pad, d'une molette ou d'un bouton physique ;
+4. vérifier le son, l'interface et les fonctions déjà acquises avant d'intégrer le module suivant ;
+5. ne publier une version que si le parcours musical testé fonctionne réellement.
+
+Le port complet expérimental est conservé sur la branche [`port/kick-original-windows`](https://github.com/olivershadd-star/Berhinger-Kick/tree/port/kick-original-windows). Il sert à consulter les écrans et les dépendances, pas de base aux versions jouables.
 
 ## Organisation
 
 | Dossier | Rôle |
 |---|---|
-| `upstream/0700-AAM/` | Sources originales non modifiées : application, AudIO, protocole, interface et ressources |
-| `upstream/provenance.json` | Origine, périmètre, révision vérifiée et empreintes des 3 183 fichiers |
-| `port/windows/` | Préparation technique du portage Windows ; pas de séquenceur ou d'éditeur de substitution |
-| `tools/` | Audit des dépendances et vérification d'intégrité |
-| `docs/PORTAGE.md` | Comparaison avec le prototype et état réel des blocages |
-| `experiments/kicklab/` | Ancien prototype conservé pour référence, séparé de l'application cible |
-| `downloads/` | Anciennes versions expérimentales, identifiées comme telles |
+| `experiments/kicklab/` | Base Windows active : AudIO, WinMM, pads, samples, séquenceur et effets |
+| `upstream/0700-AAM/` | 3 183 fichiers originaux Music Tribe conservés sans modification |
+| `port/` | Adaptateurs et recherches du port complet, conservés pour reprendre des modules précis |
+| `docs/PORTAGE-INCREMENTAL.md` | Ordre d'intégration et critères de validation |
+| `downloads/` | Archives Windows précédentes |
 
-Les fichiers réimportés ont été comparés au dépôt [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM), révision `27194180ce5fbab3776ebce53e2d4b016597364e` : ils sont identiques. Le système Buildroot Linux n'est pas recopié, à l'exception de son README ; le périmètre exact est consigné dans le manifeste.
+## Pourquoi la préversion complète était muette
 
-## État de compilation
+Le dépôt public ne contient aucun sample d'usine, aucun son de métronome et pratiquement aucun contenu de programme. Les cinq démos livrées sont de petits fichiers de projet presque vides. L'interface originale attend aussi la surface matérielle pour plusieurs sélections.
 
-L'interface cible est `kick_ui::KickHome`, instanciée par `Kick/apps/kick/Main.cpp`. Le moteur et le séquenceur cibles sont ceux de `Kick/modules/engine` et d'AudIO.
+La base 0.2.0 utilise directement WinMM avec quatre buffers stéréo à 48 kHz. La préversion complète l'avait remplacé par un périphérique JUCE et un nouvel adaptateur de blocs AudIO. Ce remplacement simultané du périphérique, du moteur et de l'interface a supprimé la base sonore connue et rendu les problèmes impossibles à isoler. Cette voie n'est plus la voie principale.
 
-Quatre éléments absents de la publication empêchaient initialement la configuration du projet original :
+## Construire la base active
 
-- `AudIO/juce_modules.cmake` ;
-- le module `AudIO_constants` ;
-- le module `AudIO_juce`, dont dépend l'intégration du périphérique audio ;
-- `juce_serialport`, retiré de la publication mais toujours référencé.
-
-Ils sont maintenant fournis sous forme d'adaptateurs Windows dans `port/`, puis injectés dans une copie de compilation traçable. Le CMake racine construit la **véritable cible `Kick`** sous Windows. La [construction complète avec MSVC](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43027864838) a produit `Kick.exe` après compilation et édition de liens de l'application originale.
-
-## Adaptations Windows en cours
-
-- Liaison `mt::AudioDevice` entre l'interface publique `AudIO::IAudioDevice` et JUCE ; blocs de 480 échantillons conservés et adaptation des tailles de tampon du périphérique.
-- Module de constantes de compatibilité, types d'énumération d'enregistrement, valeurs vides attendues par les modèles et corrections techniques de compilation. Certaines limites et valeurs par défaut restent **provisoires**, explicitement documentées dans [WINDOWS-COMPATIBILITY.md](docs/WINDOWS-COMPATIBILITY.md).
-- Préparation traçable des sources originales et de leurs dépendances locales, sans requête vers le serveur interne fictif d'AudIO.
-- Vérifications séparées des unités originales de modèles, projets, samples, programmes, moteur, événements et interface, en plus du pont audio. Une compilation d'objets ne valide pas l'application complète.
-
-Les contrats de `SampleRecorder`, du moteur `Looper`, des filtres et des enveloppes des voix sont maintenant reliés aux primitives AudIO publiées. Le looper ne possède pas encore son historique undo/redo. L'édition de liens est validée ; les essais visuels, audio et fonctionnels de la préversion restent à effectuer.
-
-Pour les vérifications de transport audio :
-
-```sh
-cmake -S port/checks -B build-platform
-cmake --build build-platform --config Release
-ctest --test-dir build-platform -C Release --output-on-failure
-```
-
-Sous Windows, ajouter `-DKICK_CHECK_AUDIO_DEVICE=ON` compile aussi l'adaptateur JUCE/AudIO et les unités originales sélectionnées de modèles, d’interface et d’événements. Ces vérifications ne produisent pas `Kick.exe`.
-
-Pour tenter l'intégration de l'application originale sous Windows :
+Sous Windows avec Visual Studio 2022 :
 
 ```powershell
-./port/windows/build.ps1
+cmake -S . -B build -A x64
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-Cette commande construit l'application originale adaptée. Le résultat reste une préversion : lire les limites documentées avant les essais.
+L'exécutable est produit dans `build/incremental-port/Release/KickLab.exe`. La compilation complète de référence reste possible avec `-DKICK_BUILD_ORIGINAL_REFERENCE=ON`.
 
-## Vérifier la base
+## Licence
 
-Avec Python 3 :
-
-```sh
-python tools/audit_original.py --verify-original --json build/source-audit.json
-```
-
-Pour constater aussi l'échec attendu tant que les dépendances manquent :
-
-```sh
-python tools/audit_original.py --strict --verify-original
-```
-
-Le code de sortie 2 signale les dépendances absentes. Le code 3 signale une modification du snapshot original. Un audit réussi n'est pas une compilation de KICK.
-
-Avec CMake :
-
-```sh
-cmake -S . -B build-audit -DKICK_AUDIT_ONLY=ON
-```
-
-Cette dernière commande ne construit aucune application. L'audit strict décrit les absences du snapshot original, indépendamment des adaptations du portage. Sous Windows, la configuration normale prépare désormais les sources adaptées et tente la compilation réelle de `Kick`.
-
-## Méthode retenue
-
-1. Conserver le code musical et l'interface d'origine comme référence.
-2. Restaurer les dépendances de compilation et documenter les adaptateurs Windows nécessaires.
-3. Compiler et ouvrir l'interface KICK d'origine.
-4. Vérifier le moteur, les séquences, les programmes, les effets et les projets **dans cette interface**.
-5. Emballer une version portable seulement après ces vérifications.
-
-Aucune nouvelle fonction musicale ne sera développée dans cette phase. Voir [les règles de portage](docs/REGLES.md) et [l'analyse détaillée](docs/PORTAGE.md).
-
-## Licence et statut
-
-Les sources Music Tribe gardent leurs licences AGPL-3.0-or-later et celles de leurs composants tiers. Les noms et logos restent des marques de leurs propriétaires. Ce dépôt est un travail communautaire indépendant, pas une version officielle approuvée par Music Tribe.
+Les sources Music Tribe et les adaptations restent sous AGPL-3.0-or-later. Airwindows et AudioFile conservent leurs licences. KICK et Behringer restent des marques de leurs propriétaires ; ce travail communautaire n'est pas une version officielle.

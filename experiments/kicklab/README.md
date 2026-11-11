@@ -1,4 +1,4 @@
-> **Expérimentation archivée.** Cette application est distincte de KICK. Le développement du portage original se trouve à la racine du dépôt et ne reprend pas ce séquenceur ni cet éditeur.
+> **Base active du portage progressif.** Cette application conserve la sortie WinMM et le moteur AudIO déjà validés. Les modules KICK publiés y seront intégrés un par un, avec une commande souris pour toute fonction qui dépend normalement du matériel.
 
 # KICK Lab 0.2.0 — sampler et effets Windows
 

@@ -1,4 +1,8 @@
-KICK 0.3.3 — aperçu du portage Windows communautaire
+KICK 0.3.3 — RÉFÉRENCE TECHNIQUE INCOMPLÈTE
+
+Cette construction n'est pas la version recommandée : elle affiche l'interface
+originale, mais reste muette et plusieurs sélections dépendent du matériel KICK.
+Utiliser la base progressive 0.2.0 pour les essais musicaux.
 
 Lancez Kick.exe directement. Les ressources, projets, préférences et samples
 restent à côté de l’exécutable : aucune installation n’est nécessaire.

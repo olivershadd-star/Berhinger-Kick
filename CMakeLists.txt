@@ -1,9 +1,19 @@
 cmake_minimum_required(VERSION 3.22)
-project(KickOriginalWindowsPort LANGUAGES NONE)
+project(KickWindowsPort LANGUAGES NONE)
+option(KICK_BUILD_ORIGINAL_REFERENCE "Build the all-at-once original KICK reference port" OFF)
+option(KICK_AUDIT_ONLY "Inventory immutable sources without building KICK" OFF)
+
+# The normal build is the known-good Windows desktop base. Original KICK
+# modules are added to this application one at a time and kept behind tests.
+if(NOT KICK_BUILD_ORIGINAL_REFERENCE AND NOT KICK_AUDIT_ONLY)
+    enable_testing()
+    add_subdirectory(experiments/kicklab/source incremental-port)
+    return()
+endif()
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(KICK_UPSTREAM "${CMAKE_CURRENT_SOURCE_DIR}/upstream/0700-AAM")
 set(KICK_JUCE_SOURCE "" CACHE PATH "Optional local JUCE 7.0.12 source")
-option(KICK_AUDIT_ONLY "Inventory immutable sources without building KICK" OFF)
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/audit_original.py"
     --source "${KICK_UPSTREAM}" --verify-original
     --json "${CMAKE_CURRENT_BINARY_DIR}/source-audit.json"
