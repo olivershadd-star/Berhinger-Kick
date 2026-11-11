@@ -4,7 +4,7 @@ Ce dépôt adapte le code KICK publié par Music Tribe à un ordinateur Windows 
 
 ## Version recommandée
 
-**[Télécharger le build Windows 0.2.1 — bibliothèque de samples](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43067945157/artifacts/13877230203)**
+**[Télécharger le build Windows 0.2.2 — potentiomètres et bibliothèque](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43069868453/artifacts/13876824311)**
 
 Cette base possède une sortie audio Windows fonctionnelle, seize pads cliquables, le chargement de WAV, une Factory Sample Library personnelle, un séquenceur 16 pas, l'éditeur de sample et les effets AudIO/Airwindows déjà intégrés. Elle reste une étape intermédiaire du portage.
 
