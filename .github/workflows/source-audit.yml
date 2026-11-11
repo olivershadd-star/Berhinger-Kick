@@ -1,0 +1,37 @@
+name: Original KICK sources — audit only, no application build
+on:
+  push:
+    branches: [main, port/kick-original-windows]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-source-audit:
+    name: Integrity and explicit dependency blockers
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify original source hashes and inventory modules
+        run: python tools/audit_original.py --verify-original --json audit/source-audit.json
+      - name: Configure inventory without building an application
+        run: cmake -S . -B build-audit -DKICK_AUDIT_ONLY=ON
+      - name: Confirm that missing dependencies block a normal build
+        shell: python
+        run: |
+          import subprocess
+          result = subprocess.run(['cmake', '-S', '.', '-B', 'build-blocked'], capture_output=True, text=True)
+          print(result.stdout)
+          print(result.stderr)
+          assert result.returncode != 0, 'A missing-dependency build must not succeed'
+          assert 'No application was built' in result.stdout + result.stderr
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-kick-audit-${{ matrix.os }}
+          path: audit/source-audit.json

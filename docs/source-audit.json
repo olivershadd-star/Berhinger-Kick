@@ -1,0 +1,462 @@
+{
+  "status": "blocked",
+  "blockers": [
+    {
+      "id": "audio-cmake",
+      "severity": "blocker",
+      "message": "AudIO/juce_modules.cmake absent",
+      "evidence": {
+        "path": "Kick/3rdParty.cmake",
+        "line": 94,
+        "text": "include(${AudIO_SOURCE_DIR}/juce_modules.cmake)"
+      }
+    },
+    {
+      "id": "audio-constants",
+      "severity": "blocker",
+      "message": "Module AudIO_constants absent",
+      "evidence": {
+        "path": "Kick/modules/common/common.h",
+        "line": 31,
+        "text": "#include <AudIO_constants/AudIO_constants.h>"
+      }
+    },
+    {
+      "id": "audio-juce",
+      "severity": "blocker",
+      "message": "Module AudIO_juce absent",
+      "evidence": {
+        "path": "Kick/modules/audio_interface/audio_interface.h",
+        "line": 28,
+        "text": "#include <AudIO_juce/AudIO_juce.h>"
+      }
+    },
+    {
+      "id": "serialport",
+      "severity": "blocker",
+      "message": "Module juce_serialport absent",
+      "evidence": {
+        "path": "Kick/modules/input_events/input_events.h",
+        "line": 52,
+        "text": "#include <juce_serialport/juce_serialport.h>"
+      }
+    }
+  ],
+  "unresolved_module_dependencies": [
+    "AudIO_constants",
+    "AudIO_juce",
+    "juce_serialport"
+  ],
+  "module_count": 39,
+  "modules": {
+    "kick_ui_controls": {
+      "path": "Kick/modules/kick_ui_controls/kick_ui_controls.h",
+      "dependencies": [
+        "kick_ui_common",
+        "juce_gui_extra",
+        "juce_audio_utils",
+        "input_events"
+      ]
+    },
+    "kick_ui_common": {
+      "path": "Kick/modules/kick_ui_common/kick_ui_common.h",
+      "dependencies": [
+        "juce_core",
+        "juce_data_structures",
+        "fpm",
+        "PktMgr",
+        "common"
+      ]
+    },
+    "_playback": {
+      "path": "Kick/modules/_playback/_playback.h",
+      "dependencies": [
+        "kick_ui_controls",
+        "interface"
+      ]
+    },
+    "kick_ui_selectors": {
+      "path": "Kick/modules/kick_ui_selectors/kick_ui_selectors.h",
+      "dependencies": [
+        "kick_ui_controls",
+        "interface"
+      ]
+    },
+    "kick_ui_header": {
+      "path": "Kick/modules/kick_ui_header/kick_ui_header.h",
+      "dependencies": [
+        "kick_ui_components",
+        "kick_ui_systemResources",
+        "project"
+      ]
+    },
+    "audio_interface": {
+      "path": "Kick/modules/audio_interface/audio_interface.h",
+      "dependencies": [
+        "AudIO_juce"
+      ]
+    },
+    "kick_ui_components": {
+      "path": "Kick/modules/kick_ui_components/kick_ui_components.h",
+      "dependencies": [
+        "kick_ui_controls",
+        "juce_audio_utils"
+      ]
+    },
+    "kick_ui_channel_mixer": {
+      "path": "Kick/modules/kick_ui_channel_mixer/kick_ui_channel_mixer.h",
+      "dependencies": [
+        "kick_ui_header",
+        "kick_ui_selectors",
+        "audio_program",
+        "kick_ui_header"
+      ]
+    },
+    "kick_ui_systemResources": {
+      "path": "Kick/modules/kick_ui_systemResources/kick_ui_systemResources.h",
+      "dependencies": [
+        "kick_ui_controls"
+      ]
+    },
+    "input_events": {
+      "path": "Kick/modules/input_events/input_events.h",
+      "dependencies": [
+        "signal",
+        "PktMgr",
+        "juce_serialport"
+      ]
+    },
+    "ipc": {
+      "path": "Kick/modules/ipc/ipc.h",
+      "dependencies": [
+        "juce_core"
+      ]
+    },
+    "kick_leds": {
+      "path": "Kick/modules/kick_leds/kick_leds.h",
+      "dependencies": [
+        "audio_engine",
+        "kick_ui_components"
+      ]
+    },
+    "kick_ui_settings": {
+      "path": "Kick/modules/kick_ui_settings/kick_ui_settings.h",
+      "dependencies": [
+        "kick_ui_header",
+        "kick_ui_selectors",
+        "audio_program",
+        "kick_ui_header",
+        "project"
+      ]
+    },
+    "common": {
+      "path": "Kick/modules/common/common.h",
+      "dependencies": [
+        "signal",
+        "fpm",
+        "magic_enum",
+        "AudIO_constants",
+        "juce_gui_basics"
+      ]
+    },
+    "program_edit_ui": {
+      "path": "Kick/modules/program_edit_ui/program_edit_ui.h",
+      "dependencies": [
+        "kick_ui_header",
+        "audio_program",
+        "audio_file_manager",
+        "kick_ui_selectors",
+        "hardware",
+        "waveform"
+      ]
+    },
+    "kick_ui": {
+      "path": "Kick/modules/kick_ui/kick_ui.h",
+      "dependencies": [
+        "kick_ui_header",
+        "kick_ui_settings",
+        "kick_ui_channel_mixer",
+        "kick_leds"
+      ]
+    },
+    "hardware": {
+      "path": "Kick/modules/hardware/hardware.h",
+      "dependencies": [
+        "juce_core"
+      ]
+    },
+    "dywapitchtrack": {
+      "path": "Kick/modules/3rdParty/dywapitchtrack/dywapitchtrack.h",
+      "dependencies": [
+        "juce_audio_basics"
+      ]
+    },
+    "melatonin_parameters": {
+      "path": "Kick/modules/3rdParty/melatonin_parameters/melatonin_parameters.h",
+      "dependencies": [
+        "juce_core",
+        "juce_audio_basics"
+      ]
+    },
+    "audio_midi": {
+      "path": "Kick/modules/engine/audio_midi/audio_midi.h",
+      "dependencies": [
+        "interface"
+      ]
+    },
+    "audio_grouping": {
+      "path": "Kick/modules/engine/audio_grouping/audio_grouping.h",
+      "dependencies": [
+        "juce_core",
+        "juce_data_structures",
+        "interface"
+      ]
+    },
+    "audio_file_manager": {
+      "path": "Kick/modules/engine/audio_file_manager/audio_file_manager.h",
+      "dependencies": [
+        "juce_core",
+        "juce_audio_formats",
+        "interface"
+      ]
+    },
+    "objects": {
+      "path": "Kick/modules/engine/objects/objects.h",
+      "dependencies": [
+        "juce_audio_devices",
+        "juce_audio_utils",
+        "juce_audio_formats",
+        "juce_dsp",
+        "audio_file_manager",
+        "audio_program"
+      ]
+    },
+    "project": {
+      "path": "Kick/modules/engine/project/project.h",
+      "dependencies": [
+        "kick_ui_common",
+        "interface"
+      ]
+    },
+    "audio_engine": {
+      "path": "Kick/modules/engine/audio_engine/audio_engine.h",
+      "dependencies": [
+        "interface",
+        "audio_interface",
+        "audio_program",
+        "project",
+        "audio_midi"
+      ]
+    },
+    "audio_program": {
+      "path": "Kick/modules/engine/audio_program/audio_program.h",
+      "dependencies": [
+        "audio_file_manager"
+      ]
+    },
+    "interface": {
+      "path": "Kick/modules/engine/interface/interface.h",
+      "dependencies": [
+        "common",
+        "audio_interface"
+      ]
+    },
+    "sequence_view": {
+      "path": "Kick/modules/kick_ui/sequence_view/sequence_view.h",
+      "dependencies": [
+        "kick_ui_components"
+      ]
+    },
+    "program_view": {
+      "path": "Kick/modules/kick_ui/program_view/program_view.h",
+      "dependencies": [
+        "kick_ui_components"
+      ]
+    },
+    "track_view": {
+      "path": "Kick/modules/kick_ui/track_view/track_view.h",
+      "dependencies": [
+        "kick_ui_components"
+      ]
+    },
+    "jcf_debug": {
+      "path": "Kick/modules/3rdParty/juce-toys/jcf_debug/jcf_debug.h",
+      "dependencies": [
+        "juce_core",
+        "juce_graphics",
+        "juce_gui_basics",
+        "juce_gui_extra"
+      ]
+    },
+    "jcf_advanced_leak_detector": {
+      "path": "Kick/modules/3rdParty/juce-toys/jcf_advanced_leak_detector/jcf_advanced_leak_detector.h",
+      "dependencies": [
+        "juce_core"
+      ]
+    },
+    "contracts": {
+      "path": "Kick/modules/contracts/contracts.h",
+      "dependencies": [],
+      "metadata": "not-declared"
+    },
+    "fpm": {
+      "path": "Kick/modules/3rdParty/fpm/fpm.h",
+      "dependencies": [],
+      "metadata": "not-declared"
+    },
+    "waveform": {
+      "path": "Kick/modules/3rdParty/waveform/waveform.h",
+      "dependencies": [],
+      "metadata": "not-declared"
+    },
+    "magic_enum": {
+      "path": "Kick/modules/3rdParty/magic_enum/magic_enum.hpp",
+      "dependencies": [],
+      "metadata": "not-declared"
+    },
+    "signal": {
+      "path": "Kick/modules/3rdParty/signal/signal.hpp",
+      "dependencies": [],
+      "metadata": "not-declared"
+    },
+    "moodycamel": {
+      "path": "Kick/modules/3rdParty/moodycamel/moodycamel.h",
+      "dependencies": [],
+      "metadata": "not-declared"
+    },
+    "NanoLog": {
+      "path": "Kick/modules/3rdParty/NanoLog/NanoLog.hpp",
+      "dependencies": [],
+      "metadata": "not-declared"
+    }
+  },
+  "module_id_mismatches_to_review": [
+    {
+      "path": "Kick/modules/_playback/_playback.h",
+      "declared": "kick_ui",
+      "directory": "_playback"
+    },
+    {
+      "path": "Kick/modules/kick_ui_selectors/kick_ui_selectors.h",
+      "declared": "kick_ui",
+      "directory": "kick_ui_selectors"
+    },
+    {
+      "path": "Kick/modules/kick_ui_header/kick_ui_header.h",
+      "declared": "kick_ui",
+      "directory": "kick_ui_header"
+    },
+    {
+      "path": "Kick/modules/kick_ui_components/kick_ui_components.h",
+      "declared": "common_defs",
+      "directory": "kick_ui_components"
+    },
+    {
+      "path": "Kick/modules/kick_ui_channel_mixer/kick_ui_channel_mixer.h",
+      "declared": "common_defs",
+      "directory": "kick_ui_channel_mixer"
+    },
+    {
+      "path": "Kick/modules/kick_ui_systemResources/kick_ui_systemResources.h",
+      "declared": "kick_ui",
+      "directory": "kick_ui_systemResources"
+    },
+    {
+      "path": "Kick/modules/input_events/input_events.h",
+      "declared": "kick_ui_controls",
+      "directory": "input_events"
+    },
+    {
+      "path": "Kick/modules/ipc/ipc.h",
+      "declared": "common",
+      "directory": "ipc"
+    },
+    {
+      "path": "Kick/modules/kick_ui_settings/kick_ui_settings.h",
+      "declared": "common_defs",
+      "directory": "kick_ui_settings"
+    },
+    {
+      "path": "Kick/modules/hardware/hardware.h",
+      "declared": "common",
+      "directory": "hardware"
+    },
+    {
+      "path": "Kick/modules/engine/audio_midi/audio_midi.h",
+      "declared": "common",
+      "directory": "audio_midi"
+    },
+    {
+      "path": "Kick/modules/engine/audio_grouping/audio_grouping.h",
+      "declared": "common",
+      "directory": "audio_grouping"
+    },
+    {
+      "path": "Kick/modules/engine/audio_file_manager/audio_file_manager.h",
+      "declared": "common",
+      "directory": "audio_file_manager"
+    },
+    {
+      "path": "Kick/modules/engine/objects/objects.h",
+      "declared": "common",
+      "directory": "objects"
+    },
+    {
+      "path": "Kick/modules/engine/project/project.h",
+      "declared": "projectHelpers",
+      "directory": "project"
+    },
+    {
+      "path": "Kick/modules/engine/audio_engine/audio_engine.h",
+      "declared": "common",
+      "directory": "audio_engine"
+    },
+    {
+      "path": "Kick/modules/engine/audio_program/audio_program.h",
+      "declared": "common",
+      "directory": "audio_program"
+    },
+    {
+      "path": "Kick/modules/kick_ui/sequence_view/sequence_view.h",
+      "declared": "common_defs",
+      "directory": "sequence_view"
+    },
+    {
+      "path": "Kick/modules/kick_ui/program_view/program_view.h",
+      "declared": "common_defs",
+      "directory": "program_view"
+    },
+    {
+      "path": "Kick/modules/kick_ui/track_view/track_view.h",
+      "declared": "common_defs",
+      "directory": "track_view"
+    }
+  ],
+  "original_ui": {
+    "path": "Kick/apps/kick/Main.cpp",
+    "line": 224,
+    "text": "setContentOwned( &kick_ui::KickHome::Instance(), true );"
+  },
+  "original_sequence": {
+    "path": "Kick/modules/engine/audio_engine/engine/mt_audio_sequence.h",
+    "line": 72,
+    "text": "int setLength( int Bars );"
+  },
+  "stale_simulator": {
+    "path": "Kick/apps/kickem/simulator/kick_Simulator.cpp",
+    "line": 217,
+    "text": "addAndMakeVisible(AppHome::Instance());"
+  },
+  "partial_contract_adapter": {
+    "path": "Kick/apps/kick/kick_audio_interface.h",
+    "line": 48,
+    "text": "return dummy; // get properties from object and return. now it returns dummy, which needs to be removed."
+  },
+  "note": "Inventory success is not a successful KICK build or functional validation.",
+  "source_integrity": {
+    "status": "pristine",
+    "checked_files": 3183,
+    "changed_or_missing": [],
+    "extra_files": []
+  }
+}

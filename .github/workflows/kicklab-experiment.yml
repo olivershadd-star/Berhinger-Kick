@@ -1,0 +1,30 @@
+name: Experimental KICK Lab archive (not original KICK)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    working-directory: experiments/kicklab
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure x64
+        run: cmake -S source -B build -A x64
+      - name: Build
+        run: cmake --build build --config Release --parallel 2
+      - name: Test audio engine
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Assemble prototype
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/KickLab | Out-Null
+          Copy-Item build/Release/KickLab.exe,build/Release/KickLab-Test.exe dist/KickLab/
+          Copy-Item samples,source dist/KickLab/ -Recurse
+          Copy-Item README.md,LIRE-MOI.html,LICENSE,NOTICES.txt,RESULTATS.txt,APERCU.png,APERCU-SAMPLE.png,DEMO.wav dist/KickLab/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KickLab-Windows-x64
+          path: experiments/kicklab/dist/KickLab/
