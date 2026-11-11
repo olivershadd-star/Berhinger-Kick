@@ -7,6 +7,7 @@ Cette archive sert aux essais du portage de l’application KICK publiée par
 Music Tribe. Elle n’est pas une version officielle de Behringer/Music Tribe.
 
 Limites connues de cet aperçu :
+- la sortie audio doit encore être validée sur un périphérique Windows réel ;
 - l’historique Annuler/Rétablir du looper n’est pas encore restauré ;
 - la communication série avec la surface matérielle Linux est désactivée ;
 - quelques valeurs de configuration absentes de la publication sont encore

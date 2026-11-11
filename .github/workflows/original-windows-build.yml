@@ -37,11 +37,26 @@ jobs:
         run: |
           $portable = (Resolve-Path "portable/Kick-Windows").Path
           $process = Start-Process -FilePath "$portable/Kick.exe" -WorkingDirectory $portable -PassThru
-          Start-Sleep -Seconds 20
+          if (-not $process.WaitForInputIdle(15000)) {
+            throw "Original KICK did not create an idle GUI message loop within 15 seconds."
+          }
+          Start-Sleep -Seconds 5
+          $process.Refresh()
           if ($process.HasExited) {
-            Write-Host "Kick exited during the 20-second startup check with code $($process.ExitCode)."
+            Write-Host "Kick exited during startup with code $($process.ExitCode)."
             Get-ChildItem "$portable/logs" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName }
             throw "Original KICK did not remain running."
+          }
+          if ($process.MainWindowHandle -eq [IntPtr]::Zero -or $process.MainWindowTitle -ne "Kick") {
+            throw "Original KICK did not expose its expected main window."
+          }
+          if (-not $process.Responding) {
+            throw "Original KICK main window is not responding."
+          }
+          Start-Sleep -Seconds 15
+          $process.Refresh()
+          if ($process.HasExited -or -not $process.Responding) {
+            throw "Original KICK did not remain responsive for the complete startup check."
           }
           Stop-Process -Id $process.Id -Force
           $process.WaitForExit()

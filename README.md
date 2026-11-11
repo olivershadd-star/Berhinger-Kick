@@ -2,7 +2,13 @@
 
 L'objectif de ce dépôt est de faire fonctionner **l'application KICK publiée par Music Tribe sous Windows, en version portable**, avec son interface et ses fonctions existantes.
 
-La cible originale `Kick.exe` compile et passe maintenant l'édition de liens avec MSVC sur Windows. Le premier paquet portable est en cours de validation au démarrage ; il reste donc une **préversion technique**, pas encore une version fonctionnelle certifiée. Les ZIP KICK Lab 0.1–0.2 restent des expérimentations indépendantes ; ils ne constituent pas un portage de la groovebox. Leur développement musical est arrêté dans cette direction.
+La cible originale `Kick.exe` compile et passe maintenant l'édition de liens avec MSVC sur Windows. Le premier paquet portable est publié pour les essais ; il reste une **préversion technique**, pas encore une version fonctionnelle certifiée. Les ZIP KICK Lab 0.1–0.2 restent des expérimentations indépendantes ; ils ne constituent pas un portage de la groovebox. Leur développement musical est arrêté dans cette direction.
+
+## Préversion portable
+
+[Télécharger KICK original Windows 0.3.3 — préversion](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.3.3-preview/Kick-Windows-0.3.3-preview.zip)
+
+Le paquet contient l'exécutable 64 bits et les ressources originales. La construction, l'édition de liens, l'intégrité du paquet et l'ouverture de l'écran original **Projects** sont validées. La reproduction audio sur un périphérique Windows réel et le parcours complet des fonctions ne le sont pas encore.
 
 ## Organisation
 
