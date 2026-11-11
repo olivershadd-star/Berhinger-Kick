@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-**[Télécharger la dernière version Windows portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.2.1)**
+**[Télécharger le build Windows portable 0.2.1](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43067945157/artifacts/13877230203)**
 
 Cette version conserve l'éditeur de sample et les deux effets par pad. Elle ajoute la structure de bibliothèque prévue par KICK, clarifie les commandes de projet et supprime les commandes qui faisaient double emploi avec les pads et le bouton Stop.
 
