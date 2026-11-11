@@ -143,7 +143,7 @@ public:
         SetMapMode(dc,MM_ANISOTROPIC);SetWindowExtEx(dc,1200,800,nullptr);SetViewportExtEx(dc,width,height,nullptr);
         fill(dc,{0,0,1200,800},bg);text(dc,{28,18,170,40},L"KICK / LAB",30,ink,FW_BOLD);
         text(dc,{218,20,550,24},L"EXPLORATION DU MOTEUR AudIO",12,accent,FW_SEMIBOLD);
-        text(dc,{218,43,550,22},L"Prototype 0.2.1 • interface expérimentale • Windows x64",13,muted);
+        text(dc,{218,43,550,22},L"Prototype 0.2.2 • interface expérimentale • Windows x64",13,muted);
         button(dc,{800,26,106,32},L"Jouer",tab==0);button(dc,{916,26,136,32},L"Sample & FX",tab==1);button(dc,{1062,26,110,32},L"Code",tab==2);
         fill(dc,{28,83,1144,1},line);
         if(tab==1){paintEditor(dc);return;}if(tab==2){paintInfo(dc);return;}
@@ -220,7 +220,7 @@ case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:app->click(GET_X_LPARAM(l)*1200/app->wid
 case WM_MOUSEMOVE:if(app->editorDrag){app->editorPointer(GET_X_LPARAM(l)*1200/app->width,GET_Y_LPARAM(l)*800/app->height);InvalidateRect(h,nullptr,FALSE);}return 0;
 case WM_LBUTTONUP:if(app->editorDrag){app->editorDrag=0;ReleaseCapture();}return 0;
 case WM_CAPTURECHANGED:app->editorDrag=0;return 0;
-case WM_MOUSEWHEEL:app->engine.setTempo(app->engine.snapshot().tempo+(GET_WHEEL_DELTA_WPARAM(w)>0?1:-1));InvalidateRect(h,nullptr,FALSE);return 0;
+case WM_MOUSEWHEEL:{POINT point{GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(!app->editorWheel(x,y,GET_WHEEL_DELTA_WPARAM(w)))app->engine.setTempo(app->engine.snapshot().tempo+(GET_WHEEL_DELTA_WPARAM(w)>0?1:-1));InvalidateRect(h,nullptr,FALSE);return 0;}
 case WM_KEYDOWN:app->key(w,l);return 0;
 case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(app->tab==0){for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selected=p;}else if(app->tab==1){for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y))app->selected=p;}if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
 case WM_DESTROY:KillTimer(h,1);app->closeMidi();app->audio.stop();PostQuitMessage(0);return 0;
@@ -237,7 +237,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,1200,800};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.2.1 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.2.2 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }

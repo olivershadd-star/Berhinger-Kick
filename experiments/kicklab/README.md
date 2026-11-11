@@ -1,12 +1,12 @@
 > **Base active du portage progressif.** Cette application conserve la sortie WinMM et le moteur AudIO déjà validés. Les modules KICK publiés y seront intégrés un par un, avec une commande souris pour toute fonction qui dépend normalement du matériel.
 
-# KICK Lab 0.2.1 — bibliothèque de samples
+# KICK Lab 0.2.2 — potentiomètres et bibliothèque de samples
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
 **[Télécharger le build Windows portable 0.2.1](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43067945157/artifacts/13877230203)**
 
-Cette version conserve l'éditeur de sample et les deux effets par pad. Elle ajoute la structure de bibliothèque prévue par KICK, clarifie les commandes de projet et supprime les commandes qui faisaient double emploi avec les pads et le bouton Stop.
+Cette version conserve le moteur et la bibliothèque de samples validés. Les cinq longues barres de l'éditeur sont remplacées par des potentiomètres inspirés des commandes rotatives de KICK.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
@@ -30,6 +30,7 @@ Windows 10/11 x64, sans installation. Aucun compilateur, Python ou JUCE nécessa
 - **Lowpass / ouverture** : véritable effet Airwindows Lowpass, en pourcentage d'ouverture (pas une fréquence calibrée en Hz). À 100 %, le filtre est contourné.
 - **PurestDrive / saturation** : véritable effet Airwindows PurestDrive, avec gain d'entrée jusqu'à ×4 et compensation en sortie dans l'adaptation. À 0 %, la saturation est contournée.
 - **Bypass** : compare la lecture sans filtre/saturation, en conservant volume, accordage et découpe.
+- **Potentiomètres** : glisser verticalement pour un réglage continu. La molette agit sur le potentiomètre survolé ; ailleurs, elle continue de régler le tempo.
 - **Réinitialiser ce pad** : remet les réglages à leur valeur initiale et conserve son sample.
 - Cliquer directement sur un pad déclenche son one-shot. **Stop** arrête le transport et les voix.
 - **Ajouter à la bibliothèque** : copie le WAV source du pad dans Kicks, Snares, Hats, Percussions, Basses, Pads, Leads, FX ou Autres, puis rattache le pad à cette copie en conservant ses réglages. Les effets ne sont pas rendus dans le WAV copié.

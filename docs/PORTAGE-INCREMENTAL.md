@@ -2,7 +2,7 @@
 
 ## Base garantie
 
-La base de chaque évolution est KICK Lab 0.2.1 : AudIO rend les seize lecteurs vers un bus stéréo, WinMM fournit la sortie Windows, et les commandes souris, clavier et MIDI déclenchent les pads. Le séquenceur, le chargement WAV, l'éditeur et les deux effets existants constituent le test de non-régression.
+La base de chaque évolution est KICK Lab 0.2.2 : AudIO rend les seize lecteurs vers un bus stéréo, WinMM fournit la sortie Windows, et les commandes souris, clavier et MIDI déclenchent les pads. Le séquenceur, le chargement WAV, l'éditeur, la bibliothèque et les deux effets existants constituent le test de non-régression.
 
 Une évolution ne remplace plus simultanément le périphérique audio, le graphe, les modèles et l'interface.
 
