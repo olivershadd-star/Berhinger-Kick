@@ -2,7 +2,7 @@
 
 L'objectif de ce dépôt est de faire fonctionner **l'application KICK publiée par Music Tribe sous Windows, en version portable**, avec son interface et ses fonctions existantes.
 
-**Il n'y a pas encore de version Windows fonctionnelle du KICK original.** Les ZIP KICK Lab 0.1–0.2 restent des expérimentations indépendantes ; ils ne constituent pas un portage de la groovebox. Leur développement musical est arrêté dans cette direction.
+La cible originale `Kick.exe` compile et passe maintenant l'édition de liens avec MSVC sur Windows. Le premier paquet portable est en cours de validation au démarrage ; il reste donc une **préversion technique**, pas encore une version fonctionnelle certifiée. Les ZIP KICK Lab 0.1–0.2 restent des expérimentations indépendantes ; ils ne constituent pas un portage de la groovebox. Leur développement musical est arrêté dans cette direction.
 
 ## Organisation
 
@@ -22,14 +22,14 @@ Les fichiers réimportés ont été comparés au dépôt [MusicTribeOpenSource/0
 
 L'interface cible est `kick_ui::KickHome`, instanciée par `Kick/apps/kick/Main.cpp`. Le moteur et le séquenceur cibles sont ceux de `Kick/modules/engine` et d'AudIO.
 
-Quatre éléments empêchent actuellement la configuration du projet original :
+Quatre éléments absents de la publication empêchaient initialement la configuration du projet original :
 
 - `AudIO/juce_modules.cmake` ;
 - le module `AudIO_constants` ;
 - le module `AudIO_juce`, dont dépend l'intégration du périphérique audio ;
 - `juce_serialport`, retiré de la publication mais toujours référencé.
 
-Les adaptations de compilation sont maintenant préparées dans une copie des sources. Le CMake racine lance la **véritable cible `Kick`** sous Windows ; l'inventaire des dépendances originales manquantes ne constitue plus un arrêt préalable obligatoire. La compilation de l'application reste incomplète.
+Ils sont maintenant fournis sous forme d'adaptateurs Windows dans `port/`, puis injectés dans une copie de compilation traçable. Le CMake racine construit la **véritable cible `Kick`** sous Windows. La [construction complète avec MSVC](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43027864838) a produit `Kick.exe` après compilation et édition de liens de l'application originale.
 
 ## Adaptations Windows en cours
 
@@ -38,7 +38,7 @@ Les adaptations de compilation sont maintenant préparées dans une copie des so
 - Préparation traçable des sources originales et de leurs dépendances locales, sans requête vers le serveur interne fictif d'AudIO.
 - Vérifications séparées des unités originales de modèles, projets, samples, programmes, moteur, événements et interface, en plus du pont audio. Une compilation d'objets ne valide pas l'application complète.
 
-Les contrats de `SampleRecorder`, du moteur `Looper`, des filtres et des enveloppes des voix sont maintenant reliés aux primitives AudIO publiées. Le looper ne possède pas encore son historique undo/redo et l’application complète doit encore passer l’édition de liens et les essais d’exécution.
+Les contrats de `SampleRecorder`, du moteur `Looper`, des filtres et des enveloppes des voix sont maintenant reliés aux primitives AudIO publiées. Le looper ne possède pas encore son historique undo/redo. L'édition de liens est validée ; les essais visuels, audio et fonctionnels de la préversion restent à effectuer.
 
 Pour les vérifications de transport audio :
 
@@ -56,7 +56,7 @@ Pour tenter l'intégration de l'application originale sous Windows :
 ./port/windows/build.ps1
 ```
 
-Cette commande n'est pas encore une livraison fonctionnelle : lire les erreurs de compilation et les limites documentées.
+Cette commande construit l'application originale adaptée. Le résultat reste une préversion : lire les limites documentées avant les essais.
 
 ## Vérifier la base
 

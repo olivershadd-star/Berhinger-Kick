@@ -2,7 +2,7 @@ name: Original KICK application — Windows integration build
 on:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   original-application:
     runs-on: windows-latest
@@ -54,6 +54,23 @@ jobs:
           name: Kick-Windows-0.3.3-preview
           path: portable/Kick-Windows-0.3.3-preview.zip
           if-no-files-found: error
+      - name: Publish portable preview release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $asset = "portable/Kick-Windows-0.3.3-preview.zip"
+          $notes = @"
+          Première préversion technique portable du portage Windows de l'application KICK originale.
+
+          Validé automatiquement sur Windows : compilation MSVC, édition de liens, assemblage des ressources et maintien du processus pendant 20 secondes. Les essais audio, visuels et fonctionnels complets restent à effectuer.
+          "@
+          if (gh release view "v0.3.3-preview" 2>$null) {
+            gh release upload "v0.3.3-preview" $asset --clobber
+            gh release edit "v0.3.3-preview" --target $env:GITHUB_SHA --title "KICK original Windows 0.3.3 — préversion" --notes $notes --prerelease
+          } else {
+            gh release create "v0.3.3-preview" $asset --target $env:GITHUB_SHA --title "KICK original Windows 0.3.3 — préversion" --notes $notes --prerelease
+          }
       - name: Keep integration diagnostics even when compilation fails
         if: always()
         uses: actions/upload-artifact@v4

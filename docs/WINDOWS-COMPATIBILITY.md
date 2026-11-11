@@ -24,7 +24,7 @@ Les types d'énumération `mt::Recorder::Direction` et `Mode` reprennent les val
 
 - `port/checks` vérifie le transport audio et compile séparément des unités originales : `common`, `interface`, `project`, `audio_file_manager`, `input_events`, ainsi que sept modules de contrôles, composants, en-têtes, sélecteurs, éditeurs de programmes et mixage de l’interface originale. Compiler des objets ne valide pas leur édition de liens ou leur fonctionnement dans l'application.
 - Le CMake racine prépare désormais le portage et invoque la cible originale `Kick` sous Windows. Il ne s'arrête plus volontairement sur l'inventaire des modules absents du snapshot immuable.
-- Le workflow manuel `Original KICK application — Windows integration build` exécute cette compilation complète. Il conserve des diagnostics en cas d'échec et ne publie aucun faux exécutable.
+- Le workflow manuel `Original KICK application — Windows integration build` exécute cette compilation complète, assemble les ressources avec `Kick.exe`, vérifie que le processus reste lancé pendant vingt secondes et publie le ZIP comme artefact de test.
 
 ## Dépendances découvertes en compilant les vraies unités
 
@@ -34,11 +34,13 @@ Au-delà des constantes, `mt::SampleRecorder` et le moteur `mt::Looper` ne sont 
 
 Deux fonctions de `MTAudioProgram` renvoyaient l’adresse d’un objet local détruit. La copie de compilation conserve désormais l’objet interrogé dans le programme. `MTAudioInterface::getAssetName` renvoie également une chaîne par valeur, conformément au gestionnaire d’assets, plutôt qu’une référence vers une valeur temporaire.
 
-Il n'existe donc pas encore de `Kick.exe` complet validé. Les erreurs de compilation sont utilisées comme liste de travail, sans les confondre avec des fonctions portées.
+La cible originale produit maintenant un `Kick.exe` complet au sens de la compilation et de l'édition de liens. Cela ne valide pas encore l'audio, l'affichage ni chaque fonction à l'exécution.
 
 
 ## Résultats constatés
 
-La [construction native de l’application](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43025638621) a bien configuré JUCE, AudIO local, ComProtocol local et la cible `Kick`. Elle échoue dans le code des enregistreurs/looper et des traitements de voix non définis. Une erreur indépendante d’inclusion de `juce_events` dans `input_events` a été corrigée à partir de ce journal.
+La [première construction native de l’application](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43025638621) avait configuré JUCE, AudIO local, ComProtocol local et la cible `Kick`, puis révélé les contrats absents des enregistreurs, du looper et des traitements de voix. Ces contrats et une erreur indépendante d’inclusion de `juce_events` dans `input_events` ont été corrigés à partir des journaux de compilation.
+
+La [construction complète suivante](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43027864838) compile et lie avec succès la cible originale : le journal MSVC confirme la production de `original-build/Kick.exe`. Cette preuve porte sur la construction ; le paquetage et le démarrage font l'objet d'une vérification distincte.
 
 La [vérification native des quatre premières unités originales](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43025633935) est réussie avec MSVC. La [vérification étendue](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43026300684) est également réussie avec MSVC : douze unités originales de modèles, d’interface et d’événements compilent séparément. Pour les modules répartis en plusieurs amalgamations, cette vérification porte sur l’unité principale sélectionnée, pas sur toutes leurs sources ni sur leur édition de liens. Les tests de transport audio restent réussis. Aucun de ces résultats ne constitue une validation sonore ou visuelle de l’application complète.
