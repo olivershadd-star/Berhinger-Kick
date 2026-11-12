@@ -135,30 +135,33 @@ public:
         }
     }
     void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(tab==0){if(key==VK_UP)dispatch({lab::SurfaceAction::CenterUp});else if(key==VK_DOWN)dispatch({lab::SurfaceAction::CenterDown});else if(key==VK_LEFT)dispatch({lab::SurfaceAction::CenterLeft});else if(key==VK_RIGHT)dispatch({lab::SurfaceAction::CenterRight});else if(key==VK_RETURN)dispatch({lab::SurfaceAction::CenterPush});else if(key==VK_TAB)dispatch({lab::SurfaceAction::FocusNext});else if(key==VK_PRIOR)dispatch({lab::SurfaceAction::PagePrevious});else if(key==VK_NEXT)dispatch({lab::SurfaceAction::PageNext});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Back});else if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}else{if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else if(key==VK_ESCAPE){tab=0;status=L"Retour à la surface principale KICK.";}else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}InvalidateRect(window,nullptr,FALSE);}
-    Box padBox(int p)const{return {44+(p%4)*88,334+(p/4)*78,78,68};}
+    Box padBox(int p)const{return {318+(p%4)*66,452+(3-p/4)*76,58,66};}
     #include "editor_ui.inc"
     #include "surface_ui.inc"
     void click(int x,int y,bool right){
         if(Box{28,12,150,42}.contains(x,y)){tab=0;return;}
-        if(Box{1014,16,158,34}.contains(x,y)){tab=tab==1?0:1;return;}
+        if(tab==1&&Box{1014,16,158,34}.contains(x,y)){tab=0;status=L"Retour à la surface principale KICK.";return;}
+        if(Box{42,410,112,34}.contains(x,y)){tab=0;status=L"Surface principale KICK.";return;}
+        if(Box{166,410,112,34}.contains(x,y)){tab=tab==1?0:1;return;}
         if(tab==1){editorClick(x,y,right);return;}
         if(surfaceClick(x,y))return;
-        if(Box{32,716,90,42}.contains(x,y))dispatch({lab::SurfaceAction::PlayPause});
-        else if(Box{130,716,72,42}.contains(x,y))dispatch({lab::SurfaceAction::Stop});
-        else if(Box{216,716,32,42}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,-1});
-        else if(Box{312,716,32,42}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,1});
-        else if(Box{356,716,72,42}.contains(x,y)){engine.demoPattern();status=L"Pattern de démonstration : 1 mesure, 16 doubles croches.";}
-        else if(Box{436,716,82,42}.contains(x,y))engine.clearPattern();
-        else if(Box{526,716,104,42}.contains(x,y))project(false);
-        else if(Box{638,716,116,42}.contains(x,y))project(true);
-        else if(Box{762,706,72,62}.contains(x,y)){auto s=engine.snapshot();engine.setVolume(std::clamp(s.volume+(x<798?-.05:.05),0.,1.));}
-        else if(Box{226,286,176,34}.contains(x,y))sampleMenu();
-        else if(Box{844,716,146,42}.contains(x,y))midiMenu();
-        else if(Box{998,716,174,42}.contains(x,y))audioMenu();
+        if(Box{42,452,112,34}.contains(x,y))sampleMenu();
+        else if(Box{166,452,112,34}.contains(x,y)){auto folder=library;ShellExecuteW(window,L"open",folder.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
+        else if(Box{42,496,72,40}.contains(x,y))dispatch({lab::SurfaceAction::PlayPause});
+        else if(Box{122,496,72,40}.contains(x,y))dispatch({lab::SurfaceAction::Stop});
+        else if(Box{42,548,34,34}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,-1});
+        else if(Box{164,548,34,34}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,1});
+        else if(Box{42,592,112,34}.contains(x,y)){engine.demoPattern();status=L"Pattern de démonstration : 1 mesure, 16 doubles croches.";}
+        else if(Box{166,592,112,34}.contains(x,y))engine.clearPattern();
+        else if(Box{42,636,112,34}.contains(x,y))project(false);
+        else if(Box{166,636,112,34}.contains(x,y))project(true);
+        else if(Box{42,680,112,34}.contains(x,y))midiMenu();
+        else if(Box{166,680,112,34}.contains(x,y))audioMenu();
+        else if(Box{208,708,80,60}.contains(x,y)){auto s=engine.snapshot();engine.setVolume(std::clamp(s.volume+(x<248?-.05:.05),0.,1.));}
         else {
             for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){selectPad(p);if(right)sampleMenu();else dispatch({lab::SurfaceAction::PadPress,p});return;}
-            if(x>=608&&x<1152&&y>=330&&y<650){int p=(y-330)/20,k=(x-608)/34;if(p<16&&k<16)dispatch({lab::SurfaceAction::StepToggle,p,k});}
-            else if(x>=450&&x<600&&y>=330&&y<650)selectPad((y-330)/20);
+            if(x>=692&&x<1140&&y>=450&&y<754){int p=(y-450)/19,k=(x-692)/28;if(p<16&&k<16)dispatch({lab::SurfaceAction::StepToggle,p,k});}
+            else if(x>=622&&x<686&&y>=450&&y<754)selectPad((y-450)/19);
         }
     }
     void fill(HDC dc,Box b,COLORREF c){auto r=b.rect();HBRUSH brush=CreateSolidBrush(c);FillRect(dc,&r,brush);DeleteObject(brush);}
@@ -169,23 +172,29 @@ public:
         SetMapMode(dc,MM_ANISOTROPIC);SetWindowExtEx(dc,1200,800,nullptr);SetViewportExtEx(dc,width,height,nullptr);
         fill(dc,{0,0,1200,800},bg);fill(dc,{28,16,7,34},accent);text(dc,{48,12,150,42},L"KICK",29,ink,FW_BOLD);
         text(dc,{174,17,280,28},L"WINDOWS PORT · SURFACE KICK",11,muted,FW_SEMIBOLD);
-        button(dc,{1014,16,158,34},tab==1?L"Retour KICK":L"Sample & FX",tab==1);
+        text(dc,{470,17,702,28},status,9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         fill(dc,{28,62,1144,1},line);
-        if(tab==1){paintEditor(dc);return;}
+        if(tab==1){button(dc,{1014,16,158,34},L"Retour KICK",true);paintEditor(dc);return;}
         auto s=engine.snapshot();
         paintSurface(dc);
-        round(dc,{28,278,390,404},panel);text(dc,{44,286,178,34},L"16 PADS / ONE-SHOTS",15,ink,FW_SEMIBOLD);button(dc,{226,286,176,34},L"Bibliothèque / WAV");
-        ULONGLONG now=GetTickCount64();for(int p=0;p<16;++p){auto b=padBox(p);bool hot=now<flashed[p]||s.active[p];COLORREF c=padColor(p);round(dc,b,hot?c:RGB(32,39,51),p==selected?c:line);fill(dc,{b.x+10,b.y+11,5,5},c);text(dc,{b.x+20,b.y+4,45,22},padName(p),12,hot?bg:muted);text(dc,{b.x+7,b.y+27,64,21},wide(s.names[p]),12,hot?bg:ink,FW_SEMIBOLD);text(dc,{b.x+10,b.y+54,58,17},labels[p],11,hot?bg:muted);}
-        text(dc,{44,654,350,20},L"Clavier AZERTY · MIDI 36–51 · clic droit : WAV",10,muted);
-        round(dc,{430,278,742,404},panel);text(dc,{450,286,150,28},L"SÉQUENCEUR",14,ink,FW_SEMIBOLD);
-        for(int k=0;k<16;++k)text(dc,{608+k*34,307,28,18},number(k+1),10,k==s.step?accent:muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);
-        for(int p=0;p<16;++p){if(p==selected)fill(dc,{442,330+p*20,716,18},RGB(32,41,52));text(dc,{450,330+p*20,27,18},padName(p),10,padColor(p),FW_SEMIBOLD);text(dc,{480,330+p*20,116,18},wide(s.names[p]),10,p==selected?ink:muted);for(int k=0;k<16;++k){COLORREF c=s.pattern[p][k]?padColor(p):(k/4%2?RGB(38,46,59):RGB(31,38,49));if(s.playing&&s.step==k&&!s.pattern[p][k])c=RGB(58,76,84);round(dc,{608+k*34,331+p*20,27,15},c,s.playing&&s.step==k?ink:c);}}
+        round(dc,{28,398,270,374},panel);
+        button(dc,{42,410,112,34},L"Main",true);button(dc,{166,410,112,34},L"Sample & FX");
+        button(dc,{42,452,112,34},L"Browser / WAV");button(dc,{166,452,112,34},L"Bibliothèque");
+        button(dc,{42,496,72,40},s.playing?L"Pause":L"Play",s.playing);button(dc,{122,496,72,40},L"Stop");
+        text(dc,{204,496,74,16},L"TRANSPORT",8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        text(dc,{204,514,74,18},s.playing?L"EN COURS":L"ARRÊT",9,s.playing?accent:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        button(dc,{42,548,34,34},L"−");text(dc,{80,544,80,22},number(int(s.tempo)),18,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);text(dc,{80,566,80,14},L"BPM",8,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);button(dc,{164,548,34,34},L"+");
+        button(dc,{42,592,112,34},L"Démo");button(dc,{166,592,112,34},L"Effacer");
+        button(dc,{42,636,112,34},L"Ouvrir projet");button(dc,{166,636,112,34},L"Enregistrer");
+        button(dc,{42,680,112,34},midiId<0?L"MIDI : off":L"MIDI : on");button(dc,{166,680,112,34},audio.running?L"Audio : Windows":L"Choisir audio");
+        text(dc,{42,720,154,17},L"AZERTY · MIDI 36–51",9,muted);text(dc,{42,742,154,17},L"Clic droit : charger WAV",9,muted);paintMasterKnob(dc,s.volume);
+        round(dc,{308,398,272,374},panel);text(dc,{322,408,244,25},L"16 PADS / ONE-SHOTS",12,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ULONGLONG now=GetTickCount64();for(int p=0;p<16;++p){auto b=padBox(p);bool hot=now<flashed[p]||s.active[p];COLORREF c=padColor(p);round(dc,b,hot?c:RGB(32,39,51),p==selected?c:line);fill(dc,{b.x+7,b.y+8,5,5},c);text(dc,{b.x+15,b.y+2,b.w-20,20},number(p+1),11,hot?bg:muted,FW_SEMIBOLD);text(dc,{b.x+5,b.y+22,b.w-10,22},wide(s.names[p]),9,hot?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);text(dc,{b.x+5,b.y+46,b.w-10,15},labels[p],9,hot?bg:muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+        round(dc,{608,398,564,374},panel);text(dc,{622,408,150,25},L"SÉQUENCEUR 16 × 16",12,ink,FW_SEMIBOLD);
+        for(int k=0;k<16;++k)text(dc,{692+k*28,426,24,18},number(k+1),9,k==s.step?accent:muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);
+        for(int p=0;p<16;++p){if(p==selected)fill(dc,{618,450+p*19,538,17},RGB(32,41,52));text(dc,{622,450+p*19,26,17},number(p+1),9,padColor(p),FW_SEMIBOLD);text(dc,{650,450+p*19,36,17},labels[p],8,p==selected?ink:muted);for(int k=0;k<16;++k){COLORREF c=s.pattern[p][k]?padColor(p):(k/4%2?RGB(38,46,59):RGB(31,38,49));if(s.playing&&s.step==k&&!s.pattern[p][k])c=RGB(58,76,84);round(dc,{692+k*28,451+p*19,23,14},c,s.playing&&s.step==k?ink:c);}}
         unsigned error=audio.error.load();std::wstring message=status;if(error){wchar_t buf[256]{};waveOutGetErrorTextW(error,buf,256);message=L"Audio indisponible : "+std::wstring(buf)+L" — choisir une autre sortie.";}
-        text(dc,{32,684,1140,22},message,10,error?RGB(255,133,103):muted);
-        round(dc,{20,708,1160,64},panel);button(dc,{32,716,90,42},s.playing?L"Pause":L"Play",s.playing);button(dc,{130,716,72,42},L"Stop");
-        button(dc,{216,716,32,42},L"−");text(dc,{250,716,60,25},number(int(s.tempo)),20,ink,FW_SEMIBOLD,DT_CENTER|DT_SINGLELINE);text(dc,{250,741,60,14},L"BPM",9,muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);button(dc,{312,716,32,42},L"+");
-        button(dc,{356,716,72,42},L"Démo");button(dc,{436,716,82,42},L"Effacer");button(dc,{526,716,104,42},L"Ouvrir");button(dc,{638,716,116,42},L"Enregistrer");
-        paintMasterKnob(dc,s.volume);button(dc,{844,716,146,42},midiId<0?L"MIDI : désactivé":L"MIDI : connecté");button(dc,{998,716,174,42},audio.running?L"Sortie audio":L"Choisir audio");
+        if(error){fill(dc,{470,17,702,28},bg);text(dc,{470,17,702,28},L"Audio indisponible — clique sur Choisir audio.",9,RGB(255,133,103),FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}
     }
     void paintInfo(HDC dc){
         round(dc,{28,108,1144,594},panel);text(dc,{52,129,1080,40},L"Un premier accès au code. Pas encore la groovebox complète.",25,ink,FW_SEMIBOLD);

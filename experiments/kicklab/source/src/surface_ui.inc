@@ -7,8 +7,9 @@ const std::array<std::wstring,16> surfaceMenuLabels={
     L"Pad Notes",L"Looper",L"Q-Links",L"MIDI Control"
 };
 
-Box surfaceDisplayBox(int display)const{return {28+display*580,74,552,126};}
-Box surfaceDisplayItemBox(int display,int local)const{return {42+display*580+(local%2)*258,106+(local/2)*21,246,19};}
+Box surfaceModuleBox(int display)const{return {28+display*580,68,552,318};}
+Box surfaceDisplayBox(int display)const{return {40+display*580,80,456,294};}
+Box surfaceDisplayItemBox(int display,int local)const{return {54+display*580+(local%2)*211,126+(local/2)*56,199,46};}
 
 void selectSurfaceMenu(int item){
     surface.menuSelection=std::clamp(item,0,15);
@@ -58,22 +59,24 @@ bool surfaceClick(int x,int y){
 }
 
 void paintSurfaceKnob(HDC dc,int display,int knob){
-    int x=50+display*580+knob*132,cx=x+31,cy=233;
+    const int cx=538+display*580,cy=112+knob*67;
     HBRUSH brush=CreateSolidBrush(RGB(31,38,50));HPEN edge=CreatePen(PS_SOLID,2,line);
-    auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-18,cy-18,cx+18,cy+18);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);
-    HPEN mark=CreatePen(PS_SOLID,3,accent);oldP=SelectObject(dc,mark);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx-10,cy-11);SelectObject(dc,oldP);DeleteObject(mark);
-    text(dc,{x,253,62,16},L"Q"+number(display*4+knob+1),9,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-19,cy-19,cx+19,cy+19);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);
+    HPEN mark=CreatePen(PS_SOLID,3,accent);oldP=SelectObject(dc,mark);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx-10,cy-12);SelectObject(dc,oldP);DeleteObject(mark);
+    text(dc,{cx-24,cy+21,48,16},L"P"+number(display*4+knob+1),9,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 }
 
 void paintSurfaceDisplay(HDC dc,int display){
-    auto box=surfaceDisplayBox(display);bool focused=surface.focusedDisplay==display;
-    round(dc,box,RGB(11,20,24),focused?accent:line);
-    text(dc,{box.x+14,box.y+7,250,20},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MENU KICK",11,focused?accent:muted,FW_SEMIBOLD);
-    text(dc,{box.x+405,box.y+7,130,20},L"PAGE "+number(display+1)+L" / 2",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    auto module=surfaceModuleBox(display),box=surfaceDisplayBox(display);bool focused=surface.focusedDisplay==display;
+    round(dc,module,panel,focused?accent:line);
+    round(dc,box,RGB(9,18,22),focused?accent:RGB(34,48,57));
+    text(dc,{box.x+14,box.y+9,250,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MENU KICK",12,focused?accent:muted,FW_SEMIBOLD);
+    text(dc,{box.x+316,box.y+9,124,24},L"PAGE "+number(display+1)+L" / 2",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
     for(int local=0;local<8;++local){
         int item=display*8+local;auto b=surfaceDisplayItemBox(display,local);bool selected=item==surface.menuSelection;
         if(selected)round(dc,b,accent,accent);else fill(dc,b,local%2?RGB(18,31,35):RGB(17,28,33));
-        text(dc,{b.x+7,b.y,b.w-14,b.h},number(item+1)+L"  "+surfaceMenuLabels[item],10,selected?bg:ink,selected?FW_SEMIBOLD:FW_NORMAL);
+        text(dc,{b.x+10,b.y,b.w-20,b.h},number(item+1)+L"  "+surfaceMenuLabels[item],11,selected?bg:ink,selected?FW_SEMIBOLD:FW_NORMAL);
     }
 }
 
@@ -83,8 +86,8 @@ void paintSurface(HDC dc){
 }
 
 void paintMasterKnob(HDC dc,double value){
-    value=std::clamp(value,0.,1.);const int cx=798,cy=733,r=17;
+    value=std::clamp(value,0.,1.);const int cx=248,cy=724,r=17;
     HBRUSH brush=CreateSolidBrush(RGB(31,38,50));HPEN edge=CreatePen(PS_SOLID,2,line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-r,cy-r,cx+r,cy+r);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);
     constexpr double pi=3.14159265358979323846;double angle=(135.+270.*value)*pi/180.;HPEN mark=CreatePen(PS_SOLID,3,accent);oldP=SelectObject(dc,mark);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx+int(std::cos(angle)*11),cy+int(std::sin(angle)*11));SelectObject(dc,oldP);DeleteObject(mark);
-    text(dc,{758,752,80,14},L"MASTER "+number(int(value*100))+L" %",8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{208,744,80,14},L"MASTER "+number(int(value*100))+L" %",8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 }
