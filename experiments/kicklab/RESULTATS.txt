@@ -1,11 +1,11 @@
 KICK Lab 0.2.3 — rack KICK de quatre inserts
 
+Compilation MSVC native et tests audio sur GitHub Actions : réussis.
+Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
 Scénarios : lecture WAV et silence ; découpe et octave ; gain individuel ; Lowpass ; PurestDrive ; bypass par chaîne ; quatre identités et paramètres d’insert sauvegardés/rechargés en KICKLAB 3 ; migration des projets KICKLAB 1 et 2 ; remise en file des buffers ; continuité sous activité graphique.
-
-La compilation MSVC native, le test du binaire Windows et l’interface Win32 doivent encore être validés par GitHub Actions pour cette révision.
 
 0.2.3 remplace la chaîne fixe Lowpass → PurestDrive par le modèle original AudIO::DawInserts : quatre slots ordonnés, effet assignable, paramètres propres à l’effet, bypass par slot et bypass de toute la chaîne. Seuls Lowpass et PurestDrive sont proposés pendant cette étape de validation. Le format KICKLAB 3 conserve le rack complet et sait relire les formats 1 et 2.
 

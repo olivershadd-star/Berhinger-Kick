@@ -4,7 +4,7 @@ Ce dépôt adapte le code KICK publié par Music Tribe à un ordinateur Windows 
 
 ## Version recommandée
 
-**Build Windows 0.2.3 — rack de quatre inserts : compilation en cours de validation.**
+**[Télécharger le build Windows 0.2.3 — rack de quatre inserts](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43163010847/artifacts/13918219767)**
 
 Cette base possède une sortie audio Windows fonctionnelle, seize pads cliquables, le chargement de WAV, une Factory Sample Library personnelle, un séquenceur 16 pas et l'éditeur de sample. Chaque pad possède maintenant les quatre inserts du modèle KICK ; Lowpass et PurestDrive sont les deux premiers effets validés. Elle reste une étape intermédiaire du portage.
 
