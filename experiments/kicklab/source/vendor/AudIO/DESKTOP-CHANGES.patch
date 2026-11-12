@@ -153,3 +153,59 @@
  
  static constexpr int kVstMaxProgNameLen   = 64;
  static constexpr int kVstMaxParamStrLen   = 64;
+--- a/airwindows/src/ButterComp2/ButterComp2Proc.cpp
++++ b/airwindows/src/ButterComp2/ButterComp2Proc.cpp
+@@ -38 +38 @@
+-		int residue;
++		int64_t residue;
+@@ -42 +42 @@
+-		residue = noisesourceL * noisesourceL;
++		residue = int64_t(noisesourceL) * noisesourceL;
+@@ -57 +57 @@
+-		residue = noisesourceR * noisesourceR;
++		residue = int64_t(noisesourceR) * noisesourceR;
+@@ -273 +273 @@
+-		int residue;
++		int64_t residue;
+@@ -277 +277 @@
+-		residue = noisesourceL * noisesourceL;
++		residue = int64_t(noisesourceL) * noisesourceL;
+@@ -292 +292 @@
+-		residue = noisesourceR * noisesourceR;
++		residue = int64_t(noisesourceR) * noisesourceR;
+--- a/airwindows/src/Reverb/Reverb.cpp
++++ b/airwindows/src/Reverb/Reverb.cpp
+@@ -68,8 +68,8 @@
+-	vibAL = rand()*-2147483647;
+-	vibBL = rand()*-2147483647;
+-	vibCL = rand()*-2147483647;
+-	vibDL = rand()*-2147483647;
+-	vibEL = rand()*-2147483647;
+-	vibFL = rand()*-2147483647;
+-	vibGL = rand()*-2147483647;
+-	vibHL = rand()*-2147483647;
++	vibAL = double(rand()) * -2147483647.0;
++	vibBL = double(rand()) * -2147483647.0;
++	vibCL = double(rand()) * -2147483647.0;
++	vibDL = double(rand()) * -2147483647.0;
++	vibEL = double(rand()) * -2147483647.0;
++	vibFL = double(rand()) * -2147483647.0;
++	vibGL = double(rand()) * -2147483647.0;
++	vibHL = double(rand()) * -2147483647.0;
+@@ -77,8 +77,8 @@
+-	vibAR = rand()*-2147483647;
+-	vibBR = rand()*-2147483647;
+-	vibCR = rand()*-2147483647;
+-	vibDR = rand()*-2147483647;
+-	vibER = rand()*-2147483647;
+-	vibFR = rand()*-2147483647;
+-	vibGR = rand()*-2147483647;
+-	vibHR = rand()*-2147483647;
++	vibAR = double(rand()) * -2147483647.0;
++	vibBR = double(rand()) * -2147483647.0;
++	vibCR = double(rand()) * -2147483647.0;
++	vibDR = double(rand()) * -2147483647.0;
++	vibER = double(rand()) * -2147483647.0;
++	vibFR = double(rand()) * -2147483647.0;
++	vibGR = double(rand()) * -2147483647.0;
++	vibHR = double(rand()) * -2147483647.0;

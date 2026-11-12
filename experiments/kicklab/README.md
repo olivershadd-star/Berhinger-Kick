@@ -1,12 +1,12 @@
 > **Base active du portage progressif.** Cette application conserve la sortie WinMM et le moteur AudIO déjà validés. Les modules KICK publiés y seront intégrés un par un, avec une commande souris pour toute fonction qui dépend normalement du matériel.
 
-# KICK Lab 0.2.3 — quatre inserts par pad
+# KICK Lab 0.2.4 — première banque de 14 effets
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-**[Télécharger le build Windows portable 0.2.3](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43163010847/artifacts/13918219767)**
+**Build Windows portable 0.2.4 : compilation en cours de validation.**
 
-Cette version conserve le moteur, la bibliothèque et les potentiomètres validés. Elle remplace la chaîne fixe des deux effets par les quatre slots d'insert du modèle `AudIO::DawInserts` utilisé par KICK.
+Cette version conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle ajoute douze processeurs au Lowpass et à PurestDrive déjà présents, tous repris des sources Airwindows du dépôt KICK.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
@@ -27,9 +27,14 @@ Windows 10/11 x64, sans installation. Aucun compilateur, Python ou JUCE nécessa
 - **Volume** : réglage indépendant par pad, de 0 à 200 %, lissé pendant la lecture.
 - **Accordage** : de −24 à +24 demi-tons. Il s'agit d'une transposition par vitesse de lecture : la durée change aussi, sans time-stretch.
 - **Fondus** : de 0 à 20 ms au début et à la fin, limités à la moitié de la zone lue. Valeur initiale : 2 ms.
-- **Slots 1 à 4** : sélectionner un slot, puis lui assigner Aucun effet, Airwindows Lowpass ou Airwindows PurestDrive. Les effets sont traités dans l'ordre 1 → 4.
-- **Lowpass** : trois paramètres originaux Airwindows, `Lowpass`, `Soft/Hard` et `Dry/Wet`.
-- **PurestDrive** : paramètre original `Drive`.
+- **Slots 1 à 4** : sélectionner un slot, puis choisir une catégorie et un effet. Les effets sont traités dans l'ordre 1 → 4.
+- **Filter** : Lowpass, Highpass et Isolator.
+- **Saturation** : PurestDrive, Tube2 et Mojo.
+- **Dynamics** : DrumSlam, ButterComp2 et SoftGate.
+- **Ambience** : Chorus et StarChild.
+- **Reverb** : Reverb.
+- **Distortion** : Loud et Mackity.
+- **Paramètres** : chaque effet affiche ses noms et valeurs initiales d'origine, jusqu'à trois potentiomètres dans ce premier lot.
 - **Bypass du slot** : contourne uniquement l'effet sélectionné. **Bypass de la chaîne** contourne les quatre slots du pad.
 - **Potentiomètres** : glisser verticalement pour un réglage continu. La molette agit sur le potentiomètre survolé ; ailleurs, elle continue de régler le tempo.
 - **Réinitialiser ce pad** : remet les réglages à leur valeur initiale et conserve son sample.
@@ -63,7 +68,7 @@ Les projets **KICKLAB 1** et **KICKLAB 2** restent lisibles. Les nouveaux projet
 
 - **AudIO** : graphe `Design`, lecteur `AudioPlayback`, bus, mixage et modèle original `DawInserts` à quatre slots.
 - **AudioFile** : décodeur WAV livré dans le dépôt, après validation et normalisation de l'en-tête.
-- **Airwindows Lowpass / PurestDrive** : sources originales et adaptation `AudioEffectX` fournies dans 0700-AAM. Chaque instance est créée par l'`ObjectFactory` d'AudIO dans le slot choisi.
+- **Airwindows** : les quatorze processeurs utilisent les sources originales et l'adaptation `AudioEffectX` fournies dans 0700-AAM. Chaque instance est créée par l'`ObjectFactory` d'AudIO dans le slot choisi.
 - **Ajouts du prototype** : interface Win32, éditeur, extension du lecteur (découpe, interpolation pour la hauteur, fondus), séquenceur simple, MIDI, sortie WinMM, persistance et tests.
 
 L'éditeur JUCE complet et les classes de voix KICK dépendent encore des couches manquantes. Cette version étend le lecteur AudIO qui fonctionne déjà sur Windows ; elle ne prétend pas porter l'éditeur ou le séquenceur KICK complet. Voir `source/vendor/AudIO/DESKTOP-CHANGES.patch`.

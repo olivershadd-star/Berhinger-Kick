@@ -25,15 +25,19 @@ void setEditorRatio(lab::PadEdit& edit,int id,double ratio){
 }
 std::wstring insertName(lab::InsertEffect effect)const{return wide(lab::insertEffectName(effect));}
 std::wstring insertSlotName(int slot,const lab::InsertState& insert)const {
-    std::wstring name=insert.effect==lab::InsertEffect::None?L"Vide":insert.effect==lab::InsertEffect::PurestDrive?L"Drive":L"Lowpass";
+    std::wstring name=insert.effect==lab::InsertEffect::None?L"Vide":insertName(insert.effect);
     return number(slot+1)+L"  "+name+(insert.bypass&&insert.effect!=lab::InsertEffect::None?L"  B":L"");
 }
 std::wstring insertValue(lab::InsertEffect effect,int parameter,double value)const {
-    if(effect==lab::InsertEffect::Lowpass&&parameter==1)return decimal(value*200-100,0)+L" %";
+    if((effect==lab::InsertEffect::Lowpass||effect==lab::InsertEffect::Highpass)&&parameter==1)return decimal(value*200-100,0)+L" %";
     return decimal(value*100,0)+L" %";
 }
 void insertMenu(){
-    HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,800,L"Aucun effet");AppendMenuW(menu,MF_STRING,801,L"Airwindows / Filter / Lowpass");AppendMenuW(menu,MF_STRING,802,L"Airwindows / Saturation / PurestDrive");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice>=800&&choice<=802)engine.setInsertEffect(selected,selectedInsert,lab::InsertEffect(choice-800));
+    HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,800,L"Aucun effet");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
+    std::vector<std::string> categories;
+    for(const auto& info:lab::insertEffectCatalog())if(std::find(categories.begin(),categories.end(),info.category)==categories.end())categories.emplace_back(info.category);
+    for(const auto& category:categories){HMENU submenu=CreatePopupMenu();for(const auto& info:lab::insertEffectCatalog())if(category==info.category)AppendMenuW(submenu,MF_STRING,800+int(info.effect),wide(info.name).c_str());AppendMenuW(menu,MF_POPUP,reinterpret_cast<UINT_PTR>(submenu),wide(category).c_str());}
+    POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice>800&&choice<=800+int(lab::InsertEffect::Mackity))engine.setInsertEffect(selected,selectedInsert,lab::InsertEffect(choice-800));else if(choice==800)engine.setInsertEffect(selected,selectedInsert,lab::InsertEffect::None);
 }
 void editorPointer(int x,int y){
     auto s=engine.snapshot();auto edit=s.edits[selected];
@@ -85,7 +89,7 @@ void paintEditor(HDC dc){
     for(int slot=0;slot<lab::InsertSlots;++slot)button(dc,insertSlotBox(slot),insertSlotName(slot,edit.inserts[slot]),slot==selectedInsert);
     auto selectedState=edit.inserts[selectedInsert];button(dc,insertEffectBox(),selectedState.effect==lab::InsertEffect::None?L"Choisir un effet":L"Effet : "+insertName(selectedState.effect));button(dc,insertBypassBox(),selectedState.bypass?L"Slot bypass":L"Slot actif",selectedState.effect!=lab::InsertEffect::None&&!selectedState.bypass);button(dc,insertsBypassBox(),edit.insertsBypass?L"Tout bypass":L"Chaîne active",!edit.insertsBypass);
     int count=lab::insertParameterCount(selectedState.effect);for(int parameter=0;parameter<count;++parameter)paintEditorKnob(dc,InsertKnobBase+parameter,wide(lab::insertParameterName(selectedState.effect,parameter)),insertValue(selectedState.effect,parameter,selectedState.parameters[parameter]),selectedState.parameters[parameter]);
-    if(!count)text(dc,{630,572,512,55},L"Sélectionne Lowpass ou PurestDrive pour ce slot.",13,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    if(!count)text(dc,{630,572,512,55},L"Choisis une catégorie puis un effet pour ce slot.",13,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     button(dc,{28,690,200,42},L"Réinitialiser ce pad");button(dc,{244,690,180,42},L"Charger un WAV");button(dc,{440,690,200,42},L"Enregistrer projet");button(dc,{656,690,250,42},L"Ajouter à la bibliothèque");
     text(dc,{28,751,1144,32},L"Sélectionner un slot, choisir son effet, puis régler ses paramètres. La chaîne suit l'ordre 1 → 4.",13,muted);
 }

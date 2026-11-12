@@ -17,16 +17,33 @@ namespace AudIO { const std::string _emptyStr{""}; }
 #include "pad_voice.hpp"
 
 namespace lab {
-const char* insertEffectName(InsertEffect effect){
-    switch(effect){case InsertEffect::Lowpass:return "Lowpass";case InsertEffect::PurestDrive:return "PurestDrive";default:return "";}
+const std::array<InsertEffectInfo,14>& insertEffectCatalog(){
+    static const std::array<InsertEffectInfo,14> catalog={{
+        {InsertEffect::Lowpass,"Lowpass","Filter",3,{"Lowpass","Soft/Hard","Dry/Wet"},{1,.5,1},32},
+        {InsertEffect::PurestDrive,"PurestDrive","Saturation",1,{"Drive","",""},{0,0,0},32},
+        {InsertEffect::Highpass,"Highpass","Filter",3,{"Highpass","Loose/Tight","Dry/Wet"},{0,.5,1},32},
+        {InsertEffect::Isolator,"Isolator","Filter",3,{"Freq","High","Low"},{1,0,1},32},
+        {InsertEffect::Tube2,"Tube2","Saturation",2,{"Input","Tube",""},{.5,.5,0},32},
+        {InsertEffect::Mojo,"Mojo","Saturation",1,{"Input","",""},{.5,0,0},32},
+        {InsertEffect::DrumSlam,"DrumSlam","Dynamics",3,{"Drive","Output","Dry/Wet"},{0,1,1},32},
+        {InsertEffect::ButterComp2,"ButterComp2","Dynamics",3,{"Compress","Output","Dry/Wet"},{0,.5,1},32},
+        {InsertEffect::SoftGate,"SoftGate","Dynamics",3,{"Thresh","Darken","Silence"},{.5,.5,0},32},
+        {InsertEffect::Chorus,"Chorus","Ambience",3,{"Speed","Range","Dry/Wet"},{.5,.5,.5},96},
+        {InsertEffect::StarChild,"StarChild","Ambience",3,{"Sustain","Grain","Dry/Wet"},{1,.7,.2},750},
+        {InsertEffect::Reverb,"Reverb","Reverb",2,{"Big","Wet",""},{.5,.5,0},750},
+        {InsertEffect::Loud,"Loud","Distortion",3,{"Boost","Output Level","Dry/Wet"},{0,1,1},32},
+        {InsertEffect::Mackity,"Mackity","Distortion",2,{"In Trim","Out Pad",""},{.1,1,0},32}
+    }};
+    return catalog;
 }
-int insertParameterCount(InsertEffect effect){
-    switch(effect){case InsertEffect::Lowpass:return 3;case InsertEffect::PurestDrive:return 1;default:return 0;}
-}
+const InsertEffectInfo* effectInfo(InsertEffect effect){for(const auto& info:insertEffectCatalog())if(info.effect==effect)return &info;return nullptr;}
+const char* insertEffectName(InsertEffect effect){auto info=effectInfo(effect);return info?info->name:"";}
+int insertParameterCount(InsertEffect effect){auto info=effectInfo(effect);return info?info->parameterCount:0;}
 const char* insertParameterName(InsertEffect effect,int parameter){
-    if(effect==InsertEffect::Lowpass){constexpr const char* names[]={"Lowpass","Soft/Hard","Dry/Wet"};return parameter>=0&&parameter<3?names[parameter]:"";}
-    if(effect==InsertEffect::PurestDrive&&parameter==0)return "Drive";
-    return "";
+    auto info=effectInfo(effect);return info&&parameter>=0&&parameter<info->parameterCount?info->parameterNames[parameter]:"";
+}
+InsertState defaultInsertState(InsertEffect effect){
+    InsertState state;state.effect=effect;if(auto info=effectInfo(effect))for(int parameter=0;parameter<info->parameterCount;++parameter)state.parameters[parameter]=info->defaults[parameter];return state;
 }
 namespace {
 unsigned u16(const std::vector<uint8_t>& v,size_t i) { return v.at(i)|(unsigned(v.at(i+1))<<8); }
@@ -136,13 +153,13 @@ void Engine::setEdit(int pad,const PadEdit& requested){
     edit.start=std::clamp(edit.start,0.,.999);edit.end=std::clamp(edit.end,edit.start+.001,1.);
     edit.gain=std::clamp(edit.gain,0.,2.);edit.semitones=std::clamp(edit.semitones,-24.,24.);
     edit.fadeMs=std::clamp(edit.fadeMs,0.,20.);
-    for(auto& insert:edit.inserts){int type=int(insert.effect);if(type<int(InsertEffect::None)||type>int(InsertEffect::PurestDrive))return;for(double& value:insert.parameters){if(!std::isfinite(value))return;value=std::clamp(value,0.,1.);}}
+    for(auto& insert:edit.inserts){int type=int(insert.effect);if(type<int(InsertEffect::None)||type>int(InsertEffect::Mackity))return;for(double& value:insert.parameters){if(!std::isfinite(value))return;value=std::clamp(value,0.,1.);}}
     bool rebuild=false;{std::lock_guard<std::mutex> lock(impl->mutex);for(int slot=0;slot<InsertSlots;++slot)if(impl->state.edits[pad].inserts[slot].effect!=edit.inserts[slot].effect)rebuild=true;}
     std::unique_ptr<PadEffects> replacement;if(rebuild)replacement=std::make_unique<PadEffects>(edit);
     std::scoped_lock lock(impl->mutex,impl->audioMutex);
     impl->state.edits[pad]=edit;impl->players[pad]->edit=edit;if(replacement)impl->players[pad]->effects.swap(replacement);else impl->players[pad]->effects->sync(edit);
 }
-void Engine::setInsertEffect(int pad,int slot,InsertEffect effect){if(pad<0||pad>=Pads||slot<0||slot>=InsertSlots)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.inserts[slot]={};edit.inserts[slot].effect=effect;if(effect==InsertEffect::Lowpass){edit.inserts[slot].parameters[0]=1;edit.inserts[slot].parameters[1]=.5;edit.inserts[slot].parameters[2]=1;}setEdit(pad,edit);}
+void Engine::setInsertEffect(int pad,int slot,InsertEffect effect){if(pad<0||pad>=Pads||slot<0||slot>=InsertSlots)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.inserts[slot]=defaultInsertState(effect);setEdit(pad,edit);}
 void Engine::setInsertBypass(int pad,int slot,bool bypass){if(pad<0||pad>=Pads||slot<0||slot>=InsertSlots)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.inserts[slot].bypass=bypass;setEdit(pad,edit);}
 void Engine::setInsertsBypass(int pad,bool bypass){if(pad<0||pad>=Pads)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.insertsBypass=bypass;setEdit(pad,edit);}
 void Engine::setInsertParameter(int pad,int slot,int parameter,double value){if(pad<0||pad>=Pads||slot<0||slot>=InsertSlots||!std::isfinite(value))return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}if(parameter<0||parameter>=insertParameterCount(edit.inserts[slot].effect))return;edit.inserts[slot].parameters[parameter]=std::clamp(value,0.,1.);setEdit(pad,edit);}
@@ -185,7 +202,7 @@ bool Engine::open(const std::string& path,std::string& error){
     for(int p=0;p<Pads;++p){unsigned bits;if(!(f>>bits>>std::quoted(s.paths[p]))||bits>65535){error="Pattern invalide.";return false;}for(int k=0;k<Steps;++k)s.pattern[p][k]=(bits&(1u<<k))!=0;
         auto& e=s.edits[p];
         if(version==2){double filterOpen=1,drive=0;bool bypass=false;if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs>>filterOpen>>drive>>bypass)||!std::isfinite(filterOpen)||!std::isfinite(drive)||filterOpen<0||filterOpen>1||drive<0||drive>1){error="Reglages du pad invalides.";return false;}e.insertsBypass=bypass;e.inserts[0].parameters[0]=filterOpen;e.inserts[0].bypass=filterOpen>=.9999;e.inserts[1].parameters[0]=drive;e.inserts[1].bypass=drive<=.0001;}
-        if(version==3){if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs>>e.insertsBypass)){error="Reglages du pad invalides.";return false;}for(auto& insert:e.inserts){int effect=0,count=0;bool bypass=false;if(!(f>>effect>>bypass>>count)||effect<int(InsertEffect::None)||effect>int(InsertEffect::PurestDrive)||count<0||count>InsertParameters||count!=insertParameterCount(InsertEffect(effect))){error="Insert invalide.";return false;}InsertState parsed;parsed.effect=InsertEffect(effect);parsed.bypass=bypass;for(int parameter=0;parameter<count;++parameter){if(!(f>>parsed.parameters[parameter])||!std::isfinite(parsed.parameters[parameter])||parsed.parameters[parameter]<0||parsed.parameters[parameter]>1){error="Parametre d'insert invalide.";return false;}}insert=parsed;}
+        if(version==3){if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs>>e.insertsBypass)){error="Reglages du pad invalides.";return false;}for(auto& insert:e.inserts){int effect=0,count=0;bool bypass=false;if(!(f>>effect>>bypass>>count)||effect<int(InsertEffect::None)||effect>int(InsertEffect::Mackity)||count<0||count>InsertParameters||count!=insertParameterCount(InsertEffect(effect))){error="Insert invalide.";return false;}InsertState parsed;parsed.effect=InsertEffect(effect);parsed.bypass=bypass;for(int parameter=0;parameter<count;++parameter){if(!(f>>parsed.parameters[parameter])||!std::isfinite(parsed.parameters[parameter])||parsed.parameters[parameter]<0||parsed.parameters[parameter]>1){error="Parametre d'insert invalide.";return false;}}insert=parsed;}
         }
         const double v[]={e.start,e.end,e.gain,e.semitones,e.fadeMs};for(double x:v)if(!std::isfinite(x)){error="Reglages non finis.";return false;}
         if(e.start<0||e.end>1||e.end-e.start<.000999||e.gain<0||e.gain>2||e.semitones< -24||e.semitones>24||e.fadeMs<0||e.fadeMs>20){error="Reglages hors limites.";return false;}}

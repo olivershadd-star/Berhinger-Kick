@@ -1,18 +1,16 @@
-KICK Lab 0.2.3 — rack KICK de quatre inserts
+KICK Lab 0.2.4 — première banque de 14 effets
 
-Compilation MSVC native et tests audio sur GitHub Actions : réussis.
-Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; découpe et octave ; gain individuel ; Lowpass ; PurestDrive ; bypass par chaîne ; quatre identités et paramètres d’insert sauvegardés/rechargés en KICKLAB 3 ; migration des projets KICKLAB 1 et 2 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV et silence ; découpe et octave ; gain individuel ; construction et rendu fini des 14 effets ; ordre des quatre inserts ; bypass ; identités et paramètres sauvegardés/rechargés en KICKLAB 3 ; migration des projets KICKLAB 1 et 2 ; remise en file des buffers ; continuité sous activité graphique.
 
-0.2.3 remplace la chaîne fixe Lowpass → PurestDrive par le modèle original AudIO::DawInserts : quatre slots ordonnés, effet assignable, paramètres propres à l’effet, bypass par slot et bypass de toute la chaîne. Seuls Lowpass et PurestDrive sont proposés pendant cette étape de validation. Le format KICKLAB 3 conserve le rack complet et sait relire les formats 1 et 2.
+La compilation MSVC native, le test du binaire Windows et l’interface Win32 doivent encore être validés par GitHub Actions pour cette révision.
 
-0.2.2 remplace les cinq curseurs horizontaux par des potentiomètres. Le glissement vertical et la molette modifient les mêmes paramètres moteur.
+0.2.4 ajoute douze effets originaux aux deux processeurs déjà disponibles : Highpass, Isolator, Tube2, Mojo, DrumSlam, ButterComp2, SoftGate, Chorus, StarChild, Reverb, Loud et Mackity. Le menu reprend leurs catégories Airwindows. Les effets temporels conservent une queue après la fin du sample.
 
-0.2.1 clarifie les commandes projet, retire les doublons de transport et sépare le kit de démonstration de la Factory Sample Library personnelle.
+0.2.3 remplace la chaîne fixe Lowpass → PurestDrive par le modèle original AudIO::DawInserts : quatre slots ordonnés, effet assignable, paramètres propres à l’effet, bypass par slot et bypass de toute la chaîne. Le format KICKLAB 3 conserve le rack complet et sait relire les formats 1 et 2.
 
-Les corrections précédentes restent actives : ordre des buffers WinMM, attente par événements du pilote, priorité MMCSS, séparation des copies graphiques et du rendu, interface redimensionnable.
+Les corrections précédentes restent actives : ordre des buffers WinMM, attente par événements du pilote, priorité MMCSS, séparation des copies graphiques et du rendu, interface redimensionnable, bibliothèque personnelle et potentiomètres.
 
 Le nouveau code doit encore être essayé avec la carte son et le matériel MIDI physique de l’utilisateur.

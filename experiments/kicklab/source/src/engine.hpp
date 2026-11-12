@@ -9,17 +9,33 @@
 
 namespace lab {
 constexpr int Pads=16, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
-enum class InsertEffect { None=0, Lowpass=1, PurestDrive=2 };
+// Values 1 and 2 are kept stable for KICKLAB 3 projects written by 0.2.3.
+enum class InsertEffect {
+    None=0, Lowpass=1, PurestDrive=2, Highpass=3, Isolator=4,
+    Tube2=5, Mojo=6, DrumSlam=7, ButterComp2=8, SoftGate=9,
+    Chorus=10, StarChild=11, Reverb=12, Loud=13, Mackity=14
+};
 struct InsertState {
     InsertEffect effect=InsertEffect::None;
     bool bypass=false;
     std::array<double,InsertParameters> parameters{};
 };
+struct InsertEffectInfo {
+    InsertEffect effect;
+    const char* name;
+    const char* category;
+    int parameterCount;
+    std::array<const char*,3> parameterNames;
+    std::array<double,3> defaults;
+    int tailBlocks;
+};
+const std::array<InsertEffectInfo,14>& insertEffectCatalog();
+InsertState defaultInsertState(InsertEffect effect);
 struct PadEdit {
     double start=0, end=1, gain=1, semitones=0, fadeMs=2;
     bool insertsBypass=false;
     std::array<InsertState,InsertSlots> inserts{};
-    PadEdit(){inserts[0].effect=InsertEffect::Lowpass;inserts[0].bypass=true;inserts[0].parameters[0]=1;inserts[0].parameters[1]=.5;inserts[0].parameters[2]=1;inserts[1].effect=InsertEffect::PurestDrive;inserts[1].bypass=true;}
+    PadEdit(){inserts[0]=defaultInsertState(InsertEffect::Lowpass);inserts[0].bypass=true;inserts[1]=defaultInsertState(InsertEffect::PurestDrive);inserts[1].bypass=true;}
 };
 const char* insertEffectName(InsertEffect effect);
 int insertParameterCount(InsertEffect effect);

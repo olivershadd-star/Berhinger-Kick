@@ -2,7 +2,7 @@
 
 ## Base garantie
 
-La base de chaque évolution est KICK Lab 0.2.3 : AudIO rend les seize lecteurs vers un bus stéréo, WinMM fournit la sortie Windows, et les commandes souris, clavier et MIDI déclenchent les pads. Le séquenceur, le chargement WAV, l'éditeur, la bibliothèque et le rack de quatre inserts constituent le test de non-régression.
+La base de chaque évolution est KICK Lab 0.2.4 : AudIO rend les seize lecteurs vers un bus stéréo, WinMM fournit la sortie Windows, et les commandes souris, clavier et MIDI déclenchent les pads. Le séquenceur, le chargement WAV, l'éditeur, la bibliothèque et le rack de quatre inserts constituent le test de non-régression.
 
 Une évolution ne remplace plus simultanément le périphérique audio, le graphe, les modèles et l'interface.
 
@@ -21,7 +21,7 @@ Une catégorie visible dans l'interface ne prouve donc pas qu'un instrument, un 
 1. **Commandes sans doublon** : clarifier projet, transport et audition sans modifier le moteur sonore.
 2. **Bibliothèque de samples** : reprendre le dossier Sounds, le choix Factory/ordinateur et l'ajout d'assets. La bibliothèque personnelle démarre sans les sons d'usine retirés de la publication.
 3. **Potentiomètres** : remplacer les longues barres par des commandes rotatives liées aux paramètres du moteur.
-4. **Effets et inserts — première étape terminée** : les quatre slots du modèle KICK sont portés avec sélection, paramètres et bypass à la souris. Lowpass et PurestDrive sont validés ; les autres familles seront intégrées une à une.
+4. **Effets et inserts — en cours** : les quatre slots du modèle KICK sont portés avec sélection, paramètres et bypass à la souris. Une première banque de 14 effets couvre Filter, Saturation, Dynamics, Ambience, Reverb et Distortion ; le reste des 328 effets publiés sera intégré par lots testés.
 5. **Enveloppes** : porter l'AHDSR d'amplitude, puis les enveloppes de filtre et de hauteur déjà présentes dans les voix KICK.
 6. **Transport et longueur de séquence** : reprendre les modèles de temps KICK tout en conservant le rendu WinMM. Les pages et longueurs doivent être accessibles à la souris.
 7. **Looper et export WAV** : reprendre l'enregistreur KICK déjà implémenté plutôt que créer un format audio parallèle.
