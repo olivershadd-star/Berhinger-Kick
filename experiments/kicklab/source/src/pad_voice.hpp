@@ -124,6 +124,9 @@ public:
     std::unique_ptr<PadEffects> effects=std::make_unique<PadEffects>(edit);
     void trigger(){
         setSlice(edit.start,edit.end,std::pow(2.,edit.semitones/12.),edit.fadeMs);
+        // Pads are one-shots. Looping must only ever be enabled by a future,
+        // explicit KICK loop mode, never by importing or auditioning a WAV.
+        setLooping(false);
         play(true);tail=effects->tailBlocks();
     }
     void stop(){AudIO::AudioPlayback::stop();tail=0;}

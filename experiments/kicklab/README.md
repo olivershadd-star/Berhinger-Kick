@@ -14,7 +14,7 @@ Cette version conserve le moteur, la bibliothèque, les potentiomètres et le ra
 
 1. Extraire entièrement le ZIP dans un dossier accessible en écriture.
 2. Ouvrir **KickLab.exe**, en gardant le dossier **demo-kit** à côté. Le dossier **samples** de la bibliothèque est créé automatiquement.
-3. Dans **Jouer**, lancer le pattern ou cliquer sur les pads.
+3. Dans **Jouer**, cliquer sur les pads, ou charger **Démo** avant de lancer le pattern. Le pattern démarre volontairement vide.
 4. Dans **Sample & FX**, sélectionner un pad pour travailler son son.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
@@ -47,7 +47,7 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 
 ## Séquenceur, clavier et MIDI
 
-- 16 pads et 16 pas sur une mesure, doubles croches. Cliquer dans la grille pour activer/désactiver un pas.
+- 16 pads et 16 pas sur une mesure, doubles croches. Le pattern démarre vide afin qu'un WAV importé ne soit jamais redéclenché à l'insu de l'utilisateur ; **Démo** charge le pattern d'exemple. Cliquer dans la grille pour activer/désactiver un pas.
 - Espace : lecture/pause du séquenceur. Échap : arrêt et coupure des voix.
 - Pads au clavier, par rangée : **A Z E R / Q S D F / W X C V / 1 2 3 4**. Le clic est toujours disponible.
 - Tempo : boutons − / + ou molette. Volume général : barre Master.
