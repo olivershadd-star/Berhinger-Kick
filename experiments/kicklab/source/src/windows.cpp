@@ -115,22 +115,33 @@ public:
     void play(int p){selectPad(p);engine.trigger(selected);flashed[selected]=GetTickCount64()+130;}
     void dispatch(const lab::SurfaceEvent& event){
         switch(event.action){
-        case lab::SurfaceAction::PadPress:if(event.pressed&&event.index>=0&&event.index<lab::SurfacePads)play(event.index);break;
+        case lab::SurfaceAction::PadPress:if(event.pressed&&event.index>=0&&event.index<lab::SurfacePads){if(tab==2){selectSurfaceMenu(event.index);activateSurfaceMenu();}else play(event.index);}break;
         case lab::SurfaceAction::StepToggle:if(event.index>=0&&event.index<lab::SurfacePads&&event.value>=0&&event.value<lab::SurfaceSteps){selectPad(event.index);engine.toggle(event.index,event.value);}break;
         case lab::SurfaceAction::PlayPause:{auto s=engine.snapshot();engine.setPlaying(!s.playing);break;}
         case lab::SurfaceAction::Stop:engine.stop();break;
         case lab::SurfaceAction::TempoDelta:engine.setTempo(engine.snapshot().tempo+event.value);break;
+        case lab::SurfaceAction::CenterTurn:if(tab==2)turnSurfaceMenu(event.value);break;
+        case lab::SurfaceAction::CenterPush:if(tab==2)activateSurfaceMenu();break;
+        case lab::SurfaceAction::CenterUp:if(tab==2)moveSurfaceMenu(0,-1);break;
+        case lab::SurfaceAction::CenterDown:if(tab==2)moveSurfaceMenu(0,1);break;
+        case lab::SurfaceAction::CenterLeft:if(tab==2)moveSurfaceMenu(-1,0);break;
+        case lab::SurfaceAction::CenterRight:if(tab==2)moveSurfaceMenu(1,0);break;
+        case lab::SurfaceAction::FocusNext:if(tab==2){surface.focusDisplay(1-surface.focusedDisplay);selectSurfaceMenu(surface.focusedDisplay*8+(surface.menuSelection%8));}break;
+        case lab::SurfaceAction::PagePrevious:if(tab==2){surface.focusDisplay(0);selectSurfaceMenu(surface.menuSelection%8);}break;
+        case lab::SurfaceAction::PageNext:if(tab==2){surface.focusDisplay(1);selectSurfaceMenu(8+(surface.menuSelection%8));}break;
         case lab::SurfaceAction::Shift:surface.shift=event.pressed;break;
+        case lab::SurfaceAction::Back:if(tab==2)status=L"KICK / Retour — aucun écran enfant ouvert.";break;
         default:break;
         }
     }
-    void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Stop});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}InvalidateRect(window,nullptr,FALSE);}
+    void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(tab==2){if(key==VK_UP)dispatch({lab::SurfaceAction::CenterUp});else if(key==VK_DOWN)dispatch({lab::SurfaceAction::CenterDown});else if(key==VK_LEFT)dispatch({lab::SurfaceAction::CenterLeft});else if(key==VK_RIGHT)dispatch({lab::SurfaceAction::CenterRight});else if(key==VK_RETURN)dispatch({lab::SurfaceAction::CenterPush});else if(key==VK_TAB)dispatch({lab::SurfaceAction::FocusNext});else if(key==VK_PRIOR)dispatch({lab::SurfaceAction::PagePrevious});else if(key==VK_NEXT)dispatch({lab::SurfaceAction::PageNext});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Back});else if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}else{if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Stop});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}InvalidateRect(window,nullptr,FALSE);}
     Box padBox(int p)const{return {44+(p%4)*88,260+(p/4)*88,78,78};}
     #include "editor_ui.inc"
+    #include "surface_ui.inc"
     void click(int x,int y,bool right){
         if(Box{800,26,106,32}.contains(x,y)){tab=0;return;}if(Box{916,26,136,32}.contains(x,y)){tab=1;return;}if(Box{1062,26,110,32}.contains(x,y)){tab=2;return;}
         if(tab==1){editorClick(x,y,right);return;}
-        if(tab==2){if(Box{52,624,250,42}.contains(x,y))ShellExecuteW(window,L"open",(base/L"source").c_str(),nullptr,nullptr,SW_SHOWNORMAL);if(Box{322,624,250,42}.contains(x,y))ShellExecuteW(window,L"open",L"https://github.com/MusicTribeOpenSource/0700-AAM",nullptr,nullptr,SW_SHOWNORMAL);return;}
+        if(tab==2){surfaceClick(x,y);return;}
         if(Box{28,106,110,42}.contains(x,y))dispatch({lab::SurfaceAction::PlayPause});
         else if(Box{148,106,80,42}.contains(x,y))dispatch({lab::SurfaceAction::Stop});
         else if(Box{245,106,36,42}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,-1});
@@ -158,9 +169,9 @@ public:
         fill(dc,{0,0,1200,800},bg);text(dc,{28,18,170,40},L"KICK / LAB",30,ink,FW_BOLD);
         text(dc,{218,20,550,24},L"EXPLORATION DU MOTEUR AudIO",12,accent,FW_SEMIBOLD);
         text(dc,{218,43,550,22},L"Prototype 0.2.4 • 14 effets / 4 inserts • Windows x64",13,muted);
-        button(dc,{800,26,106,32},L"Jouer",tab==0);button(dc,{916,26,136,32},L"Sample & FX",tab==1);button(dc,{1062,26,110,32},L"Code",tab==2);
+        button(dc,{800,26,106,32},L"Jouer",tab==0);button(dc,{916,26,136,32},L"Sample & FX",tab==1);button(dc,{1062,26,110,32},L"KICK",tab==2);
         fill(dc,{28,83,1144,1},line);
-        if(tab==1){paintEditor(dc);return;}if(tab==2){paintInfo(dc);return;}
+        if(tab==1){paintEditor(dc);return;}if(tab==2){paintSurface(dc);return;}
         auto s=engine.snapshot();
         button(dc,{28,106,110,42},s.playing?L"Pause":L"Jouer",s.playing);button(dc,{148,106,80,42},L"Stop");
         button(dc,{245,106,36,42},L"−");text(dc,{283,106,86,24},number(int(s.tempo)),23,ink,FW_SEMIBOLD,DT_CENTER|DT_SINGLELINE);text(dc,{283,131,86,14},L"BPM",10,muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);button(dc,{371,106,36,42},L"+");
@@ -234,8 +245,9 @@ case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:app->click(GET_X_LPARAM(l)*1200/app->wid
 case WM_MOUSEMOVE:if(app->editorDrag){app->editorPointer(GET_X_LPARAM(l)*1200/app->width,GET_Y_LPARAM(l)*800/app->height);InvalidateRect(h,nullptr,FALSE);}return 0;
 case WM_LBUTTONUP:if(app->editorDrag){app->editorDrag=0;ReleaseCapture();}return 0;
 case WM_CAPTURECHANGED:app->editorDrag=0;return 0;
-case WM_MOUSEWHEEL:{POINT point{GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(!app->editorWheel(x,y,GET_WHEEL_DELTA_WPARAM(w)))app->dispatch({lab::SurfaceAction::TempoDelta,0,GET_WHEEL_DELTA_WPARAM(w)>0?1:-1});InvalidateRect(h,nullptr,FALSE);return 0;}
-case WM_KEYDOWN:app->key(w,l);return 0;
+case WM_MOUSEWHEEL:{POINT point{GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(!app->surfaceWheel(x,y,GET_WHEEL_DELTA_WPARAM(w))&&!app->editorWheel(x,y,GET_WHEEL_DELTA_WPARAM(w)))app->dispatch({lab::SurfaceAction::TempoDelta,0,GET_WHEEL_DELTA_WPARAM(w)>0?1:-1});InvalidateRect(h,nullptr,FALSE);return 0;}
+case WM_KEYDOWN:if(w==VK_SHIFT)app->dispatch({lab::SurfaceAction::Shift,0,0,0,true});else app->key(w,l);return 0;
+case WM_KEYUP:if(w==VK_SHIFT)app->dispatch({lab::SurfaceAction::Shift,0,0,0,false});return 0;
 case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(app->tab==0){for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selectPad(p);}else if(app->tab==1){for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y))app->selectPad(p);}if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
 case SurfaceMessage:app->dispatch({static_cast<lab::SurfaceAction>(w),int(l)});InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_DESTROY:KillTimer(h,1);app->closeMidi();app->audio.stop();PostQuitMessage(0);return 0;

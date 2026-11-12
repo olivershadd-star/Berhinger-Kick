@@ -26,6 +26,9 @@ enum class SurfaceAction {
     CenterLeft,
     CenterRight,
     QLinkTurn,
+    FocusNext,
+    PagePrevious,
+    PageNext,
     Shift,
     Back
 };
@@ -69,6 +72,7 @@ public:
     }
 
     int selectedPad = 0;
+    int menuSelection = 0;
     int focusedDisplay = 0;
     bool shift = false;
     std::array<DisplayBinding, SurfaceDisplays> displays{};
