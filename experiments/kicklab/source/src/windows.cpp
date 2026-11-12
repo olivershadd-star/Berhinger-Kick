@@ -126,9 +126,9 @@ public:
         case lab::SurfaceAction::CenterDown:if(tab==0)moveSurfaceMenu(0,1);break;
         case lab::SurfaceAction::CenterLeft:if(tab==0)moveSurfaceMenu(-1,0);break;
         case lab::SurfaceAction::CenterRight:if(tab==0)moveSurfaceMenu(1,0);break;
-        case lab::SurfaceAction::FocusNext:if(tab==0){surface.focusDisplay(1-surface.focusedDisplay);selectSurfaceMenu(surface.focusedDisplay*8+(surface.menuSelection%8));}break;
-        case lab::SurfaceAction::PagePrevious:if(tab==0){surface.focusDisplay(0);selectSurfaceMenu(surface.menuSelection%8);}break;
-        case lab::SurfaceAction::PageNext:if(tab==0){surface.focusDisplay(1);selectSurfaceMenu(8+(surface.menuSelection%8));}break;
+        case lab::SurfaceAction::FocusNext:if(tab==0)surface.focusDisplay(1-surface.focusedDisplay);break;
+        case lab::SurfaceAction::PagePrevious:if(tab==0)surface.focusDisplay(0);break;
+        case lab::SurfaceAction::PageNext:if(tab==0)surface.focusDisplay(1);break;
         case lab::SurfaceAction::Shift:surface.shift=event.pressed;break;
         case lab::SurfaceAction::Back:if(tab==0)status=L"KICK / Retour — aucun écran enfant ouvert.";break;
         default:break;

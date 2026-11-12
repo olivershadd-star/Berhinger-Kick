@@ -12,14 +12,15 @@ Box surfaceDisplayBox(int display)const{return {40+display*580,80,456,294};}
 Box surfaceDisplayItemBox(int display,int local)const{return {54+display*580+(local%2)*211,126+(local/2)*56,199,46};}
 
 void selectSurfaceMenu(int item){
-    surface.menuSelection=std::clamp(item,0,15);
-    surface.focusDisplay(surface.menuSelection/8);
+    item=std::clamp(item,0,15);
+    const int display=item/8;
+    surface.menuSelections[display]=item%8;
+    surface.focusDisplay(display);
 }
 
 void moveSurfaceMenu(int dx,int dy){
     const int first=surface.focusedDisplay*8;
-    int local=surface.menuSelection-first;
-    if(local<0||local>7)local=0;
+    int local=surface.menuSelections[surface.focusedDisplay];
     int row=local/2,col=local%2;
     col=std::clamp(col+dx,0,1);row=std::clamp(row+dy,0,3);
     selectSurfaceMenu(first+row*2+col);
@@ -28,13 +29,12 @@ void moveSurfaceMenu(int dx,int dy){
 void turnSurfaceMenu(int delta){
     if(!delta)return;
     const int first=surface.focusedDisplay*8,last=first+7;
-    int item=surface.menuSelection;
-    if(item<first||item>last)item=first;
+    int item=first+surface.menuSelections[surface.focusedDisplay];
     selectSurfaceMenu(std::clamp(item+(delta>0?1:-1),first,last));
 }
 
 void activateSurfaceMenu(){
-    const int item=surface.menuSelection;
+    const int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
     if(item==0){status=L"KICK / Browser — choix d'un sample pour le pad sélectionné.";sampleMenu();return;}
     if(item==9||item==10||item==11){tab=1;status=L"KICK / "+surfaceMenuLabels[item]+L" — éditeur transitoire, avant intégration complète dans les deux écrans.";return;}
     status=L"KICK / "+surfaceMenuLabels[item]+L" sélectionné — module original pas encore relié à cette base Windows.";
@@ -74,7 +74,7 @@ void paintSurfaceDisplay(HDC dc,int display){
     text(dc,{box.x+316,box.y+9,124,24},L"PAGE "+number(display+1)+L" / 2",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
     for(int local=0;local<8;++local){
-        int item=display*8+local;auto b=surfaceDisplayItemBox(display,local);bool selected=item==surface.menuSelection;
+        int item=display*8+local;auto b=surfaceDisplayItemBox(display,local);bool selected=local==surface.menuSelections[display];
         if(selected)round(dc,b,accent,accent);else fill(dc,b,local%2?RGB(18,31,35):RGB(17,28,33));
         text(dc,{b.x+10,b.y,b.w-20,b.h},number(item+1)+L"  "+surfaceMenuLabels[item],11,selected?bg:ink,selected?FW_SEMIBOLD:FW_NORMAL);
     }

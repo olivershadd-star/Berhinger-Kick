@@ -72,7 +72,9 @@ public:
     }
 
     int selectedPad = 0;
-    int menuSelection = 0;
+    // Each Windows display keeps its own cursor. Changing the keyboard focus
+    // must not move or reset the other display's selection.
+    std::array<int, SurfaceDisplays> menuSelections{0, 0};
     int focusedDisplay = 0;
     bool shift = false;
     std::array<DisplayBinding, SurfaceDisplays> displays{};

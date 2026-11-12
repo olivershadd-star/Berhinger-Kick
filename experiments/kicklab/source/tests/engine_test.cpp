@@ -23,6 +23,8 @@ int main(int argc,char**argv){try{
     surface.displays[1].followsSelectedPad=false;surface.displays[1].pad=3;surface.selectPad(5);check(surface.displays[0].pad==5&&surface.displays[1].pad==3,"independent display binding failed");
     surface.setDisplayPage(0,2);check(surface.displays[0].parameterForKnob(1)==9,"four-knob page mapping failed");
     surface.focusDisplay(1);check(surface.focusedDisplay==1,"right display focus failed");surface.focusDisplay(-4);check(surface.focusedDisplay==0,"display focus clamp failed");
+    surface.menuSelections[0]=3;surface.menuSelections[1]=6;surface.focusDisplay(1);surface.focusDisplay(0);
+    check(surface.menuSelections[0]==3&&surface.menuSelections[1]==6,"display menu cursors are not independent");
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
     wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);
