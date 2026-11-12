@@ -18,6 +18,7 @@
 #include <cwchar>
 #include "engine.hpp"
 #include "audio_queue.hpp"
+#include "control_surface.hpp"
 
 namespace {
 std::wstring wide(const std::string& s){if(s.empty())return {};int n=MultiByteToWideChar(CP_UTF8,0,s.data(),int(s.size()),nullptr,0);std::wstring r(n,0);MultiByteToWideChar(CP_UTF8,0,s.data(),int(s.size()),r.data(),n);return r;}
@@ -30,6 +31,7 @@ std::wstring padName(int p){return (p<9?L"0":L"")+number(p+1);}
 const std::array<int,16> keys={'A','Z','E','R','Q','S','D','F','W','X','C','V','1','2','3','4'};
 const std::array<std::wstring,16> labels={L"A",L"Z",L"E",L"R",L"Q",L"S",L"D",L"F",L"W",L"X",L"C",L"V",L"1",L"2",L"3",L"4"};
 const std::array<std::wstring,9> libraryCategories={L"Kicks",L"Snares",L"Hats",L"Percussions",L"Basses",L"Pads",L"Leads",L"FX",L"Autres"};
+constexpr UINT SurfaceMessage=WM_APP+42;
 
 class AudioOutput {
 public:
@@ -92,7 +94,7 @@ private:
 
 class App {
 public:
-    lab::Engine engine;AudioOutput audio{engine};HWND window{};std::filesystem::path base,library;
+    lab::Engine engine;lab::SurfaceState surface;AudioOutput audio{engine};HWND window{};std::filesystem::path base,library;
     int selected=0,tab=0;bool smoke=false;UINT audioId=WAVE_MAPPER;HMIDIIN midi{};int midiId=-1;
     std::wstring status=L"Clique sur un pad pour jouer. Clic droit pour charger un WAV.";
     std::array<ULONGLONG,16> flashed{};int mouseX=-1,mouseY=-1;int width=1200,height=800;
@@ -100,7 +102,7 @@ public:
     ~App(){closeMidi();audio.stop();}
     void initialise(HWND h){window=h;int loaded=0;std::string error;for(int p=0;p<16;++p){const std::array<std::wstring,16> files={L"01-Kick.wav",L"02-Snare.wav",L"03-Closed-Hat.wav",L"04-Open-Hat.wav",L"05-Clap.wav",L"06-Low-Tom.wav",L"07-Mid-Tom.wav",L"08-High-Tom.wav",L"09-Rim.wav",L"10-Shaker.wav",L"11-Claves.wav",L"12-Cowbell.wav",L"13-Bass-C.wav",L"14-Bass-E.wav",L"15-Bass-G.wav",L"16-Chime.wav"};auto path=base/L"demo-kit"/files[p];if(engine.load(p,path.u8string(),error))++loaded;}engine.demoPattern();if(loaded!=16)status=L"Kit de démonstration incomplet : "+number(loaded)+L"/16 fichiers.";audio.start(audioId);SetTimer(h,1,33,nullptr);DragAcceptFiles(h,TRUE);}
     void closeMidi(){if(midi){midiInStop(midi);midiInReset(midi);midiInClose(midi);midi=nullptr;}midiId=-1;}
-    static void CALLBACK midiCallback(HMIDIIN,UINT message,DWORD_PTR instance,DWORD_PTR packed,DWORD_PTR){if(message==MIM_DATA){auto* self=reinterpret_cast<App*>(instance);unsigned type=packed&255,note=(packed>>8)&127,velocity=(packed>>16)&127;if((type&0xf0)==0x90&&velocity&&note>=36&&note<52)self->engine.trigger(int(note-36));}}
+    static void CALLBACK midiCallback(HMIDIIN,UINT message,DWORD_PTR instance,DWORD_PTR packed,DWORD_PTR){if(message==MIM_DATA){auto* self=reinterpret_cast<App*>(instance);unsigned type=packed&255,note=(packed>>8)&127,velocity=(packed>>16)&127;if((type&0xf0)==0x90&&velocity&&note>=36&&note<52)PostMessageW(self->window,SurfaceMessage,static_cast<WPARAM>(lab::SurfaceAction::PadPress),LPARAM(note-36));}}
     void midiMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING|(midiId<0?MF_CHECKED:0),500,L"Désactivé");for(UINT i=0;i<midiInGetNumDevs();++i){MIDIINCAPSW cap{};midiInGetDevCapsW(i,&cap,sizeof(cap));AppendMenuW(menu,MF_STRING|(int(i)==midiId?MF_CHECKED:0),501+i,cap.szPname);}POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(!choice)return;closeMidi();if(choice>500){int id=choice-501;MMRESULT result=midiInOpen(&midi,id,reinterpret_cast<DWORD_PTR>(&midiCallback),reinterpret_cast<DWORD_PTR>(this),CALLBACK_FUNCTION);if(!result){midiId=id;midiInStart(midi);status=L"MIDI connecté : notes 36 à 51, tous canaux.";}else status=L"Impossible d'ouvrir cette entrée MIDI.";}else status=L"MIDI désactivé.";}
     void audioMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING|(audioId==WAVE_MAPPER?MF_CHECKED:0),600,L"Sortie Windows par défaut");for(UINT i=0;i<waveOutGetNumDevs();++i){WAVEOUTCAPSW cap{};waveOutGetDevCapsW(i,&cap,sizeof(cap));AppendMenuW(menu,MF_STRING|(i==audioId?MF_CHECKED:0),601+i,cap.szPname);}POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice){audioId=choice==600?WAVE_MAPPER:UINT(choice-601);audio.start(audioId);status=L"Changement de sortie audio...";}}
     std::wstring choose(bool save,bool project,const std::filesystem::path& initial={},const std::wstring& suggested={}){std::vector<wchar_t> name(32768,0);if(!suggested.empty())std::copy_n(suggested.c_str(),std::min(suggested.size(),name.size()-1),name.data());auto initialText=initial.wstring();OPENFILENAMEW dialog{};dialog.lStructSize=sizeof(dialog);dialog.hwndOwner=window;dialog.lpstrFile=name.data();dialog.nMaxFile=DWORD(name.size());dialog.lpstrFilter=project?L"Projet KICK Lab (*.kicklab)\0*.kicklab\0\0":L"Audio WAV (*.wav)\0*.wav\0\0";dialog.lpstrDefExt=project?L"kicklab":L"wav";dialog.lpstrInitialDir=initialText.empty()?nullptr:initialText.c_str();dialog.Flags=OFN_EXPLORER|OFN_NOCHANGEDIR|OFN_PATHMUSTEXIST|(save?OFN_OVERWRITEPROMPT:OFN_FILEMUSTEXIST);if(save?GetSaveFileNameW(&dialog):GetOpenFileNameW(&dialog))return name.data();return {};}
@@ -109,18 +111,30 @@ public:
     int libraryCategory(){HMENU menu=CreatePopupMenu();for(int i=0;i<int(libraryCategories.size());++i)AppendMenuW(menu,MF_STRING,710+i,libraryCategories[i].c_str());POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);return choice>=710&&choice<710+int(libraryCategories.size())?choice-710:-1;}
     void savePadToLibrary(){auto s=engine.snapshot();if(s.paths[selected].empty()){MessageBoxW(window,L"Charge d'abord un WAV sur ce pad.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}int category=libraryCategory();if(category<0)return;auto source=std::filesystem::u8path(s.paths[selected]);auto folder=library/libraryCategories[category];std::error_code ec;std::filesystem::create_directories(folder,ec);if(ec){MessageBoxW(window,L"Impossible de créer le dossier de cette catégorie.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}auto destinationText=choose(true,false,folder,source.filename().wstring());if(destinationText.empty())return;auto destination=std::filesystem::path(destinationText);if(std::filesystem::exists(destination,ec)&&std::filesystem::equivalent(source,destination,ec)){status=L"Ce WAV est déjà dans la bibliothèque : "+destination.filename().wstring();return;}ec.clear();std::filesystem::copy_file(source,destination,std::filesystem::copy_options::overwrite_existing,ec);if(ec){MessageBoxW(window,(L"Copie impossible : "+wide(ec.message())).c_str(),L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}std::string loadError;if(engine.load(selected,destination.u8string(),loadError))engine.setEdit(selected,s.edits[selected]);status=L"WAV ajouté à "+libraryCategories[category]+L" : "+destination.filename().wstring();}
     void project(bool save){auto p=choose(save,true);if(p.empty())return;std::string error;bool ok=save?engine.save(utf8(p),error):engine.open(utf8(p),error);if(!ok)MessageBoxW(window,wide(error).c_str(),L"Projet KICK Lab",MB_OK|MB_ICONINFORMATION);else{auto name=std::filesystem::path(p).filename().wstring();status=(save?L"Projet enregistré : ":L"Projet chargé : ")+name;}}
-    void play(int p){selected=p;engine.trigger(p);flashed[p]=GetTickCount64()+130;}
-    void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(key==VK_SPACE){auto s=engine.snapshot();engine.setPlaying(!s.playing);}else if(key==VK_ESCAPE)engine.stop();else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){play(p);break;}InvalidateRect(window,nullptr,FALSE);}
+    void selectPad(int p){surface.selectPad(p);selected=surface.selectedPad;}
+    void play(int p){selectPad(p);engine.trigger(selected);flashed[selected]=GetTickCount64()+130;}
+    void dispatch(const lab::SurfaceEvent& event){
+        switch(event.action){
+        case lab::SurfaceAction::PadPress:if(event.pressed&&event.index>=0&&event.index<lab::SurfacePads)play(event.index);break;
+        case lab::SurfaceAction::StepToggle:if(event.index>=0&&event.index<lab::SurfacePads&&event.value>=0&&event.value<lab::SurfaceSteps){selectPad(event.index);engine.toggle(event.index,event.value);}break;
+        case lab::SurfaceAction::PlayPause:{auto s=engine.snapshot();engine.setPlaying(!s.playing);break;}
+        case lab::SurfaceAction::Stop:engine.stop();break;
+        case lab::SurfaceAction::TempoDelta:engine.setTempo(engine.snapshot().tempo+event.value);break;
+        case lab::SurfaceAction::Shift:surface.shift=event.pressed;break;
+        default:break;
+        }
+    }
+    void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Stop});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}InvalidateRect(window,nullptr,FALSE);}
     Box padBox(int p)const{return {44+(p%4)*88,260+(p/4)*88,78,78};}
     #include "editor_ui.inc"
     void click(int x,int y,bool right){
         if(Box{800,26,106,32}.contains(x,y)){tab=0;return;}if(Box{916,26,136,32}.contains(x,y)){tab=1;return;}if(Box{1062,26,110,32}.contains(x,y)){tab=2;return;}
         if(tab==1){editorClick(x,y,right);return;}
         if(tab==2){if(Box{52,624,250,42}.contains(x,y))ShellExecuteW(window,L"open",(base/L"source").c_str(),nullptr,nullptr,SW_SHOWNORMAL);if(Box{322,624,250,42}.contains(x,y))ShellExecuteW(window,L"open",L"https://github.com/MusicTribeOpenSource/0700-AAM",nullptr,nullptr,SW_SHOWNORMAL);return;}
-        if(Box{28,106,110,42}.contains(x,y)){auto s=engine.snapshot();engine.setPlaying(!s.playing);}
-        else if(Box{148,106,80,42}.contains(x,y))engine.stop();
-        else if(Box{245,106,36,42}.contains(x,y))engine.setTempo(engine.snapshot().tempo-1);
-        else if(Box{371,106,36,42}.contains(x,y))engine.setTempo(engine.snapshot().tempo+1);
+        if(Box{28,106,110,42}.contains(x,y))dispatch({lab::SurfaceAction::PlayPause});
+        else if(Box{148,106,80,42}.contains(x,y))dispatch({lab::SurfaceAction::Stop});
+        else if(Box{245,106,36,42}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,-1});
+        else if(Box{371,106,36,42}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,1});
         else if(Box{430,106,112,42}.contains(x,y)){engine.demoPattern();status=L"Pattern de démonstration : 1 mesure, 16 doubles croches.";}
         else if(Box{552,106,100,42}.contains(x,y))engine.clearPattern();
         else if(Box{664,106,132,42}.contains(x,y))project(false);
@@ -130,9 +144,9 @@ public:
         else if(Box{830,754,150,30}.contains(x,y))midiMenu();
         else if(Box{990,754,182,30}.contains(x,y))audioMenu();
         else {
-            for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){selected=p;if(right)sampleMenu();else play(p);return;}
-            if(x>=610&&x<1154&&y>=240&&y<656){int p=(y-240)/26,k=(x-610)/34;if(p<16&&k<16){selected=p;engine.toggle(p,k);}}
-            else if(x>=458&&x<602&&y>=240&&y<656)selected=(y-240)/26;
+            for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){selectPad(p);if(right)sampleMenu();else dispatch({lab::SurfaceAction::PadPress,p});return;}
+            if(x>=610&&x<1154&&y>=240&&y<656){int p=(y-240)/26,k=(x-610)/34;if(p<16&&k<16)dispatch({lab::SurfaceAction::StepToggle,p,k});}
+            else if(x>=458&&x<602&&y>=240&&y<656)selectPad((y-240)/26);
         }
     }
     void fill(HDC dc,Box b,COLORREF c){auto r=b.rect();HBRUSH brush=CreateSolidBrush(c);FillRect(dc,&r,brush);DeleteObject(brush);}
@@ -220,9 +234,10 @@ case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:app->click(GET_X_LPARAM(l)*1200/app->wid
 case WM_MOUSEMOVE:if(app->editorDrag){app->editorPointer(GET_X_LPARAM(l)*1200/app->width,GET_Y_LPARAM(l)*800/app->height);InvalidateRect(h,nullptr,FALSE);}return 0;
 case WM_LBUTTONUP:if(app->editorDrag){app->editorDrag=0;ReleaseCapture();}return 0;
 case WM_CAPTURECHANGED:app->editorDrag=0;return 0;
-case WM_MOUSEWHEEL:{POINT point{GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(!app->editorWheel(x,y,GET_WHEEL_DELTA_WPARAM(w)))app->engine.setTempo(app->engine.snapshot().tempo+(GET_WHEEL_DELTA_WPARAM(w)>0?1:-1));InvalidateRect(h,nullptr,FALSE);return 0;}
+case WM_MOUSEWHEEL:{POINT point{GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(!app->editorWheel(x,y,GET_WHEEL_DELTA_WPARAM(w)))app->dispatch({lab::SurfaceAction::TempoDelta,0,GET_WHEEL_DELTA_WPARAM(w)>0?1:-1});InvalidateRect(h,nullptr,FALSE);return 0;}
 case WM_KEYDOWN:app->key(w,l);return 0;
-case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(app->tab==0){for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selected=p;}else if(app->tab==1){for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y))app->selected=p;}if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
+case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(app->tab==0){for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selectPad(p);}else if(app->tab==1){for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y))app->selectPad(p);}if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
+case SurfaceMessage:app->dispatch({static_cast<lab::SurfaceAction>(w),int(l)});InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_DESTROY:KillTimer(h,1);app->closeMidi();app->audio.stop();PostQuitMessage(0);return 0;
 }return DefWindowProcW(h,msg,w,l);}
 }

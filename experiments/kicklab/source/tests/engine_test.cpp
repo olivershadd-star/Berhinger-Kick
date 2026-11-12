@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "engine.hpp"
 #include "audio_queue.hpp"
+#include "control_surface.hpp"
 #include <thread>
 #include <atomic>
 #include <fstream>
@@ -15,6 +16,12 @@ using namespace lab;
 void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 void wav(const std::string& file,int rate,int channels,int frames,double frequency=440,double amplitude=8000){std::ofstream f(std::filesystem::u8path(file),std::ios::binary);auto u16=[&](unsigned n){char b[2]={char(n),char(n>>8)};f.write(b,2);};auto u32=[&](unsigned n){u16(n);u16(n>>16);};f.write("RIFF",4);u32(36+frames*channels*2);f.write("WAVEfmt ",8);u32(16);u16(1);u16(channels);u32(rate);u32(rate*channels*2);u16(channels*2);u16(16);f.write("data",4);u32(frames*channels*2);for(int n=0;n<frames;++n)for(int c=0;c<channels;++c)u16(static_cast<uint16_t>(int16_t(amplitude*std::sin(2*3.141592653589793*frequency*n/rate))));}
 int main(int argc,char**argv){try{
+    SurfaceState surface;
+    check(surface.displays[0].parameterForKnob(3)==3,"left display Q-Link mapping failed");
+    check(surface.displays[1].parameterForKnob(0)==4,"right display page mapping failed");
+    surface.selectPad(11);check(surface.selectedPad==11&&surface.displays[0].pad==11&&surface.displays[1].pad==11,"display did not follow selected pad");
+    surface.displays[1].followsSelectedPad=false;surface.displays[1].pad=3;surface.selectPad(5);check(surface.displays[0].pad==5&&surface.displays[1].pad==3,"independent display binding failed");
+    surface.setDisplayPage(0,2);check(surface.displays[0].parameterForKnob(1)==9,"four-knob page mapping failed");
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
     wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);

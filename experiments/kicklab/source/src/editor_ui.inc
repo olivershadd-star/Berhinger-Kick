@@ -54,7 +54,7 @@ bool editorWheel(int x,int y,int delta){
     return false;
 }
 void editorClick(int x,int y,bool right){
-    for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y)){selected=p;if(right)sampleMenu();else play(p);return;}
+    for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y)){selectPad(p);if(right)sampleMenu();else dispatch({lab::SurfaceAction::PadPress,p});return;}
     auto edit=engine.snapshot().edits[selected];
     for(int slot=0;slot<lab::InsertSlots;++slot)if(insertSlotBox(slot).contains(x,y)){selectedInsert=slot;return;}
     if(insertEffectBox().contains(x,y)){insertMenu();return;}
