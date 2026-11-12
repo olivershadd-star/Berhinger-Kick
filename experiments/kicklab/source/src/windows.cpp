@@ -115,49 +115,50 @@ public:
     void play(int p){selectPad(p);engine.trigger(selected);flashed[selected]=GetTickCount64()+130;}
     void dispatch(const lab::SurfaceEvent& event){
         switch(event.action){
-        case lab::SurfaceAction::PadPress:if(event.pressed&&event.index>=0&&event.index<lab::SurfacePads){if(tab==2){selectSurfaceMenu(event.index);activateSurfaceMenu();}else play(event.index);}break;
+        case lab::SurfaceAction::PadPress:if(event.pressed&&event.index>=0&&event.index<lab::SurfacePads)play(event.index);break;
         case lab::SurfaceAction::StepToggle:if(event.index>=0&&event.index<lab::SurfacePads&&event.value>=0&&event.value<lab::SurfaceSteps){selectPad(event.index);engine.toggle(event.index,event.value);}break;
         case lab::SurfaceAction::PlayPause:{auto s=engine.snapshot();engine.setPlaying(!s.playing);break;}
         case lab::SurfaceAction::Stop:engine.stop();break;
         case lab::SurfaceAction::TempoDelta:engine.setTempo(engine.snapshot().tempo+event.value);break;
-        case lab::SurfaceAction::CenterTurn:if(tab==2)turnSurfaceMenu(event.value);break;
-        case lab::SurfaceAction::CenterPush:if(tab==2)activateSurfaceMenu();break;
-        case lab::SurfaceAction::CenterUp:if(tab==2)moveSurfaceMenu(0,-1);break;
-        case lab::SurfaceAction::CenterDown:if(tab==2)moveSurfaceMenu(0,1);break;
-        case lab::SurfaceAction::CenterLeft:if(tab==2)moveSurfaceMenu(-1,0);break;
-        case lab::SurfaceAction::CenterRight:if(tab==2)moveSurfaceMenu(1,0);break;
-        case lab::SurfaceAction::FocusNext:if(tab==2){surface.focusDisplay(1-surface.focusedDisplay);selectSurfaceMenu(surface.focusedDisplay*8+(surface.menuSelection%8));}break;
-        case lab::SurfaceAction::PagePrevious:if(tab==2){surface.focusDisplay(0);selectSurfaceMenu(surface.menuSelection%8);}break;
-        case lab::SurfaceAction::PageNext:if(tab==2){surface.focusDisplay(1);selectSurfaceMenu(8+(surface.menuSelection%8));}break;
+        case lab::SurfaceAction::CenterTurn:if(tab==0)turnSurfaceMenu(event.value);break;
+        case lab::SurfaceAction::CenterPush:if(tab==0)activateSurfaceMenu();break;
+        case lab::SurfaceAction::CenterUp:if(tab==0)moveSurfaceMenu(0,-1);break;
+        case lab::SurfaceAction::CenterDown:if(tab==0)moveSurfaceMenu(0,1);break;
+        case lab::SurfaceAction::CenterLeft:if(tab==0)moveSurfaceMenu(-1,0);break;
+        case lab::SurfaceAction::CenterRight:if(tab==0)moveSurfaceMenu(1,0);break;
+        case lab::SurfaceAction::FocusNext:if(tab==0){surface.focusDisplay(1-surface.focusedDisplay);selectSurfaceMenu(surface.focusedDisplay*8+(surface.menuSelection%8));}break;
+        case lab::SurfaceAction::PagePrevious:if(tab==0){surface.focusDisplay(0);selectSurfaceMenu(surface.menuSelection%8);}break;
+        case lab::SurfaceAction::PageNext:if(tab==0){surface.focusDisplay(1);selectSurfaceMenu(8+(surface.menuSelection%8));}break;
         case lab::SurfaceAction::Shift:surface.shift=event.pressed;break;
-        case lab::SurfaceAction::Back:if(tab==2)status=L"KICK / Retour — aucun écran enfant ouvert.";break;
+        case lab::SurfaceAction::Back:if(tab==0)status=L"KICK / Retour — aucun écran enfant ouvert.";break;
         default:break;
         }
     }
-    void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(tab==2){if(key==VK_UP)dispatch({lab::SurfaceAction::CenterUp});else if(key==VK_DOWN)dispatch({lab::SurfaceAction::CenterDown});else if(key==VK_LEFT)dispatch({lab::SurfaceAction::CenterLeft});else if(key==VK_RIGHT)dispatch({lab::SurfaceAction::CenterRight});else if(key==VK_RETURN)dispatch({lab::SurfaceAction::CenterPush});else if(key==VK_TAB)dispatch({lab::SurfaceAction::FocusNext});else if(key==VK_PRIOR)dispatch({lab::SurfaceAction::PagePrevious});else if(key==VK_NEXT)dispatch({lab::SurfaceAction::PageNext});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Back});else if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}else{if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Stop});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}InvalidateRect(window,nullptr,FALSE);}
-    Box padBox(int p)const{return {44+(p%4)*88,260+(p/4)*88,78,78};}
+    void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(tab==0){if(key==VK_UP)dispatch({lab::SurfaceAction::CenterUp});else if(key==VK_DOWN)dispatch({lab::SurfaceAction::CenterDown});else if(key==VK_LEFT)dispatch({lab::SurfaceAction::CenterLeft});else if(key==VK_RIGHT)dispatch({lab::SurfaceAction::CenterRight});else if(key==VK_RETURN)dispatch({lab::SurfaceAction::CenterPush});else if(key==VK_TAB)dispatch({lab::SurfaceAction::FocusNext});else if(key==VK_PRIOR)dispatch({lab::SurfaceAction::PagePrevious});else if(key==VK_NEXT)dispatch({lab::SurfaceAction::PageNext});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Back});else if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}else{if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else if(key==VK_ESCAPE){tab=0;status=L"Retour à la surface principale KICK.";}else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}InvalidateRect(window,nullptr,FALSE);}
+    Box padBox(int p)const{return {44+(p%4)*88,334+(p/4)*78,78,68};}
     #include "editor_ui.inc"
     #include "surface_ui.inc"
     void click(int x,int y,bool right){
-        if(Box{800,26,106,32}.contains(x,y)){tab=0;return;}if(Box{916,26,136,32}.contains(x,y)){tab=1;return;}if(Box{1062,26,110,32}.contains(x,y)){tab=2;return;}
+        if(Box{28,12,150,42}.contains(x,y)){tab=0;return;}
+        if(Box{1014,16,158,34}.contains(x,y)){tab=tab==1?0:1;return;}
         if(tab==1){editorClick(x,y,right);return;}
-        if(tab==2){surfaceClick(x,y);return;}
-        if(Box{28,106,110,42}.contains(x,y))dispatch({lab::SurfaceAction::PlayPause});
-        else if(Box{148,106,80,42}.contains(x,y))dispatch({lab::SurfaceAction::Stop});
-        else if(Box{245,106,36,42}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,-1});
-        else if(Box{371,106,36,42}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,1});
-        else if(Box{430,106,112,42}.contains(x,y)){engine.demoPattern();status=L"Pattern de démonstration : 1 mesure, 16 doubles croches.";}
-        else if(Box{552,106,100,42}.contains(x,y))engine.clearPattern();
-        else if(Box{664,106,132,42}.contains(x,y))project(false);
-        else if(Box{806,106,144,42}.contains(x,y))project(true);
-        else if(Box{960,104,212,48}.contains(x,y))engine.setVolume(std::clamp((x-973)/184.,0.,1.));
-        else if(Box{44,632,190,38}.contains(x,y))sampleMenu();
-        else if(Box{830,754,150,30}.contains(x,y))midiMenu();
-        else if(Box{990,754,182,30}.contains(x,y))audioMenu();
+        if(surfaceClick(x,y))return;
+        if(Box{32,716,90,42}.contains(x,y))dispatch({lab::SurfaceAction::PlayPause});
+        else if(Box{130,716,72,42}.contains(x,y))dispatch({lab::SurfaceAction::Stop});
+        else if(Box{216,716,32,42}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,-1});
+        else if(Box{312,716,32,42}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,1});
+        else if(Box{356,716,72,42}.contains(x,y)){engine.demoPattern();status=L"Pattern de démonstration : 1 mesure, 16 doubles croches.";}
+        else if(Box{436,716,82,42}.contains(x,y))engine.clearPattern();
+        else if(Box{526,716,104,42}.contains(x,y))project(false);
+        else if(Box{638,716,116,42}.contains(x,y))project(true);
+        else if(Box{762,706,72,62}.contains(x,y)){auto s=engine.snapshot();engine.setVolume(std::clamp(s.volume+(x<798?-.05:.05),0.,1.));}
+        else if(Box{226,286,176,34}.contains(x,y))sampleMenu();
+        else if(Box{844,716,146,42}.contains(x,y))midiMenu();
+        else if(Box{998,716,174,42}.contains(x,y))audioMenu();
         else {
             for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){selectPad(p);if(right)sampleMenu();else dispatch({lab::SurfaceAction::PadPress,p});return;}
-            if(x>=610&&x<1154&&y>=240&&y<656){int p=(y-240)/26,k=(x-610)/34;if(p<16&&k<16)dispatch({lab::SurfaceAction::StepToggle,p,k});}
-            else if(x>=458&&x<602&&y>=240&&y<656)selectPad((y-240)/26);
+            if(x>=608&&x<1152&&y>=330&&y<650){int p=(y-330)/20,k=(x-608)/34;if(p<16&&k<16)dispatch({lab::SurfaceAction::StepToggle,p,k});}
+            else if(x>=450&&x<600&&y>=330&&y<650)selectPad((y-330)/20);
         }
     }
     void fill(HDC dc,Box b,COLORREF c){auto r=b.rect();HBRUSH brush=CreateSolidBrush(c);FillRect(dc,&r,brush);DeleteObject(brush);}
@@ -166,28 +167,25 @@ public:
     void button(HDC dc,Box b,const std::wstring& name,bool on=false){round(dc,b,on?accent:RGB(31,38,50),on?accent:line);text(dc,b,name,14,on?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     void paint(HDC dc){
         SetMapMode(dc,MM_ANISOTROPIC);SetWindowExtEx(dc,1200,800,nullptr);SetViewportExtEx(dc,width,height,nullptr);
-        fill(dc,{0,0,1200,800},bg);text(dc,{28,18,170,40},L"KICK / LAB",30,ink,FW_BOLD);
-        text(dc,{218,20,550,24},L"EXPLORATION DU MOTEUR AudIO",12,accent,FW_SEMIBOLD);
-        text(dc,{218,43,550,22},L"Prototype 0.2.4 • 14 effets / 4 inserts • Windows x64",13,muted);
-        button(dc,{800,26,106,32},L"Jouer",tab==0);button(dc,{916,26,136,32},L"Sample & FX",tab==1);button(dc,{1062,26,110,32},L"KICK",tab==2);
-        fill(dc,{28,83,1144,1},line);
-        if(tab==1){paintEditor(dc);return;}if(tab==2){paintSurface(dc);return;}
+        fill(dc,{0,0,1200,800},bg);fill(dc,{28,16,7,34},accent);text(dc,{48,12,150,42},L"KICK",29,ink,FW_BOLD);
+        text(dc,{174,17,280,28},L"WINDOWS PORT · SURFACE KICK",11,muted,FW_SEMIBOLD);
+        button(dc,{1014,16,158,34},tab==1?L"Retour KICK":L"Sample & FX",tab==1);
+        fill(dc,{28,62,1144,1},line);
+        if(tab==1){paintEditor(dc);return;}
         auto s=engine.snapshot();
-        button(dc,{28,106,110,42},s.playing?L"Pause":L"Jouer",s.playing);button(dc,{148,106,80,42},L"Stop");
-        button(dc,{245,106,36,42},L"−");text(dc,{283,106,86,24},number(int(s.tempo)),23,ink,FW_SEMIBOLD,DT_CENTER|DT_SINGLELINE);text(dc,{283,131,86,14},L"BPM",10,muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);button(dc,{371,106,36,42},L"+");
-        button(dc,{430,106,112,42},L"Démo");button(dc,{552,106,100,42},L"Effacer");button(dc,{664,106,132,42},L"Ouvrir projet");button(dc,{806,106,144,42},L"Enregistrer projet");
-        text(dc,{960,98,210,20},L"MASTER  "+number(int(s.volume*100))+L" %",11,muted);round(dc,{973,133,184,5},line,line);fill(dc,{973,133,int(184*s.volume),5},accent);
-        round(dc,{28,174,390,510},panel);text(dc,{44,188,270,30},L"16 PADS / ONE-SHOTS",17,ink,FW_SEMIBOLD);text(dc,{44,220,340,22},L"Clavier AZERTY ou MIDI · notes 36–51",12,muted);
+        paintSurface(dc);
+        round(dc,{28,278,390,404},panel);text(dc,{44,286,178,34},L"16 PADS / ONE-SHOTS",15,ink,FW_SEMIBOLD);button(dc,{226,286,176,34},L"Bibliothèque / WAV");
         ULONGLONG now=GetTickCount64();for(int p=0;p<16;++p){auto b=padBox(p);bool hot=now<flashed[p]||s.active[p];COLORREF c=padColor(p);round(dc,b,hot?c:RGB(32,39,51),p==selected?c:line);fill(dc,{b.x+10,b.y+11,5,5},c);text(dc,{b.x+20,b.y+4,45,22},padName(p),12,hot?bg:muted);text(dc,{b.x+7,b.y+27,64,21},wide(s.names[p]),12,hot?bg:ink,FW_SEMIBOLD);text(dc,{b.x+10,b.y+54,58,17},labels[p],11,hot?bg:muted);}
-        button(dc,{44,632,190,38},L"Bibliothèque / WAV");
-        round(dc,{438,174,734,510},panel);text(dc,{458,186,400,28},L"SÉQUENCEUR / 1 MESURE",17,ink,FW_SEMIBOLD);text(dc,{925,186,225,28},L"16 pas · doubles croches",12,muted);
-        for(int k=0;k<16;++k)text(dc,{610+k*34,219,28,18},number(k+1),11,k==s.step?accent:muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);
-        for(int p=0;p<16;++p){if(p==selected)fill(dc,{450,240+p*26,708,24},RGB(32,41,52));text(dc,{458,240+p*26,27,22},padName(p),11,padColor(p),FW_SEMIBOLD);text(dc,{490,240+p*26,108,22},wide(s.names[p]),12,p==selected?ink:muted);for(int k=0;k<16;++k){COLORREF c=s.pattern[p][k]?padColor(p):(k/4%2?RGB(38,46,59):RGB(31,38,49));if(s.playing&&s.step==k&&!s.pattern[p][k])c=RGB(58,76,84);round(dc,{610+k*34,242+p*26,27,19},c,s.playing&&s.step==k?ink:c);}}
-        round(dc,{28,697,1144,45},panel);text(dc,{44,701,170,34},L"PAD "+padName(selected)+L" / "+wide(s.names[selected]),12,padColor(selected));
-        const auto& wave=s.waveforms[selected];if(wave.empty())text(dc,{234,701,800,34},L"Charge un WAV mono ou stéréo pour explorer le lecteur AudIO.",12,muted);else{HPEN pen=CreatePen(PS_SOLID,1,padColor(selected));auto old=SelectObject(dc,pen);for(int i=0;i<320;++i){int h=std::max(1,int(wave[i]*16));int x=236+i*2;MoveToEx(dc,x,720-h,nullptr);LineTo(dc,x,720+h);}SelectObject(dc,old);DeleteObject(pen);}
-        fill(dc,{950,718,184,5},line);fill(dc,{950,718,int(184*std::clamp(s.peak,0.f,1.f)),5},accent);
+        text(dc,{44,654,350,20},L"Clavier AZERTY · MIDI 36–51 · clic droit : WAV",10,muted);
+        round(dc,{430,278,742,404},panel);text(dc,{450,286,150,28},L"SÉQUENCEUR",14,ink,FW_SEMIBOLD);
+        for(int k=0;k<16;++k)text(dc,{608+k*34,307,28,18},number(k+1),10,k==s.step?accent:muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);
+        for(int p=0;p<16;++p){if(p==selected)fill(dc,{442,330+p*20,716,18},RGB(32,41,52));text(dc,{450,330+p*20,27,18},padName(p),10,padColor(p),FW_SEMIBOLD);text(dc,{480,330+p*20,116,18},wide(s.names[p]),10,p==selected?ink:muted);for(int k=0;k<16;++k){COLORREF c=s.pattern[p][k]?padColor(p):(k/4%2?RGB(38,46,59):RGB(31,38,49));if(s.playing&&s.step==k&&!s.pattern[p][k])c=RGB(58,76,84);round(dc,{608+k*34,331+p*20,27,15},c,s.playing&&s.step==k?ink:c);}}
         unsigned error=audio.error.load();std::wstring message=status;if(error){wchar_t buf[256]{};waveOutGetErrorTextW(error,buf,256);message=L"Audio indisponible : "+std::wstring(buf)+L" — choisir une autre sortie.";}
-        text(dc,{28,754,785,30},message,12,error?RGB(255,133,103):muted);button(dc,{830,754,150,30},midiId<0?L"MIDI : désactivé":L"MIDI : connecté");button(dc,{990,754,182,30},audio.running?L"Audio : sortie Windows":L"Choisir sortie audio");
+        text(dc,{32,684,1140,22},message,10,error?RGB(255,133,103):muted);
+        round(dc,{20,708,1160,64},panel);button(dc,{32,716,90,42},s.playing?L"Pause":L"Play",s.playing);button(dc,{130,716,72,42},L"Stop");
+        button(dc,{216,716,32,42},L"−");text(dc,{250,716,60,25},number(int(s.tempo)),20,ink,FW_SEMIBOLD,DT_CENTER|DT_SINGLELINE);text(dc,{250,741,60,14},L"BPM",9,muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);button(dc,{312,716,32,42},L"+");
+        button(dc,{356,716,72,42},L"Démo");button(dc,{436,716,82,42},L"Effacer");button(dc,{526,716,104,42},L"Ouvrir");button(dc,{638,716,116,42},L"Enregistrer");
+        paintMasterKnob(dc,s.volume);button(dc,{844,716,146,42},midiId<0?L"MIDI : désactivé":L"MIDI : connecté");button(dc,{998,716,174,42},audio.running?L"Sortie audio":L"Choisir audio");
     }
     void paintInfo(HDC dc){
         round(dc,{28,108,1144,594},panel);text(dc,{52,129,1080,40},L"Un premier accès au code. Pas encore la groovebox complète.",25,ink,FW_SEMIBOLD);
