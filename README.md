@@ -4,9 +4,9 @@ Ce dépôt adapte le code KICK publié par Music Tribe à un ordinateur Windows 
 
 ## Version recommandée
 
-**[Télécharger le build Windows 0.2.2 — potentiomètres et bibliothèque](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43069868453/artifacts/13876824311)**
+**Build Windows 0.2.3 — rack de quatre inserts : compilation en cours de validation.**
 
-Cette base possède une sortie audio Windows fonctionnelle, seize pads cliquables, le chargement de WAV, une Factory Sample Library personnelle, un séquenceur 16 pas, l'éditeur de sample et les effets AudIO/Airwindows déjà intégrés. Elle reste une étape intermédiaire du portage.
+Cette base possède une sortie audio Windows fonctionnelle, seize pads cliquables, le chargement de WAV, une Factory Sample Library personnelle, un séquenceur 16 pas et l'éditeur de sample. Chaque pad possède maintenant les quatre inserts du modèle KICK ; Lowpass et PurestDrive sont les deux premiers effets validés. Elle reste une étape intermédiaire du portage.
 
 La préversion `v0.3.3-preview` qui chargeait toute l'interface originale d'un seul coup est conservée comme **référence technique uniquement**. Elle dépend encore de commandes matérielles, ne contient pas les programmes ni les samples retirés de la publication et n'est pas recommandée pour jouer.
 
@@ -36,7 +36,7 @@ Le port complet expérimental est conservé sur la branche [`port/kick-original-
 
 Le dépôt public ne contient aucun sample d'usine, aucun son de métronome et pratiquement aucun contenu de programme. Les cinq démos livrées sont de petits fichiers de projet presque vides. L'interface originale attend aussi la surface matérielle pour plusieurs sélections.
 
-La base 0.2.2 utilise directement WinMM avec quatre buffers stéréo à 48 kHz. La préversion complète l'avait remplacé par un périphérique JUCE et un nouvel adaptateur de blocs AudIO. Ce remplacement simultané du périphérique, du moteur et de l'interface a supprimé la base sonore connue et rendu les problèmes impossibles à isoler. Cette voie n'est plus la voie principale.
+La base 0.2.3 utilise directement WinMM avec quatre buffers stéréo à 48 kHz. La préversion complète l'avait remplacé par un périphérique JUCE et un nouvel adaptateur de blocs AudIO. Ce remplacement simultané du périphérique, du moteur et de l'interface a supprimé la base sonore connue et rendu les problèmes impossibles à isoler. Cette voie n'est plus la voie principale.
 
 ## Construire la base active
 

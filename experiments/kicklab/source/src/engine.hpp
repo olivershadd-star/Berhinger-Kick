@@ -8,12 +8,22 @@
 #include <vector>
 
 namespace lab {
-constexpr int Pads=16, Steps=16, Block=256, Rate=48000;
+constexpr int Pads=16, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
+enum class InsertEffect { None=0, Lowpass=1, PurestDrive=2 };
+struct InsertState {
+    InsertEffect effect=InsertEffect::None;
+    bool bypass=false;
+    std::array<double,InsertParameters> parameters{};
+};
 struct PadEdit {
     double start=0, end=1, gain=1, semitones=0, fadeMs=2;
-    double filterOpen=1, drive=0;
-    bool bypass=false;
+    bool insertsBypass=false;
+    std::array<InsertState,InsertSlots> inserts{};
+    PadEdit(){inserts[0].effect=InsertEffect::Lowpass;inserts[0].bypass=true;inserts[0].parameters[0]=1;inserts[0].parameters[1]=.5;inserts[0].parameters[2]=1;inserts[1].effect=InsertEffect::PurestDrive;inserts[1].bypass=true;}
 };
+const char* insertEffectName(InsertEffect effect);
+int insertParameterCount(InsertEffect effect);
+const char* insertParameterName(InsertEffect effect,int parameter);
 struct Snapshot {
     std::array<std::string,Pads> names{},paths{};
     std::array<std::array<bool,Steps>,Pads> pattern{};
@@ -34,6 +44,10 @@ public:
     bool load(int pad,const std::string& path,std::string& error);
     void trigger(int pad);
     void setEdit(int pad, const PadEdit& edit);
+    void setInsertEffect(int pad,int slot,InsertEffect effect);
+    void setInsertBypass(int pad,int slot,bool bypass);
+    void setInsertsBypass(int pad,bool bypass);
+    void setInsertParameter(int pad,int slot,int parameter,double value);
     void toggle(int pad,int step);
     void clearPattern(); void demoPattern();
     void setPlaying(bool); void stop();

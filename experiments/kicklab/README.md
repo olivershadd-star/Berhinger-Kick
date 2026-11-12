@@ -1,12 +1,12 @@
 > **Base active du portage progressif.** Cette application conserve la sortie WinMM et le moteur AudIO déjà validés. Les modules KICK publiés y seront intégrés un par un, avec une commande souris pour toute fonction qui dépend normalement du matériel.
 
-# KICK Lab 0.2.2 — potentiomètres et bibliothèque de samples
+# KICK Lab 0.2.3 — quatre inserts par pad
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-**[Télécharger le build Windows portable 0.2.2](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43069868453/artifacts/13876824311)**
+**Build Windows portable 0.2.3 : compilation en cours de validation.**
 
-Cette version conserve le moteur et la bibliothèque de samples validés. Les cinq longues barres de l'éditeur sont remplacées par des potentiomètres inspirés des commandes rotatives de KICK.
+Cette version conserve le moteur, la bibliothèque et les potentiomètres validés. Elle remplace la chaîne fixe des deux effets par les quatre slots d'insert du modèle `AudIO::DawInserts` utilisé par KICK.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
@@ -27,15 +27,16 @@ Windows 10/11 x64, sans installation. Aucun compilateur, Python ou JUCE nécessa
 - **Volume** : réglage indépendant par pad, de 0 à 200 %, lissé pendant la lecture.
 - **Accordage** : de −24 à +24 demi-tons. Il s'agit d'une transposition par vitesse de lecture : la durée change aussi, sans time-stretch.
 - **Fondus** : de 0 à 20 ms au début et à la fin, limités à la moitié de la zone lue. Valeur initiale : 2 ms.
-- **Lowpass / ouverture** : véritable effet Airwindows Lowpass, en pourcentage d'ouverture (pas une fréquence calibrée en Hz). À 100 %, le filtre est contourné.
-- **PurestDrive / saturation** : véritable effet Airwindows PurestDrive, avec gain d'entrée jusqu'à ×4 et compensation en sortie dans l'adaptation. À 0 %, la saturation est contournée.
-- **Bypass** : compare la lecture sans filtre/saturation, en conservant volume, accordage et découpe.
+- **Slots 1 à 4** : sélectionner un slot, puis lui assigner Aucun effet, Airwindows Lowpass ou Airwindows PurestDrive. Les effets sont traités dans l'ordre 1 → 4.
+- **Lowpass** : trois paramètres originaux Airwindows, `Lowpass`, `Soft/Hard` et `Dry/Wet`.
+- **PurestDrive** : paramètre original `Drive`.
+- **Bypass du slot** : contourne uniquement l'effet sélectionné. **Bypass de la chaîne** contourne les quatre slots du pad.
 - **Potentiomètres** : glisser verticalement pour un réglage continu. La molette agit sur le potentiomètre survolé ; ailleurs, elle continue de régler le tempo.
 - **Réinitialiser ce pad** : remet les réglages à leur valeur initiale et conserve son sample.
 - Cliquer directement sur un pad déclenche son one-shot. **Stop** arrête le transport et les voix.
 - **Ajouter à la bibliothèque** : copie le WAV source du pad dans Kicks, Snares, Hats, Percussions, Basses, Pads, Leads, FX ou Autres, puis rattache le pad à cette copie en conservant ses réglages. Les effets ne sont pas rendus dans le WAV copié.
 
-La découpe, l'accordage et les fondus sont appliqués au prochain déclenchement. Le volume et les effets évoluent pendant la lecture, avec lissage. La chaîne est : lecteur AudIO étendu → Lowpass → PurestDrive → volume du pad → bus AudIO → volume général.
+La découpe, l'accordage et les fondus sont appliqués au prochain déclenchement. Le volume évolue pendant la lecture avec lissage. La chaîne est : lecteur AudIO étendu → inserts 1 à 4 → volume du pad → bus AudIO → volume général.
 
 Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la voix de ce pad ; les autres pads continuent. Un nouveau déclenchement relance le sample : cette version n'a qu'une voix par pad.
 
@@ -56,13 +57,13 @@ WAV PCM 16/24/32 bits ou flottant 32 bits, mono/stéréo, de 8 à 192 kHz, jusqu
 
 **Enregistrer projet / Ouvrir projet** sauvegarde le pattern, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Le nom du fichier enregistré ou chargé est confirmé dans la barre d'état. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement. Un chargement échoué conserve le projet courant.
 
-Les projets des versions 0.1.x sont lisibles. Les nouveaux projets utilisent **KICKLAB 2** pour conserver l'édition et les effets ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
+Les projets **KICKLAB 1** et **KICKLAB 2** restent lisibles. Les nouveaux projets utilisent **KICKLAB 3** pour conserver le type, le bypass et les paramètres de chaque slot ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 
-- **AudIO** : graphe `Design`, lecteur `AudioPlayback`, bus et mixage.
+- **AudIO** : graphe `Design`, lecteur `AudioPlayback`, bus, mixage et modèle original `DawInserts` à quatre slots.
 - **AudioFile** : décodeur WAV livré dans le dépôt, après validation et normalisation de l'en-tête.
-- **Airwindows Lowpass / PurestDrive** : sources originales et adaptation `AudioEffectX` fournies dans 0700-AAM. Les deux effets sont construits avant le rendu et restent indépendants pour chaque pad.
+- **Airwindows Lowpass / PurestDrive** : sources originales et adaptation `AudioEffectX` fournies dans 0700-AAM. Chaque instance est créée par l'`ObjectFactory` d'AudIO dans le slot choisi.
 - **Ajouts du prototype** : interface Win32, éditeur, extension du lecteur (découpe, interpolation pour la hauteur, fondus), séquenceur simple, MIDI, sortie WinMM, persistance et tests.
 
 L'éditeur JUCE complet et les classes de voix KICK dépendent encore des couches manquantes. Cette version étend le lecteur AudIO qui fonctionne déjà sur Windows ; elle ne prétend pas porter l'éditeur ou le séquenceur KICK complet. Voir `source/vendor/AudIO/DESKTOP-CHANGES.patch`.
@@ -82,7 +83,7 @@ Pas encore de kits avec médias intégrés, de séquenceur KICK avancé, de keyg
 Les sources nécessaires sont incluses dans **source/**, avec les licences. Les fichiers principaux :
 
 - `source/src/engine.cpp` : chargement, réglages et persistance.
-- `source/src/pad_voice.hpp` : lecteur étendu et chaîne des deux effets.
+- `source/src/pad_voice.hpp` : lecteur étendu et rack de quatre inserts.
 - `source/src/editor_ui.inc` : commandes et dessin de l'éditeur.
 - `source/src/windows.cpp` : fenêtre, pads, MIDI et sortie Windows.
 
@@ -96,7 +97,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, les bornes de découpe, la durée et la fréquence à l'octave, les fades, les effets et le bypass, la persistance v2, les projets v1, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, les bornes de découpe, la durée et la fréquence à l'octave, les fades, les quatre inserts, les bypass, la persistance v3, la migration des projets v1/v2, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 

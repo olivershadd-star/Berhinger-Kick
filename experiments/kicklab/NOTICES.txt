@@ -1,4 +1,4 @@
-KICK Lab 0.2.2 — prototype indépendant.
+KICK Lab 0.2.3 — prototype indépendant.
 
 AudIO : Copyright (c) MUSIC Tribe, AGPL-3.0-or-later.
 https://github.com/MusicTribeOpenSource/0700-AAM

@@ -1,34 +1,18 @@
-KICK Lab 0.2.2 — potentiomètres de l'éditeur
+KICK Lab 0.2.3 — rack KICK de quatre inserts
 
-Compilation MSVC native et tests audio sur GitHub Actions : réussis.
-Compilation MinGW-w64 x64, tests du binaire Windows sous Wine : réussis.
-Tests Linux avec ASan/UBSan : aucun diagnostic sur les scénarios exécutés.
+Tests moteur Linux GCC 14.2 : réussis.
+Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : découpe sans lecture au-delà de la fin ; octave (fréquence et durée) ; gain individuel et volume nul ; fin fondue ; atténuation des aigus par Airwindows Lowpass ; modification du signal par PurestDrive ; bypass ; sauvegarde/rechargement v2 ; compatibilité v1 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV et silence ; découpe et octave ; gain individuel ; Lowpass ; PurestDrive ; bypass par chaîne ; quatre identités et paramètres d’insert sauvegardés/rechargés en KICKLAB 3 ; migration des projets KICKLAB 1 et 2 ; remise en file des buffers ; continuité sous activité graphique.
 
-Interface exécutée sous Wine : glisser les bornes, déplacer les curseurs, sauver puis recharger les mêmes réglages par la boîte de dialogue, et afficher l’éditeur à 1920×1080 : réussis.
+La compilation MSVC native, le test du binaire Windows et l’interface Win32 doivent encore être validés par GitHub Actions pour cette révision.
 
-0.2.1 conserve le moteur et le format KICKLAB 2 de la version validée. Les boutons Ouvrir/Enregistrer indiquent maintenant explicitement qu'ils concernent le projet. Les doublons Couper les voix, Écouter le pad et Couper ont été retirés ; les pads et Stop conservent ces actions. Le kit de démonstration est séparé de la Factory Sample Library vide ; un WAV chargé peut être copié dans une catégorie de cette bibliothèque.
+0.2.3 remplace la chaîne fixe Lowpass → PurestDrive par le modèle original AudIO::DawInserts : quatre slots ordonnés, effet assignable, paramètres propres à l’effet, bypass par slot et bypass de toute la chaîne. Seuls Lowpass et PurestDrive sont proposés pendant cette étape de validation. Le format KICKLAB 3 conserve le rack complet et sait relire les formats 1 et 2.
 
-0.2.2 remplace les cinq curseurs horizontaux par des potentiomètres. Le glissement vertical et la molette modifient les mêmes paramètres moteur ; aucun changement n'est apporté au rendu audio ni au format de projet.
+0.2.2 remplace les cinq curseurs horizontaux par des potentiomètres. Le glissement vertical et la molette modifient les mêmes paramètres moteur.
 
-Le nouveau code doit encore être essayé avec la carte son et le matériel MIDI physique de l’utilisateur. Le benchmark local de 16 pads et 32 instances d’effets traite une seconde d’audio en environ 39 ms ; cette mesure sur le serveur n’est pas une garantie de performance sur une autre machine.
+0.2.1 clarifie les commandes projet, retire les doublons de transport et sépare le kit de démonstration de la Factory Sample Library personnelle.
 
-Historique des versions précédentes :
-KICK Lab 0.1 — résultats de validation
+Les corrections précédentes restent actives : ordre des buffers WinMM, attente par événements du pilote, priorité MMCSS, séparation des copies graphiques et du rendu, interface redimensionnable.
 
-Compilation Windows x64 MinGW-w64 GCC 12.2 via CMake : réussie.
-Compilation et tests moteur Linux GCC 14.2 : réussis.
-AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic dans les scénarios testés.
-
-PASS: silence, WAV playback, mono, EOF, resampling, mute, 16-pad mixing, sequencer, save/load, invalid input
-
-Interface exécutée sous Wine 8 / Xvfb. Navigation entre onglets, modification de grille, sauvegarde et restauration par les boîtes de dialogue vérifiées.
-Sortie WinMM avec périphérique ALSA de capture : signal PCM non silencieux mesuré pendant la lecture du pattern (pic observé 9711/32767).
-Pas de validation sur un véritable PC Windows ou du matériel audio/MIDI physique.
-
-Archive fournie, SHA-256 : 0cd1651ed1877d4933a5249ea82fdbd55d43f4dd403b63379f66d92f3db9701c
-
-Correctif 0.1.1 : le test de continuité audio avec trois lecteurs concurrents de l’état graphique échoue sur le moteur 0.1.0 et passe sur 0.1.1. Test de remise en file au passage de la fin du tableau de buffers : réussi. Le nouveau binaire doit encore être confirmé sur le matériel audio de l’utilisateur.
-
-0.1.2 : problème reproduit sous Wine en agrandissant la fenêtre à 1920×1080. Correction de la transformation GDI avant copie écran. Vérifications visuelles à 960×680, 1600×900 et 1920×1080, navigation entre onglets et clic sur le dernier pas du pad 16 réussis. Prise en charge du message de changement de DPI ajoutée ; changement entre moniteurs physiques non testé.
+Le nouveau code doit encore être essayé avec la carte son et le matériel MIDI physique de l’utilisateur.

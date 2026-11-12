@@ -13,7 +13,7 @@
 #include <iomanip>
 using namespace lab;
 void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
-void wav(const std::string& file,int rate,int channels,int frames,double frequency=440){std::ofstream f(std::filesystem::u8path(file),std::ios::binary);auto u16=[&](unsigned n){char b[2]={char(n),char(n>>8)};f.write(b,2);};auto u32=[&](unsigned n){u16(n);u16(n>>16);};f.write("RIFF",4);u32(36+frames*channels*2);f.write("WAVEfmt ",8);u32(16);u16(1);u16(channels);u32(rate);u32(rate*channels*2);u16(channels*2);u16(16);f.write("data",4);u32(frames*channels*2);for(int n=0;n<frames;++n)for(int c=0;c<channels;++c)u16(static_cast<uint16_t>(int16_t(8000*std::sin(2*3.141592653589793*frequency*n/rate))));}
+void wav(const std::string& file,int rate,int channels,int frames,double frequency=440,double amplitude=8000){std::ofstream f(std::filesystem::u8path(file),std::ios::binary);auto u16=[&](unsigned n){char b[2]={char(n),char(n>>8)};f.write(b,2);};auto u32=[&](unsigned n){u16(n);u16(n>>16);};f.write("RIFF",4);u32(36+frames*channels*2);f.write("WAVEfmt ",8);u32(16);u16(1);u16(channels);u32(rate);u32(rate*channels*2);u16(channels*2);u16(16);f.write("data",4);u32(frames*channels*2);for(int n=0;n<frames;++n)for(int c=0;c<channels;++c)u16(static_cast<uint16_t>(int16_t(amplitude*std::sin(2*3.141592653589793*frequency*n/rate))));}
 int main(int argc,char**argv){try{
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
@@ -43,7 +43,7 @@ int main(int argc,char**argv){try{
     int crossings=0;float previous=0;
     for(int b=0;b<100;++b){e.render(block);for(int n=0;n<Block;++n){float v=block[n*2];if(previous<=0&&v>1e-5)++crossings;previous=v;if(b*Block+n>=24000)check(v==0,"pitch octave duration incorrect");}}
     check(crossings>=438&&crossings<=442,"octave pitch does not double frequency");
-    wav(path("high.wav"),48000,2,48000,8000);
+    wav(path("high.wav"),48000,2,48000,8000,26000);
     auto measure=[&](const PadEdit& settings){
         check(e.load(0,path("high.wav"),error),error.c_str());e.setEdit(0,settings);e.stop();e.trigger(0);
         std::vector<float> result;
@@ -55,19 +55,32 @@ int main(int argc,char**argv){try{
     check(std::abs(halfEnergy/dryEnergy-.25)<1e-5,"per-pad gain is incorrect");
     auto muted=dry;muted.gain=0;auto silence=measure(muted);double muteEnergy=0;for(float v:silence)muteEnergy+=v*v;
     check(muteEnergy<dryEnergy*1e-12,"per-pad mute leaves audible signal");
-    auto filtered=dry;filtered.filterOpen=.1;auto low=measure(filtered);double lowEnergy=0;for(float v:low)lowEnergy+=v*v;
+    auto filtered=dry;filtered.inserts[0].bypass=false;filtered.inserts[0].parameters[0]=.1;auto low=measure(filtered);double lowEnergy=0;for(float v:low)lowEnergy+=v*v;
     check(lowEnergy<dryEnergy*.2,"Airwindows lowpass does not attenuate highs");
-    auto saturated=dry;saturated.drive=1;auto drive=measure(saturated);double changed=0;
+    auto saturated=dry;saturated.inserts[1].bypass=false;saturated.inserts[1].parameters[0]=1;auto drive=measure(saturated);double changed=0;
     for(size_t i=0;i<clean.size();++i){check(std::isfinite(drive[i]),"drive output is not finite");changed+=std::pow(clean[i]-drive[i],2);}
     check(changed>dryEnergy*.0001,"Airwindows drive does not change waveform");
-    saturated.bypass=true;auto bypass=measure(saturated);double bypassDifference=0;
+    auto lowThenDrive=dry;lowThenDrive.inserts[0].bypass=false;lowThenDrive.inserts[0].parameters[0]=.35;lowThenDrive.inserts[1].bypass=false;lowThenDrive.inserts[1].parameters[0]=1;auto firstOrder=measure(lowThenDrive);
+    auto driveThenLow=dry;driveThenLow.inserts[0]=lowThenDrive.inserts[1];driveThenLow.inserts[1]=lowThenDrive.inserts[0];auto secondOrder=measure(driveThenLow);double orderDifference=0;
+    for(size_t i=0;i<firstOrder.size();++i)orderDifference+=std::pow(firstOrder[i]-secondOrder[i],2);
+    check(orderDifference>dryEnergy*1e-8,"insert slot order does not affect processing order");
+    saturated.insertsBypass=true;auto bypass=measure(saturated);double bypassDifference=0;
     for(size_t i=0;i<clean.size();++i)bypassDifference+=std::pow(clean[i]-bypass[i],2);
     check(bypassDifference<dryEnergy*1e-8,"FX bypass changes dry signal");
-    edit={};edit.start=.12;edit.end=.83;edit.gain=.75;edit.semitones=-7;edit.fadeMs=4.5;edit.filterOpen=.4;edit.drive=.8;edit.bypass=true;e.setEdit(0,edit);
+    edit={};edit.start=.12;edit.end=.83;edit.gain=.75;edit.semitones=-7;edit.fadeMs=4.5;edit.insertsBypass=true;
+    edit.inserts[0].bypass=false;edit.inserts[0].parameters[0]=.4;edit.inserts[0].parameters[1]=.2;edit.inserts[0].parameters[2]=.7;
+    edit.inserts[1].bypass=false;edit.inserts[1].parameters[0]=.8;
+    edit.inserts[2].effect=InsertEffect::PurestDrive;edit.inserts[2].parameters[0]=.35;
+    edit.inserts[3].effect=InsertEffect::Lowpass;edit.inserts[3].bypass=true;edit.inserts[3].parameters[0]=.65;edit.inserts[3].parameters[1]=.75;edit.inserts[3].parameters[2]=.5;e.setEdit(0,edit);
     check(e.save(path("edited.kicklab"),error),error.c_str());e.setEdit(0,{});check(e.open(path("edited.kicklab"),error),error.c_str());auto restored=e.snapshot().edits[0];
-    check(restored.start==edit.start&&restored.end==edit.end&&restored.semitones==-7&&restored.gain==.75&&restored.fadeMs==4.5&&restored.filterOpen==.4&&restored.drive==.8&&restored.bypass,"edited project roundtrip failed");
-    check(e.open(path("sparse.kicklab"),error),error.c_str());check(e.snapshot().edits[0].drive==0,"v1 project did not restore default edits");
-    std::cout<<"PASS: trim, octave pitch, Airwindows filter/drive/bypass, pad settings persistence and v1 compatibility\n";
+    check(restored.start==edit.start&&restored.end==edit.end&&restored.semitones==-7&&restored.gain==.75&&restored.fadeMs==4.5&&restored.insertsBypass,"edited project roundtrip failed");
+    for(int slot=0;slot<InsertSlots;++slot){check(restored.inserts[slot].effect==edit.inserts[slot].effect&&restored.inserts[slot].bypass==edit.inserts[slot].bypass,"insert identity roundtrip failed");for(int parameter=0;parameter<insertParameterCount(edit.inserts[slot].effect);++parameter)check(restored.inserts[slot].parameters[parameter]==edit.inserts[slot].parameters[parameter],"insert parameter roundtrip failed");}
+    check(e.open(path("sparse.kicklab"),error),error.c_str());restored=e.snapshot().edits[0];check(restored.inserts[0].effect==InsertEffect::Lowpass&&restored.inserts[0].bypass&&restored.inserts[1].effect==InsertEffect::PurestDrive&&restored.inserts[1].bypass,"v1 project did not restore bypassed default inserts");
+    {std::ofstream f(std::filesystem::u8path(path("legacy-v2.kicklab")));f<<"KICKLAB 2\n120 0.65\n";for(int p=0;p<Pads;++p)f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<" 0.1 0.9 0.75 -3 4 0.4 0.8 1\n";}
+    check(e.open(path("legacy-v2.kicklab"),error),error.c_str());restored=e.snapshot().edits[0];
+    check(restored.insertsBypass&&restored.inserts[0].effect==InsertEffect::Lowpass&&!restored.inserts[0].bypass&&restored.inserts[0].parameters[0]==.4&&restored.inserts[1].effect==InsertEffect::PurestDrive&&!restored.inserts[1].bypass&&restored.inserts[1].parameters[0]==.8,"v2 effect migration failed");
+    e.setInsertEffect(0,2,InsertEffect::PurestDrive);e.setInsertParameter(0,2,0,.42);e.setInsertBypass(0,2,true);restored=e.snapshot().edits[0];check(restored.inserts[2].effect==InsertEffect::PurestDrive&&restored.inserts[2].parameters[0]==.42&&restored.inserts[2].bypass,"insert control API failed");
+    std::cout<<"PASS: trim, octave pitch, four AudIO inserts, bypass, project v3 and v1/v2 compatibility\n";
     // Batched driver completions across the ring boundary must preserve time order.
     AudioQueue<4> queue;std::array<bool,4> ready={true,true,true,false};std::vector<int> submitted;
     auto submit=[&](size_t b){submitted.push_back(int(b));ready[b]=false;return true;};
