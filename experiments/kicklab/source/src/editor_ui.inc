@@ -65,7 +65,7 @@ void editorClick(int x,int y,bool right){
     else if(Box{440,690,200,42}.contains(x,y))project(true);
     else if(Box{656,690,250,42}.contains(x,y))savePadToLibrary();
 }
-std::wstring decimal(double value,int precision=2){wchar_t buffer[64];std::swprintf(buffer,64,L"%.*f",precision,value);return buffer;}
+std::wstring decimal(double value,int precision=2)const {wchar_t buffer[64];std::swprintf(buffer,64,L"%.*f",precision,value);return buffer;}
 void paintEditorKnob(HDC dc,int id,const std::wstring& name,const std::wstring& value,double ratio){
     auto b=editorKnob(id);bool compact=id>=InsertKnobBase;ratio=std::clamp(ratio,0.,1.);text(dc,{b.x,b.y,b.w,20},name,compact?11:13,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     int cx=b.x+b.w/2,cy=b.y+(compact?48:69),r=compact?25:35;HBRUSH brush=CreateSolidBrush(RGB(31,38,50));HPEN edge=CreatePen(PS_SOLID,2,line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-r,cy-r,cx+r,cy+r);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);
