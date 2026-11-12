@@ -15,13 +15,15 @@ Cette version conserve le moteur, la bibliothèque, les potentiomètres et le ra
 1. Extraire entièrement le ZIP dans un dossier accessible en écriture.
 2. Ouvrir **KickLab.exe**, en gardant le dossier **demo-kit** à côté. Le dossier **samples** de la bibliothèque est créé automatiquement.
 3. Dans **Jouer**, cliquer sur les pads, ou charger **Démo** avant de lancer le pattern. Le pattern démarre volontairement vide.
-4. Dans **Sample & FX**, sélectionner un pad pour travailler son son.
+4. Le bouton **Sample & FX** charge dans l'écran A les quatre inserts du pad sélectionné. Choisir un slot, cliquer sur son effet ou son bypass, puis régler ses paramètres avec P1–P4. L'éditeur détaillé transitoire reste accessible depuis **Sample Editor** dans le menu de l'écran B.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
 Windows 10/11 x64, sans installation. Aucun compilateur, Python ou JUCE nécessaire pour lancer l'exécutable fourni. La fenêtre reste redimensionnable. Si aucun son ne sort, choisir une sortie Windows avec le bouton Audio de l'onglet Jouer.
 
 ## Sample & FX
+
+La surface principale expose maintenant le slot d'effet sélectionné directement dans l'écran A. Les valeurs affichées viennent du véritable état du moteur : P1–P4 règlent jusqu'à quatre paramètres par glissement vertical ou avec la molette. Un paramètre non disponible reste explicitement non assigné. L'écran B conserve son menu indépendant pendant cette première étape ; ses P5–P8 ne sont pas encore reliés.
 
 - **Début / fin** : glisser les deux repères sur la forme d'onde. Le WAV original n'est pas modifié.
 - **Volume** : réglage indépendant par pad, de 0 à 200 %, lissé pendant la lecture.

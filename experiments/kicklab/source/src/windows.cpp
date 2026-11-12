@@ -126,6 +126,7 @@ public:
         case lab::SurfaceAction::CenterDown:if(tab==0)moveSurfaceMenu(0,1);break;
         case lab::SurfaceAction::CenterLeft:if(tab==0)moveSurfaceMenu(-1,0);break;
         case lab::SurfaceAction::CenterRight:if(tab==0)moveSurfaceMenu(1,0);break;
+        case lab::SurfaceAction::QLinkTurn:if(tab==0)turnSurfaceQLink(event.display,event.index,event.value);break;
         case lab::SurfaceAction::FocusNext:if(tab==0)surface.focusDisplay(1-surface.focusedDisplay);break;
         case lab::SurfaceAction::PagePrevious:if(tab==0)surface.focusDisplay(0);break;
         case lab::SurfaceAction::PageNext:if(tab==0)surface.focusDisplay(1);break;
@@ -141,10 +142,10 @@ public:
     void click(int x,int y,bool right){
         if(Box{28,12,150,42}.contains(x,y)){tab=0;return;}
         if(tab==1&&Box{1014,16,158,34}.contains(x,y)){tab=0;status=L"Retour à la surface principale KICK.";return;}
-        if(Box{42,410,112,34}.contains(x,y)){tab=0;status=L"Surface principale KICK.";return;}
-        if(Box{166,410,112,34}.contains(x,y)){tab=tab==1?0:1;return;}
+        if(Box{42,410,112,34}.contains(x,y)){tab=0;showSurfaceMenu(surface.focusedDisplay);status=L"Surface principale KICK.";return;}
+        if(Box{166,410,112,34}.contains(x,y)){tab=0;showSurfaceInserts(0);return;}
         if(tab==1){editorClick(x,y,right);return;}
-        if(surfaceClick(x,y))return;
+        if(surfaceClick(x,y,right))return;
         if(Box{42,452,112,34}.contains(x,y))sampleMenu();
         else if(Box{166,452,112,34}.contains(x,y)){auto folder=library;ShellExecuteW(window,L"open",folder.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
         else if(Box{42,496,72,40}.contains(x,y))dispatch({lab::SurfaceAction::PlayPause});
@@ -176,7 +177,7 @@ public:
         fill(dc,{28,62,1144,1},line);
         if(tab==1){button(dc,{1014,16,158,34},L"Retour KICK",true);paintEditor(dc);return;}
         auto s=engine.snapshot();
-        paintSurface(dc);
+        paintSurface(dc,s);
         round(dc,{28,398,270,374},panel);
         button(dc,{42,410,112,34},L"Main",true);button(dc,{166,410,112,34},L"Sample & FX");
         button(dc,{42,452,112,34},L"Browser / WAV");button(dc,{166,452,112,34},L"Bibliothèque");
@@ -249,9 +250,9 @@ case WM_DPICHANGED:{
 }
 case WM_TIMER:if(app->smoke&&GetTickCount64()>app->flashed[0]){DestroyWindow(h);return 0;}InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:app->click(GET_X_LPARAM(l)*1200/app->width,GET_Y_LPARAM(l)*800/app->height,msg==WM_RBUTTONDOWN);InvalidateRect(h,nullptr,FALSE);return 0;
-case WM_MOUSEMOVE:if(app->editorDrag){app->editorPointer(GET_X_LPARAM(l)*1200/app->width,GET_Y_LPARAM(l)*800/app->height);InvalidateRect(h,nullptr,FALSE);}return 0;
-case WM_LBUTTONUP:if(app->editorDrag){app->editorDrag=0;ReleaseCapture();}return 0;
-case WM_CAPTURECHANGED:app->editorDrag=0;return 0;
+case WM_MOUSEMOVE:{int x=GET_X_LPARAM(l)*1200/app->width,y=GET_Y_LPARAM(l)*800/app->height;if(app->surfaceDragDisplay>=0){app->surfacePointer(y);InvalidateRect(h,nullptr,FALSE);}else if(app->editorDrag){app->editorPointer(x,y);InvalidateRect(h,nullptr,FALSE);}return 0;}
+case WM_LBUTTONUP:if(app->editorDrag||app->surfaceDragDisplay>=0){app->editorDrag=0;app->surfaceDragDisplay=-1;app->surfaceDragKnob=-1;ReleaseCapture();}return 0;
+case WM_CAPTURECHANGED:app->editorDrag=0;app->surfaceDragDisplay=-1;app->surfaceDragKnob=-1;return 0;
 case WM_MOUSEWHEEL:{POINT point{GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(!app->surfaceWheel(x,y,GET_WHEEL_DELTA_WPARAM(w))&&!app->editorWheel(x,y,GET_WHEEL_DELTA_WPARAM(w)))app->dispatch({lab::SurfaceAction::TempoDelta,0,GET_WHEEL_DELTA_WPARAM(w)>0?1:-1});InvalidateRect(h,nullptr,FALSE);return 0;}
 case WM_KEYDOWN:if(w==VK_SHIFT)app->dispatch({lab::SurfaceAction::Shift,0,0,0,true});else app->key(w,l);return 0;
 case WM_KEYUP:if(w==VK_SHIFT)app->dispatch({lab::SurfaceAction::Shift,0,0,0,false});return 0;

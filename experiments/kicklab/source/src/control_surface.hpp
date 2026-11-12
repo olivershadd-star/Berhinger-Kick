@@ -42,6 +42,7 @@ struct SurfaceEvent {
 };
 
 enum class DisplayModule {
+    Menu,
     Sample,
     Inserts,
     Browser,
@@ -53,7 +54,7 @@ enum class DisplayModule {
 // different pages of one effect, or two entirely different modules, without
 // creating duplicate effects or audio processors.
 struct DisplayBinding {
-    DisplayModule module = DisplayModule::Inserts;
+    DisplayModule module = DisplayModule::Menu;
     int pad = 0;
     int slot = 0;
     int page = 0;
@@ -67,8 +68,8 @@ struct DisplayBinding {
 class SurfaceState {
 public:
     SurfaceState() {
-        displays[0] = {DisplayModule::Inserts, 0, 0, 0, true};
-        displays[1] = {DisplayModule::Inserts, 0, 0, 1, true};
+        displays[0] = {DisplayModule::Menu, 0, 0, 0, true};
+        displays[1] = {DisplayModule::Menu, 0, 0, 0, true};
     }
 
     int selectedPad = 0;

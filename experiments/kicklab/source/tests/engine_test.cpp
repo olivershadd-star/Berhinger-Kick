@@ -18,6 +18,7 @@ void wav(const std::string& file,int rate,int channels,int frames,double frequen
 int main(int argc,char**argv){try{
     SurfaceState surface;
     check(surface.displays[0].parameterForKnob(3)==3,"left display Q-Link mapping failed");
+    surface.setDisplayPage(1,1);
     check(surface.displays[1].parameterForKnob(0)==4,"right display page mapping failed");
     surface.selectPad(11);check(surface.selectedPad==11&&surface.displays[0].pad==11&&surface.displays[1].pad==11,"display did not follow selected pad");
     surface.displays[1].followsSelectedPad=false;surface.displays[1].pad=3;surface.selectPad(5);check(surface.displays[0].pad==5&&surface.displays[1].pad==3,"independent display binding failed");
