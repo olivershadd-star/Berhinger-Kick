@@ -27,6 +27,7 @@ std::wstring wide(const std::string& s){if(s.empty())return {};int n=MultiByteTo
 std::string utf8(const std::wstring& s){if(s.empty())return {};int n=WideCharToMultiByte(CP_UTF8,0,s.data(),int(s.size()),nullptr,0,nullptr,nullptr);std::string r(n,0);WideCharToMultiByte(CP_UTF8,0,s.data(),int(s.size()),r.data(),n,nullptr,nullptr);return r;}
 struct Box {int x,y,w,h;bool contains(int a,int b)const{return a>=x&&a<x+w&&b>=y&&b<y+h;} RECT rect()const{return {x,y,x+w,y+h};}};
 constexpr COLORREF bg=RGB(14,17,23),panel=RGB(23,28,37),muted=RGB(144,158,178),ink=RGB(233,239,248),accent=RGB(76,217,184),line=RGB(43,53,68);
+constexpr int DesignWidth=1600,DesignHeight=900;
 COLORREF padColor(int i){constexpr COLORREF colors[]={RGB(255,133,103),RGB(241,184,88),RGB(76,217,184),RGB(132,161,250)};return colors[i/4];}
 std::wstring number(int n){return std::to_wstring(n);}
 std::wstring padName(int p){return (p<9?L"0":L"")+number(p+1);}
@@ -114,7 +115,9 @@ public:
     int songChoice=0,songRepeats=1,songSelected=0;
     std::array<lab::MidiCcBinding,8> midiQlinks{};std::array<lab::MidiPadBinding,lab::SurfacePads> midiPads{};std::array<lab::MidiCommandBinding,lab::MidiCommandCount> midiCommands{};int midiLearnTarget=-1,midiLearnPad=-1,midiLearnCommand=-1;unsigned midiLastPacked=0;unsigned midiMessageCount=0;bool midiProfileLoaded=false;double meterPeak=0;
     std::wstring status=L"Clique sur un pad pour jouer. Clic droit pour charger un WAV.";
-    std::array<ULONGLONG,16> flashed{};int mouseX=-1,mouseY=-1;int width=1200,height=800;
+    std::array<ULONGLONG,16> flashed{};int mouseX=-1,mouseY=-1;int width=DesignWidth,height=DesignHeight;
+    // Physical layout state. 0=Pad, 1=Keyboard, 2=Chords, 3=Step.
+    int padMode=0,padGroup=0,stepTrack=0;
     App(){wchar_t path[32768];DWORD n=GetModuleFileNameW(nullptr,path,32768);base=std::filesystem::path(std::wstring(path,n)).parent_path();library=base/L"samples";midiProfile=base/L"profiles"/L"MaschinePlus.kickmidi";std::error_code ec;std::filesystem::create_directories(library,ec);for(const auto& category:libraryCategories)std::filesystem::create_directories(library/category,ec);std::filesystem::create_directories(midiProfile.parent_path(),ec);loadMidiProfile();SetCurrentDirectoryW(base.c_str());}
     ~App(){closeMidi();audio.stop();}
     void initialise(HWND h){window=h;int loaded=0;std::string error;for(int p=0;p<16;++p){const std::array<std::wstring,16> files={L"01-Kick.wav",L"02-Snare.wav",L"03-Closed-Hat.wav",L"04-Open-Hat.wav",L"05-Clap.wav",L"06-Low-Tom.wav",L"07-Mid-Tom.wav",L"08-High-Tom.wav",L"09-Rim.wav",L"10-Shaker.wav",L"11-Claves.wav",L"12-Cowbell.wav",L"13-Bass-C.wav",L"14-Bass-E.wav",L"15-Bass-G.wav",L"16-Chime.wav"};auto path=base/L"demo-kit"/files[p];if(engine.load(p,path.u8string(),error))++loaded;}if(loaded==16)status=L"Kit chargé. Pattern vide ; le bouton Démo charge le pattern d'exemple.";else status=L"Kit de démonstration incomplet : "+number(loaded)+L"/16 fichiers.";audio.start(audioId);SetTimer(h,1,33,nullptr);DragAcceptFiles(h,TRUE);}
@@ -217,72 +220,30 @@ public:
         }
     }
     void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(tab==0){if(key==VK_UP)dispatch({lab::SurfaceAction::CenterUp});else if(key==VK_DOWN)dispatch({lab::SurfaceAction::CenterDown});else if(key==VK_LEFT)dispatch({lab::SurfaceAction::CenterLeft});else if(key==VK_RIGHT)dispatch({lab::SurfaceAction::CenterRight});else if(key==VK_RETURN)dispatch({lab::SurfaceAction::CenterPush});else if(key==VK_TAB)dispatch({lab::SurfaceAction::FocusNext});else if(key==VK_PRIOR)dispatch({lab::SurfaceAction::PagePrevious});else if(key==VK_NEXT)dispatch({lab::SurfaceAction::PageNext});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Back});else if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}else{if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else if(key==VK_ESCAPE){tab=0;status=L"Retour à la surface principale KICK.";}else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}InvalidateRect(window,nullptr,FALSE);}
-    Box padBox(int p)const{return {318+(p%4)*66,452+(3-p/4)*76,58,66};}
+    Box padBox(int p)const{return {700+(p%4)*132,506+(3-p/4)*92,122,84};}
     #include "editor_ui.inc"
     #include "surface_ui.inc"
     void click(int x,int y,bool right){
         if(Box{28,12,150,42}.contains(x,y)){tab=0;return;}
-        if(tab==1&&Box{1014,16,158,34}.contains(x,y)){tab=0;status=L"Retour à la surface principale KICK.";return;}
-        if(Box{42,410,112,34}.contains(x,y)){tab=0;showSurfaceMenu(surface.focusedDisplay);status=L"Surface principale KICK.";return;}
-        if(Box{166,410,112,34}.contains(x,y)){tab=0;showSurfaceInserts(surface.focusedDisplay);return;}
+        if(tab==1&&Box{1414,16,158,34}.contains(x,y)){tab=0;status=L"Retour à la surface principale KICK.";return;}
         if(tab==1){editorClick(x,y,right);return;}
+        if(maschineClick(x,y,right))return;
         if(surfaceClick(x,y,right))return;
-        if(Box{42,452,112,34}.contains(x,y))sampleMenu();
-        else if(Box{166,452,112,34}.contains(x,y)){auto folder=library;ShellExecuteW(window,L"open",folder.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
-        else if(Box{42,496,72,40}.contains(x,y))dispatch({lab::SurfaceAction::PlayPause});
-        else if(Box{122,496,72,40}.contains(x,y))dispatch({lab::SurfaceAction::Stop});
-        else if(Box{42,548,34,34}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,-1});
-        else if(Box{164,548,34,34}.contains(x,y))dispatch({lab::SurfaceAction::TempoDelta,0,1});
-        else if(Box{204,548,74,34}.contains(x,y))showSurfaceHome();
-        else if(Box{42,592,112,34}.contains(x,y)){engine.demoPattern();status=L"Pattern de démonstration : 1 mesure, 16 doubles croches.";}
-        else if(Box{166,592,112,34}.contains(x,y))engine.clearPattern();
-        else if(Box{42,636,112,34}.contains(x,y))project(false);
-        else if(Box{166,636,112,34}.contains(x,y))project(true);
-        else if(Box{42,680,112,34}.contains(x,y))midiMenu();
-        else if(Box{166,680,112,34}.contains(x,y))audioMenu();
-        else if(Box{42,718,236,42}.contains(x,y))engine.setVolume(std::clamp((x-42)/236.,0.,1.));
-        else if(Box{770,406,70,28}.contains(x,y)){auto s=engine.snapshot();auto mode=s.sequences[s.sequence].mode;if(mode==lab::PerformanceMode::Drum){engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);status=L"Pad Notes chromatique — le pad "+padName(selected)+L" est la source mélodique.";}else{engine.setPerformanceMode(lab::PerformanceMode::Drum);status=L"Vue Drum — les 16 pads retrouvent leurs samples.";}}
-        else if(Box{844,406,26,28}.contains(x,y)){auto s=engine.snapshot();engine.selectSequence(std::max(0,s.sequence-1));}
-        else if(Box{930,406,26,28}.contains(x,y)){auto s=engine.snapshot();engine.selectSequence(std::min(lab::Sequences-1,s.sequence+1));}
-        else if(Box{960,406,26,28}.contains(x,y)){auto s=engine.snapshot();engine.setViewBar(s.viewBar-1);}
-        else if(Box{1048,406,26,28}.contains(x,y)){auto s=engine.snapshot();engine.setViewBar(s.viewBar+1);}
-        else if(Box{1078,406,80,28}.contains(x,y)){auto s=engine.snapshot();const int bars=s.sequences[s.sequence].bars;engine.setSequenceBars(bars%lab::MaxBars+1);status=L"Longueur de la séquence : "+number(bars%lab::MaxBars+1)+L" mesure(s).";}
-        else {
-            for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){if(right){selectPad(p);sampleMenu();}else dispatch({lab::SurfaceAction::PadPress,p});return;}
-            if(x>=692&&x<1140&&y>=450&&y<754){int row=(y-450)/19,k=(x-692)/28;auto s=engine.snapshot();int p=s.sequences[s.sequence].mode==lab::PerformanceMode::Drum?row:15-row;if(p<16&&k<16)dispatch({lab::SurfaceAction::StepToggle,p,k});}
-            else if(x>=622&&x<686&&y>=450&&y<754){int row=(y-450)/19;auto s=engine.snapshot();if(s.sequences[s.sequence].mode==lab::PerformanceMode::Drum)selectPad(row);else dispatch({lab::SurfaceAction::PadPress,15-row});}
-        }
     }
     void fill(HDC dc,Box b,COLORREF c){auto r=b.rect();HBRUSH brush=CreateSolidBrush(c);FillRect(dc,&r,brush);DeleteObject(brush);}
     void round(HDC dc,Box b,COLORREF c,COLORREF edge=line){HBRUSH brush=CreateSolidBrush(c);HPEN pen=CreatePen(PS_SOLID,1,edge);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,pen);RoundRect(dc,b.x,b.y,b.x+b.w,b.y+b.h,12,12);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(pen);}
     void text(HDC dc,Box b,const std::wstring& str,int size=15,COLORREF c=ink,int weight=FW_NORMAL,UINT format=DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS){HFONT font=CreateFontW(-size,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");auto old=SelectObject(dc,font);SetTextColor(dc,c);SetBkMode(dc,TRANSPARENT);auto r=b.rect();DrawTextW(dc,str.c_str(),int(str.size()),&r,format|DT_NOPREFIX);SelectObject(dc,old);DeleteObject(font);}
     void button(HDC dc,Box b,const std::wstring& name,bool on=false){round(dc,b,on?accent:RGB(31,38,50),on?accent:line);text(dc,b,name,14,on?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     void paint(HDC dc){
-        SetMapMode(dc,MM_ANISOTROPIC);SetWindowExtEx(dc,1200,800,nullptr);SetViewportExtEx(dc,width,height,nullptr);
-        fill(dc,{0,0,1200,800},bg);fill(dc,{28,16,7,34},accent);text(dc,{48,12,150,42},L"KICK",29,ink,FW_BOLD);
+        SetMapMode(dc,MM_ANISOTROPIC);SetWindowExtEx(dc,DesignWidth,DesignHeight,nullptr);SetViewportExtEx(dc,width,height,nullptr);
+        fill(dc,{0,0,DesignWidth,DesignHeight},bg);fill(dc,{28,16,7,34},accent);text(dc,{48,12,150,42},L"KICK",29,ink,FW_BOLD);
         text(dc,{174,17,280,28},L"WINDOWS PORT · SURFACE KICK",11,muted,FW_SEMIBOLD);
-        text(dc,{470,17,702,28},status,9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        fill(dc,{28,62,1144,1},line);
-        if(tab==1){button(dc,{1014,16,158,34},L"Retour KICK",true);paintEditor(dc);return;}
+        text(dc,{470,17,1102,28},status,9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        fill(dc,{28,62,1544,1},line);
+        if(tab==1){button(dc,{1414,16,158,34},L"Retour KICK",true);paintEditor(dc);return;}
         auto s=engine.snapshot();
         paintSurface(dc,s);
-        round(dc,{28,398,270,374},panel);
-        button(dc,{42,410,112,34},L"Main",true);button(dc,{166,410,112,34},L"Sample & FX");
-        button(dc,{42,452,112,34},L"Browser / WAV");button(dc,{166,452,112,34},L"Bibliothèque");
-        button(dc,{42,496,72,40},s.playing?L"Pause":L"Play",s.playing);button(dc,{122,496,72,40},L"Stop");
-        text(dc,{204,496,74,16},L"TRANSPORT",8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        text(dc,{204,514,74,18},s.playing?L"EN COURS":L"ARRÊT",9,s.playing?accent:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        button(dc,{42,548,34,34},L"−");text(dc,{80,544,80,22},number(int(s.tempo)),18,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);text(dc,{80,566,80,14},L"BPM",8,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);button(dc,{164,548,34,34},L"+");button(dc,{204,548,74,34},L"Menu");
-        button(dc,{42,592,112,34},L"Démo");button(dc,{166,592,112,34},L"Effacer");
-        button(dc,{42,636,112,34},L"Ouvrir projet");button(dc,{166,636,112,34},L"Enregistrer");
-        button(dc,{42,680,112,34},midiId<0?L"MIDI : off":L"MIDI : on");button(dc,{166,680,112,34},audio.running?L"Audio : Windows":L"Choisir audio");
-        meterPeak=std::max(double(s.peak),meterPeak*.9);paintMasterMeter(dc,s.volume,meterPeak);
-        const auto module=surface.displays[surface.focusedDisplay].module;const auto& sequence=s.sequences[s.sequence];const bool notes=sequence.mode!=lab::PerformanceMode::Drum,nextMode=module==lab::DisplayModule::NextSequence,songMode=module==lab::DisplayModule::Song;
-        round(dc,{308,398,272,374},panel);text(dc,{322,408,244,25},nextMode?L"16 PADS / NEXT SEQUENCE":songMode?L"16 PADS / SONG SELECT":notes?L"16 PADS / PAD NOTES":L"16 PADS / ONE-SHOTS",12,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        ULONGLONG now=GetTickCount64();for(int p=0;p<16;++p){auto b=padBox(p);bool hot=now<flashed[p]||(!notes&&!nextMode&&!songMode&&s.active[p]);COLORREF c=padColor(p);const bool chosen=(nextMode&&(p==s.sequence||p==s.queuedSequence))||(songMode&&p==songChoice)||(!notes&&!nextMode&&!songMode&&p==selected);round(dc,b,hot?c:RGB(32,39,51),chosen?c:line);fill(dc,{b.x+7,b.y+8,5,5},c);text(dc,{b.x+15,b.y+2,b.w-20,20},number(p+1),11,hot?bg:muted,FW_SEMIBOLD);std::wstring middle=nextMode||songMode?L"SEQ "+number(p+1):notes?noteName(engine.performanceNote(p)):wide(s.names[p]);std::wstring bottom=notes?labels[p]+L" · "+wide(s.names[sequence.sourcePad]):labels[p];text(dc,{b.x+5,b.y+22,b.w-10,22},middle,9,hot?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);text(dc,{b.x+5,b.y+46,b.w-10,15},bottom,8,hot?bg:muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}
-        round(dc,{608,398,564,374},panel);text(dc,{622,408,146,25},notes?L"SÉQUENCEUR NOTES":L"SÉQUENCEUR DRUM",12,ink,FW_SEMIBOLD);button(dc,{770,406,70,28},notes?L"NOTES":L"DRUM",notes);button(dc,{844,406,26,28},L"<");text(dc,{873,406,54,28},L"SEQ "+number(s.sequence+1),9,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);button(dc,{930,406,26,28},L">");button(dc,{960,406,26,28},L"<");text(dc,{989,406,56,28},L"BAR "+number(s.viewBar+1),9,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);button(dc,{1048,406,26,28},L">");button(dc,{1078,406,80,28},L"LEN "+number(sequence.bars)+L" BAR");
-        const bool playVisible=s.playing&&s.playBar==s.viewBar;for(int k=0;k<16;++k)text(dc,{692+k*28,426,24,18},number(k+1),9,playVisible&&k==s.step?accent:muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);
-        for(int row=0;row<16;++row){const int p=notes?15-row:row;const int mapped=notes?engine.performanceNote(p):-1;if(!notes&&p==selected)fill(dc,{618,450+row*19,538,17},RGB(32,41,52));text(dc,{622,450+row*19,62,17},notes?noteName(mapped):number(p+1)+L"   "+labels[p],8,notes?accent:padColor(p),FW_SEMIBOLD,DT_LEFT|DT_VCENTER|DT_SINGLELINE);for(int k=0;k<16;++k){const bool active=notes?s.melody[k]==mapped:s.pattern[p][k];COLORREF c=active?(notes?accent:padColor(p)):(k/4%2?RGB(38,46,59):RGB(31,38,49));if(playVisible&&s.step==k&&!active)c=RGB(58,76,84);round(dc,{692+k*28,451+row*19,23,14},c,playVisible&&s.step==k?ink:c);}}
+        paintMaschineControls(dc,s);
         unsigned error=audio.error.load();std::wstring message=status;if(error){wchar_t buf[256]{};waveOutGetErrorTextW(error,buf,256);message=L"Audio indisponible : "+std::wstring(buf)+L" — choisir une autre sortie.";}
         if(error){fill(dc,{470,17,702,28},bg);text(dc,{470,17,702,28},L"Audio indisponible — clique sur Choisir audio.",9,RGB(255,133,103),FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}
     }
@@ -317,7 +278,7 @@ case WM_PAINT:{
     HBITMAP bitmap=CreateCompatibleBitmap(dc,app->width,app->height);
     if(buffer&&bitmap){
         auto old=SelectObject(buffer,bitmap);
-        // Painting maps the 1200x800 design into the full client area.
+        // Painting maps the 1600x900 design into the full client area.
         // Restore pixel coordinates before copying: BitBlt also interprets the
         // source DC mapping, so leaving it scaled cancels/distorts the resize.
         int saved=SaveDC(buffer);
@@ -338,14 +299,14 @@ case WM_DPICHANGED:{
     return 0;
 }
 case WM_TIMER:if(app->smoke&&GetTickCount64()>app->flashed[0]){DestroyWindow(h);return 0;}InvalidateRect(h,nullptr,FALSE);return 0;
-case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:app->click(GET_X_LPARAM(l)*1200/app->width,GET_Y_LPARAM(l)*800/app->height,msg==WM_RBUTTONDOWN);InvalidateRect(h,nullptr,FALSE);return 0;
-case WM_MOUSEMOVE:{int x=GET_X_LPARAM(l)*1200/app->width,y=GET_Y_LPARAM(l)*800/app->height;if(app->surfaceDragDisplay>=0){app->surfacePointer(y);InvalidateRect(h,nullptr,FALSE);}else if(app->editorDrag){app->editorPointer(x,y);InvalidateRect(h,nullptr,FALSE);}return 0;}
+case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:app->click(GET_X_LPARAM(l)*DesignWidth/app->width,GET_Y_LPARAM(l)*DesignHeight/app->height,msg==WM_RBUTTONDOWN);InvalidateRect(h,nullptr,FALSE);return 0;
+case WM_MOUSEMOVE:{int x=GET_X_LPARAM(l)*DesignWidth/app->width,y=GET_Y_LPARAM(l)*DesignHeight/app->height;if(app->surfaceDragDisplay>=0){app->surfacePointer(y);InvalidateRect(h,nullptr,FALSE);}else if(app->editorDrag){app->editorPointer(x,y);InvalidateRect(h,nullptr,FALSE);}return 0;}
 case WM_LBUTTONUP:if(app->editorDrag||app->surfaceDragDisplay>=0){app->editorDrag=0;app->surfaceDragDisplay=-1;app->surfaceDragKnob=-1;ReleaseCapture();}return 0;
 case WM_CAPTURECHANGED:app->editorDrag=0;app->surfaceDragDisplay=-1;app->surfaceDragKnob=-1;return 0;
-case WM_MOUSEWHEEL:{POINT point{GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(!app->surfaceWheel(x,y,GET_WHEEL_DELTA_WPARAM(w))&&!app->editorWheel(x,y,GET_WHEEL_DELTA_WPARAM(w)))app->dispatch({lab::SurfaceAction::TempoDelta,0,GET_WHEEL_DELTA_WPARAM(w)>0?1:-1});InvalidateRect(h,nullptr,FALSE);return 0;}
+case WM_MOUSEWHEEL:{POINT point{GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);int x=point.x*DesignWidth/app->width,y=point.y*DesignHeight/app->height;if(!app->surfaceWheel(x,y,GET_WHEEL_DELTA_WPARAM(w))&&!app->editorWheel(x,y,GET_WHEEL_DELTA_WPARAM(w)))app->dispatch({lab::SurfaceAction::TempoDelta,0,GET_WHEEL_DELTA_WPARAM(w)>0?1:-1});InvalidateRect(h,nullptr,FALSE);return 0;}
 case WM_KEYDOWN:if(w==VK_SHIFT)app->dispatch({lab::SurfaceAction::Shift,0,0,0,true});else app->key(w,l);return 0;
 case WM_KEYUP:if(w==VK_SHIFT)app->dispatch({lab::SurfaceAction::Shift,0,0,0,false});else for(int p=0;p<16;++p)if(w==WPARAM(keys[p])){app->dispatch({lab::SurfaceAction::PadPress,p,0,0,false});break;}return 0;
-case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(app->tab==0){for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selectPad(p);}else if(app->tab==1){for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y))app->selectPad(p);}if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
+case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*DesignWidth/app->width,y=point.y*DesignHeight/app->height;if(app->tab==0){for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selectPad(p);}else if(app->tab==1){for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y))app->selectPad(p);}if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
 case SurfaceMessage:app->dispatch({static_cast<lab::SurfaceAction>(w),int(l)});InvalidateRect(h,nullptr,FALSE);return 0;
 case MidiMessage:app->midiData(unsigned(w));InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_DESTROY:KillTimer(h,1);app->closeMidi();app->audio.stop();PostQuitMessage(0);return 0;
@@ -361,7 +322,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         App app;app.smoke=std::wstring(command).find(L"--smoke-test")!=std::wstring::npos;
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
-        RECT r{0,0,1200,800};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
+        RECT r{0,0,DesignWidth,DesignHeight};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
         HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.4.1 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
