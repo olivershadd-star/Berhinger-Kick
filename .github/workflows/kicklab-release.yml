@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.4.0
+        default: 0.4.1
 
 permissions:
   contents: write
@@ -61,6 +61,9 @@ jobs:
             This preview adds Pad Perform/Keygroup sequencing, 16 sequences,
             Next Sequence and the Song Editor while retaining the AudIO engine,
             Program Edit, ADSR, four insert slots and 26 Airwindows effects.
+
+            Version 0.4.1 also adds Maschine+ MIDI Learn for all 16 pads,
+            absolute 4D encoder navigation and an assignable Back/Escape command.
 
             Extract the complete ZIP before launching KickLab.exe.
           files: experiments/kicklab/dist/KickLab-Windows-x64-${{ inputs.version }}-preview.zip

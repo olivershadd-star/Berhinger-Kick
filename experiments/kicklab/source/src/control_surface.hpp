@@ -19,6 +19,15 @@ struct MidiCcBinding {
     MidiCcMode mode = MidiCcMode::Absolute;
 };
 
+struct MidiPadBinding {
+    int channel = -1;
+    int note = -1;
+
+    bool matches(int incomingChannel, int incomingNote) const {
+        return channel == incomingChannel && note == incomingNote;
+    }
+};
+
 enum class MidiMessageKind { None, Note, ControlChange };
 
 enum class MidiCommandTarget {
@@ -33,6 +42,7 @@ enum class MidiCommandTarget {
     ScreenA,
     ScreenB,
     Turn,
+    Back,
     Count
 };
 
@@ -53,6 +63,11 @@ inline int midiCcDelta(MidiCcMode mode, int value) {
         ? (value == 0 || value == 64 ? 0 : (value < 64 ? value : value - 128))
         : value - 64;
     return std::clamp(delta, -16, 16);
+}
+
+inline int midiAbsoluteDelta(int previous, int value) {
+    if (previous < 0) return 0;
+    return std::clamp(value - previous, -16, 16);
 }
 
 // Logical KICK commands. Windows mouse, keyboard and MIDI adapters all emit

@@ -2,12 +2,12 @@
 <html lang="fr">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width">
-<title>KICK Lab 0.4.0 — Pad Perform, séquences et Song</title>
+<title>KICK Lab 0.4.1 — Maschine+ MIDI Learn</title>
 <style>body{background:#0e1117;color:#e9eff8;font:17px/1.65 system-ui,sans-serif;margin:0}main{max-width:1000px;margin:auto;padding:48px 26px}small{color:#4cd9b8;letter-spacing:.12em}h1{font-size:44px;margin:.3em 0}a{color:#4cd9b8}section{background:#171c25;border:1px solid #2b3544;border-radius:16px;padding:24px;margin:24px 0}li{margin:10px 0}code{background:#242c38;padding:3px 7px;border-radius:4px}.note{color:#a5b3c7}</style>
 <main>
-<small>VERSION 0.4.0 / WINDOWS PORTABLE</small>
+<small>VERSION 0.4.1 / WINDOWS PORTABLE</small>
 <h1>KICK / LAB</h1>
-<p>Cette étape porte un premier ensemble musical cohérent du dépôt KICK : <strong>Pad Perform / Keygroup</strong>, seize séquences, <strong>Next Sequence</strong> et <strong>Song Editor</strong>, tout en conservant Program Edit, l'ADSR et les 26 effets Airwindows.</p>
+<p>Cette étape complète la surface Maschine+ de la version 0.4.0 : <strong>MIDI Learn individuel des 16 pads</strong>, encodeur 4D absolu dans les deux sens, retour assignable, navigation des slots d'effets, bouton Menu global et vumètre Master.</p>
 <section><h2>Test musical conseillé</h2><ol>
 <li>Extraire tout le ZIP puis ouvrir <code>KickLab.exe</code>. Le dossier <code>demo-kit</code> doit rester à côté.</li>
 <li>Charger <strong>Démo</strong>, lancer <strong>Play</strong> : la séquence contient maintenant une batterie et une ligne de basse.</li>
@@ -18,7 +18,7 @@
 <li>Tester ensuite Sample &amp; FX, Program Edit et le MIDI Learn. Enregistrer et rouvrir le projet pour vérifier l'ensemble.</li>
 </ol></section>
 <section><h2>Banque actuelle</h2><p>Filter, Saturation, Dynamics, Ambience, Reverb, Distortion, EQ, Modulation, Delay et Lo-Fi. Les nouveaux processeurs sont Baxandall2, Biquad2, Pressure5, Pop2, AutoPan, ChorusEnsemble, PurestEcho, TapeDelay2, Chamber2, Galactic, DeRez2 et BitGlitter.</p><p>Les valeurs et noms de paramètres viennent des sources Airwindows de 0700-AAM. L'interface Windows remplace les commandes de la surface matérielle qui n'existe pas encore sur PC.</p></section>
-<section><h2>Clavier et MIDI</h2><p>Les pads répondent à <strong>A Z E R / Q S D F / W X C V / 1 2 3 4</strong> et aux notes MIDI 36–51. Leur rôle suit l'écran qui a le focus : one-shots/notes, choix Next Sequence ou choix Song. La page <strong>16 MIDI Control</strong> conserve le MIDI Learn des huit Q-Links, du transport, des directions, du focus des écrans et de la rotation 4D.</p></section>
+<section><h2>Clavier et MIDI</h2><p>Les pads répondent à <strong>A Z E R / Q S D F / W X C V / 1 2 3 4</strong>. Les notes MIDI 36–51 restent le mapping initial, mais les pages 3 à 6 de <strong>16 MIDI Control</strong> permettent maintenant d'apprendre séparément les seize pads de Maschine+. Les neuf pages couvrent aussi P1–P8, le transport, les directions, le focus des écrans, la rotation 4D et Retour/Escape. Leur rôle suit l'écran qui a le focus : one-shots/notes, choix Next Sequence ou choix Song.</p></section>
 <section><h2>Projets et limites</h2><p>Les nouveaux fichiers utilisent <strong>KICKLAB 5</strong>. Les versions 1 à 4 restent lisibles. Les WAV restent référencés par leur chemin et ne sont pas intégrés au projet.</p><p>Le Keygroup actuel est monophonique et ne porte pas encore les modes Chords/Progression. Song n'a pas encore l'automation Track Mute. Sortie Windows WinMM stéréo 48 kHz ; pas encore d'ASIO, de VST3 ni de synthétiseurs KICK. La Factory Sample Library est volontairement vide et peut être remplie avec vos propres WAV.</p></section>
 <p class="note">Prototype communautaire indépendant sous AGPL-3.0-or-later. Airwindows et AudioFile : MIT. Behringer, Music Tribe et KICK sont des marques de leurs propriétaires. Voir <a href="README.md">README.md</a>, <a href="LICENSE">LICENSE</a> et <a href="NOTICES.txt">NOTICES.txt</a>.</p>
 </main></html>

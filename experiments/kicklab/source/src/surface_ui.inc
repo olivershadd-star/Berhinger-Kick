@@ -9,7 +9,7 @@ const std::array<std::wstring,16> surfaceMenuLabels={
 const std::array<std::wstring,lab::MidiCommandCount> midiCommandLabels={
     L"Play / Pause",L"Stop",L"Shift",L"Enter",
     L"Haut",L"Bas",L"Gauche",L"Droite",
-    L"Écran A",L"Écran B",L"Rotation 4D"
+    L"Écran A",L"Écran B",L"Rotation 4D",L"Retour / Escape"
 };
 
 Box surfaceModuleBox(int display)const{return {28+display*580,68,552,318};}
@@ -46,6 +46,11 @@ void showSurfaceMenu(int display){
     if(surface.displays[other].module==lab::DisplayModule::Inserts)
         surface.setDisplayPage(other,0);
     surface.focusDisplay(display);
+}
+
+void showSurfaceHome(){
+    for(int display=0;display<lab::SurfaceDisplays;++display){surface.displays[display].module=lab::DisplayModule::Menu;surface.displays[display].page=0;}
+    surface.focusDisplay(0);status=L"Menu KICK — les deux écrans sont revenus à l'accueil.";
 }
 
 void showSurfaceInserts(int display){
@@ -213,6 +218,11 @@ std::wstring midiCommandBindingText(const lab::MidiCommandBinding& binding)const
     return std::wstring(binding.kind==lab::MidiMessageKind::Note?L"Note ":L"CC ")+number(binding.number)+L" · canal "+number(binding.channel+1);
 }
 
+std::wstring midiPadBindingText(const lab::MidiPadBinding& binding)const{
+    if(binding.note<0)return L"Non assigné";
+    return L"Note "+number(binding.note)+L" · canal "+number(binding.channel+1);
+}
+
 void surfacePointer(int y){
     if(surfaceDragDisplay<0)return;
     const int step=(surfaceDragStartY-y)/4;
@@ -235,6 +245,7 @@ void moveSurfaceMenu(int dx,int dy){
     if(module==lab::DisplayModule::NextSequence){if(dx)turnSurfaceQLink(surface.focusedDisplay,0,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,dy);return;}
     if(module==lab::DisplayModule::PadPerform){if(dx)turnSurfaceQLink(surface.focusedDisplay,0,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,-dy);return;}
     if(module==lab::DisplayModule::Song){if(dx)turnSurfaceQLink(surface.focusedDisplay,1,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,dy);return;}
+    if(module==lab::DisplayModule::MidiControl&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,8);return;}
     if(module==lab::DisplayModule::Sample&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,1);return;}
     if(module==lab::DisplayModule::Inserts&&dx){auto& binding=surface.displays[surface.focusedDisplay];auto snapshot=engine.snapshot();const auto effect=snapshot.edits[binding.pad].inserts[binding.slot].effect;const int pages=std::max(1,(lab::insertParameterCount(effect)+3)/4);binding.page=std::clamp(binding.page+(dx>0?1:-1),0,pages-1);return;}
     if(module!=lab::DisplayModule::Menu)return;
@@ -251,15 +262,16 @@ void turnSurfaceMenu(int delta){
     if(module==lab::DisplayModule::NextSequence){turnSurfaceQLink(surface.focusedDisplay,0,delta);return;}
     if(module==lab::DisplayModule::PadPerform){turnSurfaceQLink(surface.focusedDisplay,2,delta);return;}
     if(module==lab::DisplayModule::Song){turnSurfaceQLink(surface.focusedDisplay,2,delta);return;}
+    if(module==lab::DisplayModule::Inserts){auto& binding=surface.displays[surface.focusedDisplay];binding.slot=std::clamp(binding.slot+(delta>0?1:-1),0,lab::InsertSlots-1);binding.page=0;selectedInsert=binding.slot;return;}
     if(module!=lab::DisplayModule::Menu)return;
-    const int first=surface.focusedDisplay*8,last=first+7;
-    int item=first+surface.menuSelections[surface.focusedDisplay];
-    selectSurfaceMenu(std::clamp(item+(delta>0?1:-1),first,last));
+    int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
+    selectSurfaceMenu(std::clamp(item+(delta>0?1:-1),0,15));
 }
 
 void activateSurfaceMenu(){
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Browser){loadSurfaceBrowserSelection(surface.focusedDisplay);return;}
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Song){engine.addSongStep(songChoice,songRepeats);auto snapshot=engine.snapshot();songSelected=std::max(0,snapshot.songLength-1);return;}
+    if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Inserts){auto& binding=surface.displays[surface.focusedDisplay];selectedInsert=binding.slot;insertMenu();binding.page=0;return;}
     if(surface.displays[surface.focusedDisplay].module!=lab::DisplayModule::Menu)return;
     const int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
     if(item==0){showSurfaceBrowser(surface.focusedDisplay);return;}
@@ -344,15 +356,18 @@ bool surfaceClick(int x,int y,bool right){
         if(binding.module==lab::DisplayModule::MidiControl){
             if(surfaceMidiDeviceBox(display).contains(x,y)){midiMenu();return true;}
             if(surfaceMidiPreviousBox(display).contains(x,y)){binding.page=std::max(0,binding.page-1);return true;}
-            if(surfaceMidiNextBox(display).contains(x,y)){binding.page=std::min(4,binding.page+1);return true;}
+            if(surfaceMidiNextBox(display).contains(x,y)){binding.page=std::min(8,binding.page+1);return true;}
             for(int row=0;row<4;++row)if(surfaceMidiBindingBox(display,row).contains(x,y)){
                 if(binding.page<2){const int target=binding.page*4+row;auto& learned=midiQlinks[target];
                     if(right){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;const bool saved=saveMidiProfile();status=L"P"+number(target+1)+L" : mode "+midiModeName(learned.mode)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");}
-                    else {midiLearnCommand=-1;midiLearnTarget=target;status=L"MIDI Learn armé pour P"+number(target+1)+L" — tourne maintenant le contrôle physique.";}
-                }else {const int target=(binding.page-2)*4+row;if(target>=lab::MidiCommandCount)return true;auto& learned=midiCommands[target];
+                    else {midiLearnCommand=midiLearnPad=-1;midiLearnTarget=target;status=L"MIDI Learn armé pour P"+number(target+1)+L" — tourne maintenant le contrôle physique.";}
+                }else if(binding.page<6){const int target=(binding.page-2)*4+row;auto& learned=midiPads[target];
+                    if(right){learned={};const bool saved=saveMidiProfile();status=L"Pad "+number(target+1)+(saved?L" : affectation effacée.":L" : effacement non sauvegardé.");}
+                    else {midiLearnTarget=midiLearnCommand=-1;midiLearnPad=target;status=L"MIDI Learn armé pour PAD "+number(target+1)+L" — frappe maintenant le pad physique.";}
+                }else {const int target=(binding.page-6)*4+row;if(target>=lab::MidiCommandCount)return true;auto& learned=midiCommands[target];
                     if(right&&target==int(lab::MidiCommandTarget::Turn)){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;const bool saved=saveMidiProfile();status=L"Rotation 4D : mode "+midiModeName(learned.mode)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");}
                     else if(right){learned={};const bool saved=saveMidiProfile();status=midiCommandLabels[target]+(saved?L" : affectation effacée.":L" : effacement non sauvegardé.");}
-                    else {midiLearnTarget=-1;midiLearnCommand=target;status=L"MIDI Learn armé pour "+midiCommandLabels[target]+L" — actionne le contrôle physique.";}
+                    else {midiLearnTarget=midiLearnPad=-1;midiLearnCommand=target;status=L"MIDI Learn armé pour "+midiCommandLabels[target]+L" — actionne le contrôle physique.";}
                 }
                 return true;
             }
@@ -422,11 +437,11 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     }
     if(binding.module==lab::DisplayModule::MidiControl){
         text(dc,{box.x+14,box.y+9,270,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MIDI CONTROL",12,focused?accent:muted,FW_SEMIBOLD);
-        text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / 5",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / 9",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         button(dc,surfaceMidiDeviceBox(display),midiInputName(),midiId>=0);button(dc,surfaceMidiPreviousBox(display),L"<");button(dc,surfaceMidiNextBox(display),L">");
         text(dc,{box.x+14,170,box.w-28,22},midiLastMessage(),9,midiMessageCount?accent:muted,FW_NORMAL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        const bool anyLearn=midiLearnTarget>=0||midiLearnCommand>=0;std::wstring learnText=midiLearnTarget>=0?L"LEARN : bouge le contrôle pour P"+number(midiLearnTarget+1):midiLearnCommand>=0?L"LEARN : actionne "+midiCommandLabels[midiLearnCommand]:(midiProfileLoaded?L"Profil Maschine+ chargé · clic : Learn · droit : option":L"Profil Maschine+ vide · clic : Learn · droit : option");
+        const bool anyLearn=midiLearnTarget>=0||midiLearnPad>=0||midiLearnCommand>=0;std::wstring learnText=midiLearnTarget>=0?L"EN ATTENTE : bouge le contrôle pour P"+number(midiLearnTarget+1):midiLearnPad>=0?L"EN ATTENTE : frappe le PAD "+number(midiLearnPad+1):midiLearnCommand>=0?L"EN ATTENTE : actionne "+midiCommandLabels[midiLearnCommand]:(midiProfileLoaded?L"Profil Maschine+ chargé · clic : Learn · droit : option":L"Profil Maschine+ vide · clic : Learn · droit : option");
         text(dc,{box.x+14,194,box.w-28,22},learnText,9,anyLearn?RGB(241,184,88):muted,FW_SEMIBOLD);
         for(int row=0;row<4;++row){auto b=surfaceMidiBindingBox(display,row);
             if(binding.page<2){const int target=binding.page*4+row;const auto& learned=midiQlinks[target];const bool learning=midiLearnTarget==target;
@@ -434,7 +449,11 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
                 text(dc,{b.x+10,b.y,52,b.h},L"P"+number(target+1),10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
                 text(dc,{b.x+62,b.y,190,b.h},learned.cc<0?L"Non assigné":L"CC "+number(learned.cc)+L" · canal "+number(learned.channel+1),10,learned.cc<0?muted:ink);
                 text(dc,{b.x+262,b.y,122,b.h},midiModeName(learned.mode),9,muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-            }else {const int target=(binding.page-2)*4+row;if(target>=lab::MidiCommandCount)continue;const auto& learned=midiCommands[target];const bool learning=midiLearnCommand==target;
+            }else if(binding.page<6){const int target=(binding.page-2)*4+row;const auto& learned=midiPads[target];const bool learning=midiLearnPad==target;
+                if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
+                text(dc,{b.x+10,b.y,74,b.h},L"PAD "+number(target+1),10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
+                text(dc,{b.x+86,b.y,298,b.h},learning?L"EN ATTENTE — frappe le pad":midiPadBindingText(learned),10,learning?RGB(241,184,88):(learned.note<0?muted:ink));
+            }else {const int target=(binding.page-6)*4+row;if(target>=lab::MidiCommandCount)continue;const auto& learned=midiCommands[target];const bool learning=midiLearnCommand==target;
                 if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
                 text(dc,{b.x+10,b.y,104,b.h},midiCommandLabels[target],10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
                 text(dc,{b.x+116,b.y,174,b.h},midiCommandBindingText(learned),10,learned.kind==lab::MidiMessageKind::None?muted:ink);
@@ -486,9 +505,11 @@ void paintSurface(HDC dc,const lab::Snapshot& snapshot){
     for(int display=0;display<2;++display)for(int knob=0;knob<4;++knob)paintSurfaceKnob(dc,display,knob,snapshot);
 }
 
-void paintMasterKnob(HDC dc,double value){
-    value=std::clamp(value,0.,1.);const int cx=248,cy=724,r=17;
-    HBRUSH brush=CreateSolidBrush(RGB(31,38,50));HPEN edge=CreatePen(PS_SOLID,2,line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-r,cy-r,cx+r,cy+r);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);
-    constexpr double pi=3.14159265358979323846;double angle=(135.+270.*value)*pi/180.;HPEN mark=CreatePen(PS_SOLID,3,accent);oldP=SelectObject(dc,mark);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx+int(std::cos(angle)*11),cy+int(std::sin(angle)*11));SelectObject(dc,oldP);DeleteObject(mark);
-    text(dc,{208,744,80,14},L"MASTER "+number(int(value*100))+L" %",8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+void paintMasterMeter(HDC dc,double value,double peak){
+    value=std::clamp(value,0.,1.);peak=std::max(0.,peak);const Box meter{42,738,236,16};
+    const double db=peak>0?20.*std::log10(peak):-60.;const double ratio=std::clamp((db+60.)/60.,0.,1.);const int lit=int((meter.w-4)*ratio);
+    text(dc,{42,716,118,18},L"MASTER "+number(int(value*100))+L" %",9,muted,FW_SEMIBOLD);
+    const std::wstring level=peak>=1?L"CLIP":(db<=-59.9?L"−∞ dB":number(int(std::round(db)))+L" dB");text(dc,{160,716,118,18},level,9,peak>=1?RGB(255,95,90):muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    round(dc,meter,RGB(20,26,34),line);if(lit>0){const int green=std::min(lit,int((meter.w-4)*.8)),amber=std::min(lit-green,int((meter.w-4)*.15)),red=lit-green-amber;if(green>0)fill(dc,{meter.x+2,meter.y+3,green,meter.h-6},accent);if(amber>0)fill(dc,{meter.x+2+green,meter.y+3,amber,meter.h-6},RGB(241,184,88));if(red>0)fill(dc,{meter.x+2+green+amber,meter.y+3,red,meter.h-6},RGB(255,95,90));}
+    const int marker=meter.x+2+int((meter.w-4)*value);fill(dc,{marker-1,meter.y-2,2,meter.h+4},ink);
 }

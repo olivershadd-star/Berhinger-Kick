@@ -28,6 +28,8 @@ int main(int argc,char**argv){try{
     check(surface.menuSelections[0]==3&&surface.menuSelections[1]==6,"display menu cursors are not independent");
     check(midiCcDelta(MidiCcMode::Relative1,1)==1&&midiCcDelta(MidiCcMode::Relative1,127)==-1,"relative 1/127 MIDI decoding failed");
     check(midiCcDelta(MidiCcMode::Relative65,65)==1&&midiCcDelta(MidiCcMode::Relative65,63)==-1,"relative 63/65 MIDI decoding failed");
+    check(midiAbsoluteDelta(-1,64)==0&&midiAbsoluteDelta(64,65)==1&&midiAbsoluteDelta(65,63)==-2,"absolute 4D wheel decoding failed");
+    MidiPadBinding padBinding{0,12};check(padBinding.matches(0,12)&&!padBinding.matches(0,13)&&!padBinding.matches(1,12),"learned pad matching failed");
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
     wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);

@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle ajoute une première tranche cohérente du flux musical KICK : Pad Perform/Keygroup mélodique, seize séquences de une à quatre mesures, Next Sequence et arrangement Song. Les vingt-six processeurs Airwindows, l'enveloppe ADSR, la surface à deux écrans et le MIDI Learn pour Maschine+ restent disponibles.
+Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle ajoute une première tranche cohérente du flux musical KICK : Pad Perform/Keygroup mélodique, seize séquences de une à quatre mesures, Next Sequence et arrangement Song. La version 0.4.1 complète le MIDI Learn pour Maschine+ avec les seize pads, l'encodeur 4D absolu et une commande Retour/Escape.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
@@ -31,6 +31,7 @@ La surface principale expose maintenant le slot d'effet sélectionné directemen
 - **Accordage** : de −24 à +24 demi-tons. Il s'agit d'une transposition par vitesse de lecture : la durée change aussi, sans time-stretch.
 - **Fondus** : de 0 à 20 ms au début et à la fin, limités à la moitié de la zone lue. Valeur initiale : 2 ms.
 - **Slots 1 à 4** : sélectionner un slot, puis choisir une catégorie et un effet. Les effets sont traités dans l'ordre 1 → 4.
+- **Encodeur 4D** : dans Sample & FX, tourner sélectionne les slots 1 à 4, appuyer ouvre le choix d'effet et gauche/droite change la page de paramètres.
 - **Filter** : Lowpass, Highpass et Isolator.
 - **Saturation** : PurestDrive, Tube2 et Mojo.
 - **Dynamics** : DrumSlam, ButterComp2 et SoftGate.
@@ -67,9 +68,9 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Pads au clavier, par rangée : **A Z E R / Q S D F / W X C V / 1 2 3 4**. Le clic est toujours disponible.
 - Tempo : boutons − / + ou molette. Volume général : barre Master.
 - Clic droit sur un pad : charger un WAV. Glisser-déposer un WAV sur un pad ou sur l'éditeur est également possible.
-- MIDI : sélectionner une entrée avec le bouton MIDI ou depuis la page **MIDI Control** ; les notes 36 à 51 déclenchent les pads, tous canaux. Note Off et Note On de vélocité nulle libèrent l'enveloppe du pad.
-- **MIDI Control** : ouvrir l'élément 16 du menu KICK. Les cinq pages regroupent P1–P4, P5–P8, Play/Pause–Stop–Shift–Enter, les quatre directions, puis le focus des écrans A/B et la rotation de l'encodeur 4D. Cliquer sur une ligne arme le MIDI Learn ; la prochaine note ou le prochain CC reçu mémorise son numéro et son canal. Les Q-Links et la rotation proposent `ABS`, relatif `1/127` et relatif `63/65` par clic droit.
-- Un CC appris commande le même Q-Link que la souris dès que l'écran correspondant affiche une page d'inserts ou de **Program Edit**. Les commandes apprises passent par la même couche de surface que le clavier et la souris. Toutes les affectations sont automatiquement enregistrées dans `profiles/MaschinePlus.kickmidi`, à côté de l'exécutable, puis rechargées au démarrage ; les anciens profils Q-Link version 1 restent lisibles et sont migrés à la prochaine sauvegarde.
+- MIDI : sélectionner une entrée avec le bouton MIDI ou depuis la page **MIDI Control**. Les notes 36 à 51 restent le mapping initial ; chaque pad peut maintenant apprendre une autre note et un autre canal. Note Off et Note On de vélocité nulle libèrent l'enveloppe du pad.
+- **MIDI Control** : ouvrir l'élément 16 du menu KICK. Les neuf pages regroupent P1–P8, les pads 1–16, Play/Pause–Stop–Shift–Enter, les quatre directions, le focus des écrans A/B, la rotation 4D et Retour/Escape. Cliquer sur une ligne affiche explicitement `EN ATTENTE` ; la prochaine note ou le prochain CC mémorise son numéro et son canal. Un clic droit efface un pad ou une commande. Les Q-Links et la rotation proposent `ABS`, relatif `1/127` et relatif `63/65` par clic droit.
+- Un CC appris commande le même Q-Link que la souris dès que l'écran correspondant affiche une page d'inserts ou de **Program Edit**. Les commandes apprises passent par la même couche de surface que le clavier et la souris. Toutes les affectations sont automatiquement enregistrées dans `profiles/MaschinePlus.kickmidi`, à côté de l'exécutable, puis rechargées au démarrage. Les profils KICKMIDI 1 et 2 restent lisibles ; la rotation 4D des anciens profils Maschine+ est migrée vers le mode absolu.
 - REC n'est volontairement pas exposé : le portage ne possède pas encore de véritable enregistreur KICK. La vélocité expressive, le retour LED et l'horloge MIDI ne sont pas encore gérés.
 
 ## WAV et projets

@@ -1,4 +1,4 @@
-KICK Lab 0.4.0 — Pad Perform, 16 séquences et Song Editor
+KICK Lab 0.4.1 — intégration MIDI Maschine+ corrigée
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
@@ -6,6 +6,8 @@ Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
 Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; enveloppe ADSR et Note Off ; construction et rendu fini des 26 effets ; ordre des quatre inserts ; bypass ; changement Next Sequence à la frontière de boucle ; répétitions et fin du Song ; séquences, notes, arrangement, paramètres et enveloppes sauvegardés/rechargés en KICKLAB 5 ; migration des projets KICKLAB 1 à 4 ; remise en file des buffers ; continuité sous activité graphique.
+
+0.4.1 ajoute le MIDI Learn individuel des seize pads, une commande Retour/Escape assignable et le format de profil KICKMIDI 3. L'encodeur 4D de Maschine+ est maintenant interprété comme une valeur absolue afin que les deux sens fonctionnent. Dans Sample & FX, sa rotation parcourt les quatre slots et son appui ouvre le choix d'effet. La rotation du menu traverse désormais les éléments 8 et 9 entre les deux écrans. Un bouton Menu ramène les deux écrans à l'accueil et le potentiomètre Master surdimensionné est remplacé par un vumètre avec niveau, maintien visuel et indication CLIP.
 
 0.4.0 porte une première tranche cohérente de Pad Perform/Keygroup, Next Sequence et Song Editor. Chaque projet possède seize séquences de une à quatre mesures, une grille Drum et une grille Notes par séquence. Un sample source peut être joué chromatiquement ou dans une gamme majeure/mineure et séquencé note par note. Les pads sélectionnent ou mettent en attente les séquences ; Song enchaîne jusqu'à 32 étapes avec répétitions. Les trois pages utilisent les deux écrans, les Q-Links et les mêmes commandes clavier/souris/MIDI que la surface Windows.
 
