@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cwchar>
+#include <fstream>
 #include "engine.hpp"
 #include "audio_queue.hpp"
 #include "control_surface.hpp"
@@ -95,16 +96,30 @@ private:
 
 class App {
 public:
-    lab::Engine engine;lab::SurfaceState surface;AudioOutput audio{engine};HWND window{};std::filesystem::path base,library;
+    lab::Engine engine;lab::SurfaceState surface;AudioOutput audio{engine};HWND window{};std::filesystem::path base,library,midiProfile;
     int selected=0,tab=0;bool smoke=false;UINT audioId=WAVE_MAPPER;HMIDIIN midi{};int midiId=-1;
-    std::array<lab::MidiCcBinding,8> midiQlinks{};int midiLearnTarget=-1;unsigned midiLastPacked=0;unsigned midiMessageCount=0;
+    std::array<lab::MidiCcBinding,8> midiQlinks{};int midiLearnTarget=-1;unsigned midiLastPacked=0;unsigned midiMessageCount=0;bool midiProfileLoaded=false;
     std::wstring status=L"Clique sur un pad pour jouer. Clic droit pour charger un WAV.";
     std::array<ULONGLONG,16> flashed{};int mouseX=-1,mouseY=-1;int width=1200,height=800;
-    App(){wchar_t path[32768];DWORD n=GetModuleFileNameW(nullptr,path,32768);base=std::filesystem::path(std::wstring(path,n)).parent_path();library=base/L"samples";std::error_code ec;std::filesystem::create_directories(library,ec);for(const auto& category:libraryCategories)std::filesystem::create_directories(library/category,ec);SetCurrentDirectoryW(base.c_str());}
+    App(){wchar_t path[32768];DWORD n=GetModuleFileNameW(nullptr,path,32768);base=std::filesystem::path(std::wstring(path,n)).parent_path();library=base/L"samples";midiProfile=base/L"profiles"/L"MaschinePlus.kickmidi";std::error_code ec;std::filesystem::create_directories(library,ec);for(const auto& category:libraryCategories)std::filesystem::create_directories(library/category,ec);std::filesystem::create_directories(midiProfile.parent_path(),ec);loadMidiProfile();SetCurrentDirectoryW(base.c_str());}
     ~App(){closeMidi();audio.stop();}
     void initialise(HWND h){window=h;int loaded=0;std::string error;for(int p=0;p<16;++p){const std::array<std::wstring,16> files={L"01-Kick.wav",L"02-Snare.wav",L"03-Closed-Hat.wav",L"04-Open-Hat.wav",L"05-Clap.wav",L"06-Low-Tom.wav",L"07-Mid-Tom.wav",L"08-High-Tom.wav",L"09-Rim.wav",L"10-Shaker.wav",L"11-Claves.wav",L"12-Cowbell.wav",L"13-Bass-C.wav",L"14-Bass-E.wav",L"15-Bass-G.wav",L"16-Chime.wav"};auto path=base/L"demo-kit"/files[p];if(engine.load(p,path.u8string(),error))++loaded;}if(loaded==16)status=L"Kit chargé. Pattern vide ; le bouton Démo charge le pattern d'exemple.";else status=L"Kit de démonstration incomplet : "+number(loaded)+L"/16 fichiers.";audio.start(audioId);SetTimer(h,1,33,nullptr);DragAcceptFiles(h,TRUE);}
     void closeMidi(){if(midi){midiInStop(midi);midiInReset(midi);midiInClose(midi);midi=nullptr;}midiId=-1;}
     static void CALLBACK midiCallback(HMIDIIN,UINT message,DWORD_PTR instance,DWORD_PTR packed,DWORD_PTR){if(message==MIM_DATA){auto* self=reinterpret_cast<App*>(instance);PostMessageW(self->window,MidiMessage,static_cast<WPARAM>(packed&0xffffff),0);}}
+    bool loadMidiProfile(){
+        std::ifstream file(midiProfile.u8string());if(!file)return false;
+        std::string signature;int version=0;file>>signature>>version;if(signature!="KICKMIDI"||version!=1)return false;
+        std::array<lab::MidiCcBinding,8> loaded{};
+        for(int expected=0;expected<int(loaded.size());++expected){int index=-1,channel=-1,cc=-1,mode=0;if(!(file>>index>>channel>>cc>>mode)||index!=expected||channel< -1||channel>15||cc< -1||cc>127||mode<0||mode>2)return false;loaded[index].channel=channel;loaded[index].cc=cc;loaded[index].mode=static_cast<lab::MidiCcMode>(mode);}
+        midiQlinks=loaded;midiProfileLoaded=true;return true;
+    }
+    bool saveMidiProfile(){
+        std::error_code ec;std::filesystem::create_directories(midiProfile.parent_path(),ec);if(ec)return false;
+        auto temporary=midiProfile;temporary+=L".tmp";std::ofstream file(temporary.u8string(),std::ios::trunc);if(!file)return false;
+        file<<"KICKMIDI 1\n";for(int index=0;index<int(midiQlinks.size());++index){const auto& binding=midiQlinks[index];file<<index<<' '<<binding.channel<<' '<<binding.cc<<' '<<int(binding.mode)<<'\n';}file.close();if(!file)return false;
+        if(!MoveFileExW(temporary.c_str(),midiProfile.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))return false;
+        midiProfileLoaded=true;return true;
+    }
     void midiData(unsigned packed){
         midiLastPacked=packed&0xffffff;++midiMessageCount;
         const int midiStatus=packed&255,type=midiStatus&0xf0,channel=midiStatus&15,data1=(packed>>8)&127,data2=(packed>>16)&127;
@@ -112,7 +127,7 @@ public:
         if(type!=0xb0)return;
         if(midiLearnTarget>=0&&midiLearnTarget<int(midiQlinks.size())){
             auto& binding=midiQlinks[midiLearnTarget];binding.channel=channel;binding.cc=data1;
-            status=L"MIDI Learn : CC "+number(data1)+L" canal "+number(channel+1)+L" assigné à P"+number(midiLearnTarget+1)+L".";
+            const bool saved=saveMidiProfile();status=L"MIDI Learn : CC "+number(data1)+L" canal "+number(channel+1)+L" assigné à P"+number(midiLearnTarget+1)+(saved?L" · profil Maschine+ sauvegardé.":L" · impossible de sauvegarder le profil.");
             midiLearnTarget=-1;return;
         }
         for(int target=0;target<int(midiQlinks.size());++target){

@@ -170,7 +170,7 @@ bool surfaceClick(int x,int y,bool right){
             if(surfaceMidiNextBox(display).contains(x,y)){binding.page=std::min(1,binding.page+1);return true;}
             for(int row=0;row<4;++row)if(surfaceMidiBindingBox(display,row).contains(x,y)){
                 const int target=binding.page*4+row;auto& learned=midiQlinks[target];
-                if(right){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;status=L"P"+number(target+1)+L" : mode "+midiModeName(learned.mode)+L".";}
+                if(right){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;const bool saved=saveMidiProfile();status=L"P"+number(target+1)+L" : mode "+midiModeName(learned.mode)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");}
                 else {midiLearnTarget=target;status=L"MIDI Learn armé pour P"+number(target+1)+L" — tourne maintenant le contrôle physique.";}
                 return true;
             }
@@ -211,7 +211,7 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         button(dc,surfaceMidiDeviceBox(display),midiInputName(),midiId>=0);button(dc,surfaceMidiPreviousBox(display),L"<");button(dc,surfaceMidiNextBox(display),L">");
         text(dc,{box.x+14,170,box.w-28,22},midiLastMessage(),9,midiMessageCount?accent:muted,FW_NORMAL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        text(dc,{box.x+14,194,box.w-28,22},midiLearnTarget>=0?L"LEARN : bouge le contrôle pour P"+number(midiLearnTarget+1):L"Clic : Learn · clic droit : ABS / relatif",9,midiLearnTarget>=0?RGB(241,184,88):muted,FW_SEMIBOLD);
+        text(dc,{box.x+14,194,box.w-28,22},midiLearnTarget>=0?L"LEARN : bouge le contrôle pour P"+number(midiLearnTarget+1):(midiProfileLoaded?L"Profil Maschine+ chargé · clic : Learn · droit : mode":L"Profil Maschine+ vide · clic : Learn · droit : mode"),9,midiLearnTarget>=0?RGB(241,184,88):muted,FW_SEMIBOLD);
         for(int row=0;row<4;++row){const int target=binding.page*4+row;const auto& learned=midiQlinks[target];auto b=surfaceMidiBindingBox(display,row);const bool learning=midiLearnTarget==target;
             if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
             text(dc,{b.x+10,b.y,52,b.h},L"P"+number(target+1),10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
