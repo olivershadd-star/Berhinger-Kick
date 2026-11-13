@@ -25,6 +25,11 @@ if(MSVC)
 endif()
 add_executable(KickLab-Test tests/engine_test.cpp)
 target_link_libraries(KickLab-Test PRIVATE kicklab_engine)
+if(MSVC)
+    # The exhaustive single-process test keeps several large Snapshot values in
+    # one frame; MSVC's 1 MiB default test stack is too small for that fixture.
+    target_link_options(KickLab-Test PRIVATE /STACK:8388608)
+endif()
 if(MINGW)
     target_link_options(KickLab-Test PRIVATE -static)
 endif()

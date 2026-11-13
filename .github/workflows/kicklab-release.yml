@@ -27,10 +27,7 @@ jobs:
         run: cmake --build build --config Release --parallel 2
 
       - name: Test audio engine
-        shell: pwsh
-        run: |
-          & build/incremental-port/Release/KickLab-Test.exe build/test-output
-          if ($LASTEXITCODE -ne 0) { throw "KickLab-Test exited with $LASTEXITCODE" }
+        run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Smoke-test Windows interface
         shell: pwsh
