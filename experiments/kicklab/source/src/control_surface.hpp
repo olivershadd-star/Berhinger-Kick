@@ -10,6 +10,9 @@ constexpr int SurfacePads = 16;
 constexpr int SurfaceSteps = 16;
 constexpr int SurfaceDisplays = 2;
 constexpr int SurfaceQLinks = 4;
+constexpr int SurfaceMidiQLinks = 16;
+constexpr int SurfaceGroups = 8;
+constexpr int SurfaceMidiPads = SurfaceGroups * SurfacePads;
 
 enum class MidiCcMode { Absolute, Relative1, Relative65 };
 
@@ -43,6 +46,13 @@ enum class MidiCommandTarget {
     ScreenB,
     Turn,
     Back,
+    Soft1,Soft2,Soft3,Soft4,Soft5,Soft6,Soft7,Soft8,
+    GroupA,GroupB,GroupC,GroupD,GroupE,GroupF,GroupG,GroupH,
+    PadMode,Keyboard,Chords,Step,
+    Restart,Erase,Tap,Follow,Record,
+    FixedVelocity,Scene,Pattern,Events,Variation,Duplicate,Select,Solo,Mute,
+    Volume,Swing,Tempo,NoteRepeat,Lock,Pitch,Mod,Perform,Notes,
+    Channel,Plugin,Ideas,Mixer,Browser,Sampling,FileSave,Settings,Auto,Macro,
     Count
 };
 

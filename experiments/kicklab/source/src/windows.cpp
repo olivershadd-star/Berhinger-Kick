@@ -113,7 +113,7 @@ public:
     std::array<BrowserState,lab::SurfaceDisplays> browsers{};
     int selected=0,tab=0;bool smoke=false;UINT audioId=WAVE_MAPPER;HMIDIIN midi{};int midiId=-1;
     int songChoice=0,songRepeats=1,songSelected=0;
-    std::array<lab::MidiCcBinding,8> midiQlinks{};std::array<lab::MidiPadBinding,lab::SurfacePads> midiPads{};std::array<lab::MidiCommandBinding,lab::MidiCommandCount> midiCommands{};int midiLearnTarget=-1,midiLearnPad=-1,midiLearnCommand=-1;unsigned midiLastPacked=0;unsigned midiMessageCount=0;bool midiProfileLoaded=false;double meterPeak=0;
+    std::array<lab::MidiCcBinding,lab::SurfaceMidiQLinks> midiQlinks{};std::array<lab::MidiPadBinding,lab::SurfaceMidiPads> midiPads{};std::array<lab::MidiCommandBinding,lab::MidiCommandCount> midiCommands{};int midiLearnTarget=-1,midiLearnPad=-1,midiLearnCommand=-1;unsigned midiLastPacked=0;unsigned midiMessageCount=0;bool midiProfileLoaded=false;double meterPeak=0;
     std::wstring status=L"Clique sur un pad pour jouer. Clic droit pour charger un WAV.";
     std::array<ULONGLONG,16> flashed{};int mouseX=-1,mouseY=-1;int width=DesignWidth,height=DesignHeight;
     // Physical layout state. 0=Pad, 1=Keyboard, 2=Chords, 3=Step.
@@ -125,19 +125,18 @@ public:
     static void CALLBACK midiCallback(HMIDIIN,UINT message,DWORD_PTR instance,DWORD_PTR packed,DWORD_PTR){if(message==MIM_DATA){auto* self=reinterpret_cast<App*>(instance);PostMessageW(self->window,MidiMessage,static_cast<WPARAM>(packed&0xffffff),0);}}
     bool loadMidiProfile(){
         std::ifstream file(midiProfile.u8string());if(!file)return false;
-        std::string signature;int version=0;file>>signature>>version;if(signature!="KICKMIDI"||(version<1||version>3))return false;
-        std::array<lab::MidiCcBinding,8> loadedQlinks{};std::array<lab::MidiPadBinding,lab::SurfacePads> loadedPads{};std::array<lab::MidiCommandBinding,lab::MidiCommandCount> loadedCommands{};
-        for(int expected=0;expected<int(loadedQlinks.size());++expected){char record='Q';int index=-1,channel=-1,cc=-1,mode=0;if(version>=2)file>>record;if(!(file>>index>>channel>>cc>>mode)||record!='Q'||index!=expected||channel< -1||channel>15||cc< -1||cc>127||mode<0||mode>2)return false;loadedQlinks[index].channel=channel;loadedQlinks[index].cc=cc;loadedQlinks[index].mode=static_cast<lab::MidiCcMode>(mode);}
-        if(version==3)for(int expected=0;expected<int(loadedPads.size());++expected){char record=0;int index=-1,channel=-1,note=-1;if(!(file>>record>>index>>channel>>note)||record!='P'||index!=expected||channel< -1||channel>15||note< -1||note>127)return false;loadedPads[index]={channel,note};}
-        if(version>=2){const int storedCommands=version<3?int(lab::MidiCommandTarget::Turn)+1:lab::MidiCommandCount;for(int expected=0;expected<storedCommands;++expected){char record=0;int index=-1,kind=0,channel=-1,numberValue=-1,mode=0;if(!(file>>record>>index>>kind>>channel>>numberValue>>mode)||record!='C'||index!=expected||kind<0||kind>2||channel< -1||channel>15||numberValue< -1||numberValue>127||mode<0||mode>2)return false;auto& binding=loadedCommands[index];binding.kind=static_cast<lab::MidiMessageKind>(kind);binding.channel=channel;binding.number=numberValue;binding.mode=static_cast<lab::MidiCcMode>(mode);}}
-        // Profiles written before pad learning interpreted Maschine+'s 4D wheel as relative.
-        if(version<3)loadedCommands[int(lab::MidiCommandTarget::Turn)].mode=lab::MidiCcMode::Absolute;
+        std::string signature;int version=0;file>>signature>>version;if(signature!="KICKMIDI"||(version<1||version>4))return false;
+        std::array<lab::MidiCcBinding,lab::SurfaceMidiQLinks> loadedQlinks{};std::array<lab::MidiPadBinding,lab::SurfaceMidiPads> loadedPads{};std::array<lab::MidiCommandBinding,lab::MidiCommandCount> loadedCommands{};
+        const int storedQlinks=version>=4?lab::SurfaceMidiQLinks:8;for(int expected=0;expected<storedQlinks;++expected){char record='Q';int index=-1,channel=-1,cc=-1,mode=0;if(version>=2)file>>record;if(!(file>>index>>channel>>cc>>mode)||record!='Q'||index!=expected||channel< -1||channel>15||cc< -1||cc>127||mode<0||mode>2)return false;loadedQlinks[index].channel=channel;loadedQlinks[index].cc=cc;loadedQlinks[index].mode=static_cast<lab::MidiCcMode>(mode);}
+        const int storedPads=version>=4?lab::SurfaceMidiPads:version==3?lab::SurfacePads:0;for(int expected=0;expected<storedPads;++expected){char record=0;int index=-1,channel=-1,note=-1;if(!(file>>record>>index>>channel>>note)||record!='P'||index!=expected||channel< -1||channel>15||note< -1||note>127)return false;loadedPads[index]={channel,note};}
+        if(version>=2){const int storedCommands=version<3?int(lab::MidiCommandTarget::Turn)+1:version<4?int(lab::MidiCommandTarget::Back)+1:lab::MidiCommandCount;for(int expected=0;expected<storedCommands;++expected){char record=0;int index=-1,kind=0,channel=-1,numberValue=-1,mode=0;if(!(file>>record>>index>>kind>>channel>>numberValue>>mode)||record!='C'||index!=expected||kind<0||kind>2||channel< -1||channel>15||numberValue< -1||numberValue>127||mode<0||mode>2)return false;auto& binding=loadedCommands[index];binding.kind=static_cast<lab::MidiMessageKind>(kind);binding.channel=channel;binding.number=numberValue;binding.mode=static_cast<lab::MidiCcMode>(mode);}}
+        if(version<4&&loadedCommands[int(lab::MidiCommandTarget::Turn)].kind!=lab::MidiMessageKind::None)loadedCommands[int(lab::MidiCommandTarget::Turn)].mode=lab::MidiCcMode::Relative1;
         midiQlinks=loadedQlinks;midiPads=loadedPads;midiCommands=loadedCommands;midiProfileLoaded=true;return true;
     }
     bool saveMidiProfile(){
         std::error_code ec;std::filesystem::create_directories(midiProfile.parent_path(),ec);if(ec)return false;
         auto temporary=midiProfile;temporary+=L".tmp";std::ofstream file(temporary.u8string(),std::ios::trunc);if(!file)return false;
-        file<<"KICKMIDI 3\n";for(int index=0;index<int(midiQlinks.size());++index){const auto& binding=midiQlinks[index];file<<"Q "<<index<<' '<<binding.channel<<' '<<binding.cc<<' '<<int(binding.mode)<<'\n';}for(int index=0;index<int(midiPads.size());++index){const auto& binding=midiPads[index];file<<"P "<<index<<' '<<binding.channel<<' '<<binding.note<<'\n';}for(int index=0;index<lab::MidiCommandCount;++index){const auto& binding=midiCommands[index];file<<"C "<<index<<' '<<int(binding.kind)<<' '<<binding.channel<<' '<<binding.number<<' '<<int(binding.mode)<<'\n';}file.close();if(!file)return false;
+        file<<"KICKMIDI 4\n";for(int index=0;index<int(midiQlinks.size());++index){const auto& binding=midiQlinks[index];file<<"Q "<<index<<' '<<binding.channel<<' '<<binding.cc<<' '<<int(binding.mode)<<'\n';}for(int index=0;index<int(midiPads.size());++index){const auto& binding=midiPads[index];file<<"P "<<index<<' '<<binding.channel<<' '<<binding.note<<'\n';}for(int index=0;index<lab::MidiCommandCount;++index){const auto& binding=midiCommands[index];file<<"C "<<index<<' '<<int(binding.kind)<<' '<<binding.channel<<' '<<binding.number<<' '<<int(binding.mode)<<'\n';}file.close();if(!file)return false;
         if(!MoveFileExW(temporary.c_str(),midiProfile.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))return false;
         midiProfileLoaded=true;return true;
     }
@@ -154,26 +153,47 @@ public:
         case T::ScreenA:if(pressed)dispatch({lab::SurfaceAction::PagePrevious});break;
         case T::ScreenB:if(pressed)dispatch({lab::SurfaceAction::PageNext});break;
         case T::Back:if(pressed)dispatch({lab::SurfaceAction::Back});break;
+        case T::Soft1:case T::Soft2:case T::Soft3:case T::Soft4:case T::Soft5:case T::Soft6:case T::Soft7:case T::Soft8:if(pressed){const int soft=target-int(T::Soft1);surface.focusDisplay(soft/4);status=L"MIDI — Soft "+number(soft+1)+L" reçu sur l'écran "+std::wstring(soft<4?L"A":L"B")+L".";}break;
+        case T::GroupA:case T::GroupB:case T::GroupC:case T::GroupD:case T::GroupE:case T::GroupF:case T::GroupG:case T::GroupH:if(pressed){const int group=target-int(T::GroupA);engine.setGroup(group);padGroup=engine.snapshot().group;selectPad(0);stepTrack=0;status=L"MIDI — groupe "+std::wstring(1,wchar_t(L'A'+group))+L".";}break;
+        case T::PadMode:if(pressed){padMode=0;engine.setPerformanceMode(lab::PerformanceMode::Drum);status=L"MIDI — Pad Mode.";}break;
+        case T::Keyboard:if(pressed){padMode=1;engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);status=L"MIDI — Keyboard.";}break;
+        case T::Chords:if(pressed)status=L"MIDI — Chords reçu ; moteur d'accords pas encore porté.";break;
+        case T::Step:if(pressed){padMode=3;engine.setPerformanceMode(lab::PerformanceMode::Drum);status=L"MIDI — Step : les pads éditent la piste "+number(stepTrack+1)+L".";}break;
+        case T::Pattern:if(pressed)showSurfaceNextSequence(surface.focusedDisplay);break;
+        case T::Select:if(pressed){stepTrack=selected;status=L"MIDI — piste "+number(stepTrack+1)+L" sélectionnée.";}break;
+        case T::Perform:if(pressed)showSurfaceInserts(surface.focusedDisplay);break;
+        case T::Notes:if(pressed){padMode=1;showSurfacePadPerform(surface.focusedDisplay);}break;
+        case T::Channel:if(pressed)showSurfaceMidiControl(surface.focusedDisplay);break;
+        case T::Plugin:if(pressed)showSurfaceInserts(surface.focusedDisplay);break;
+        case T::Ideas:if(pressed)showSurfaceSong(surface.focusedDisplay);break;
+        case T::Browser:if(pressed)showSurfaceBrowser(surface.focusedDisplay);break;
+        case T::Sampling:if(pressed){tab=1;status=L"Sampler / Sample Editor KICK.";}break;
+        case T::FileSave:if(pressed)project(true);break;
+        case T::Settings:if(pressed)audioMenu();break;
+        case T::Restart:case T::Erase:case T::Tap:case T::Follow:case T::Record:
+        case T::FixedVelocity:case T::Scene:case T::Events:case T::Variation:case T::Duplicate:case T::Solo:case T::Mute:
+        case T::Volume:case T::Swing:case T::Tempo:case T::NoteRepeat:case T::Lock:case T::Pitch:case T::Mod:
+        case T::Mixer:case T::Auto:case T::Macro:if(pressed)status=L"MIDI — "+midiCommandLabels[target]+L" reçu ; module KICK pas encore porté.";break;
         default:break;
         }
     }
     void midiData(unsigned packed){
         midiLastPacked=packed&0xffffff;++midiMessageCount;
         const int midiStatus=packed&255,type=midiStatus&0xf0,channel=midiStatus&15,data1=(packed>>8)&127,data2=(packed>>16)&127;
-        if(midiLearnCommand>=0&&midiLearnCommand<lab::MidiCommandCount){const bool note=type==0x90&&data2>0,cc=type==0xb0;if(note||cc){if(midiLearnCommand==int(lab::MidiCommandTarget::Turn)&&!cc){status=L"MIDI Learn rotation : utilise un encodeur envoyant un CC.";return;}auto& binding=midiCommands[midiLearnCommand];binding.kind=cc?lab::MidiMessageKind::ControlChange:lab::MidiMessageKind::Note;binding.channel=channel;binding.number=data1;binding.lastValue=-1;if(midiLearnCommand==int(lab::MidiCommandTarget::Turn))binding.mode=lab::MidiCcMode::Absolute;const int learned=midiLearnCommand;midiLearnCommand=-1;const bool saved=saveMidiProfile();status=L"MIDI Learn : commande "+number(learned+1)+L" assignée à "+(cc?L"CC ":L"note ")+number(data1)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");return;}}
-        if(type==0x90&&data2>0&&midiLearnPad>=0&&midiLearnPad<int(midiPads.size())){const int learned=midiLearnPad;for(int pad=0;pad<int(midiPads.size());++pad)if(pad!=learned&&midiPads[pad].matches(channel,data1))midiPads[pad]={};midiPads[learned]={channel,data1};midiLearnPad=-1;const bool saved=saveMidiProfile();status=L"MIDI Learn : note "+number(data1)+L" canal "+number(channel+1)+L" assignée au pad "+number(learned+1)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");return;}
+        if(midiLearnCommand>=0&&midiLearnCommand<lab::MidiCommandCount){const bool note=type==0x90&&data2>0,cc=type==0xb0;if(note||cc){if(midiLearnCommand==int(lab::MidiCommandTarget::Turn)&&!cc){status=L"MIDI Learn rotation : utilise un encodeur envoyant un CC.";return;}auto& binding=midiCommands[midiLearnCommand];binding.kind=cc?lab::MidiMessageKind::ControlChange:lab::MidiMessageKind::Note;binding.channel=channel;binding.number=data1;binding.lastValue=-1;if(midiLearnCommand==int(lab::MidiCommandTarget::Turn))binding.mode=lab::MidiCcMode::Relative1;const int learned=midiLearnCommand;midiLearnCommand=-1;const bool saved=saveMidiProfile();status=L"MIDI Learn : commande "+number(learned+1)+L" assignée à "+(cc?L"CC ":L"note ")+number(data1)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");return;}}
+        if(type==0x90&&data2>0&&midiLearnPad>=0&&midiLearnPad<int(midiPads.size())){const int learned=midiLearnPad;for(int pad=0;pad<int(midiPads.size());++pad)if(pad!=learned&&midiPads[pad].matches(channel,data1))midiPads[pad]={};midiPads[learned]={channel,data1};midiLearnPad=-1;const bool saved=saveMidiProfile();const std::wstring padLabel=std::wstring(1,wchar_t(L'A'+learned/lab::SurfacePads))+number(learned%lab::SurfacePads+1);status=L"MIDI Learn : note "+number(data1)+L" canal "+number(channel+1)+L" assignée au pad "+padLabel+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");return;}
         if(type==0xb0&&midiLearnTarget>=0&&midiLearnTarget<int(midiQlinks.size())){
             auto& binding=midiQlinks[midiLearnTarget];binding.channel=channel;binding.cc=data1;
             const bool saved=saveMidiProfile();status=L"MIDI Learn : CC "+number(data1)+L" canal "+number(channel+1)+L" assigné à P"+number(midiLearnTarget+1)+(saved?L" · profil Maschine+ sauvegardé.":L" · impossible de sauvegarder le profil.");
             midiLearnTarget=-1;return;
         }
-        if(type==0x90||type==0x80){bool matched=false;for(int pad=0;pad<int(midiPads.size());++pad)if(midiPads[pad].matches(channel,data1)){dispatch({lab::SurfaceAction::PadPress,pad,0,0,type==0x90&&data2>0});matched=true;}if(!matched&&data1>=36&&data1<52&&midiPads[data1-36].note<0)dispatch({lab::SurfaceAction::PadPress,data1-36,0,0,type==0x90&&data2>0});}
+        if(type==0x90||type==0x80){const bool pressed=type==0x90&&data2>0;bool matched=false;for(int target=0;target<int(midiPads.size());++target)if(midiPads[target].matches(channel,data1)){const int group=target/lab::SurfacePads,pad=target%lab::SurfacePads;if(pressed&&group!=padGroup){engine.setGroup(group);padGroup=engine.snapshot().group;selectPad(0);stepTrack=0;}if(group==padGroup)dispatch({lab::SurfaceAction::PadPress,pad,0,0,pressed});matched=true;break;}const int fallback=data1-36;if(!matched&&fallback>=0&&fallback<lab::SurfacePads&&midiPads[padGroup*lab::SurfacePads+fallback].note<0)dispatch({lab::SurfaceAction::PadPress,fallback,0,0,pressed});}
         if(type==0x90||type==0x80){for(int target=0;target<lab::MidiCommandCount;++target){auto& binding=midiCommands[target];if(binding.kind!=lab::MidiMessageKind::Note||binding.channel!=channel||binding.number!=data1)continue;const bool pressed=type==0x90&&data2>0;if(pressed||binding.lastValue>0)dispatchMidiCommand(target,pressed);binding.lastValue=pressed?data2:0;}}
         if(type==0xb0){for(int target=0;target<lab::MidiCommandCount;++target){auto& binding=midiCommands[target];if(binding.kind!=lab::MidiMessageKind::ControlChange||binding.channel!=channel||binding.number!=data1)continue;if(target==int(lab::MidiCommandTarget::Turn)){int delta=binding.mode==lab::MidiCcMode::Absolute?lab::midiAbsoluteDelta(binding.lastValue,data2):lab::midiCcDelta(binding.mode,data2);binding.lastValue=data2;if(delta)dispatch({lab::SurfaceAction::CenterTurn,0,delta});}else{const bool pressed=data2>0;if(pressed!=(binding.lastValue>0))dispatchMidiCommand(target,pressed);binding.lastValue=data2;}}}
         if(type!=0xb0)return;
         for(int target=0;target<int(midiQlinks.size());++target){
             const auto& binding=midiQlinks[target];if(binding.channel!=channel||binding.cc!=data1)continue;
-            const int display=target/4,knob=target%4;
+            const int logical=target%8,display=logical/4,knob=logical%4;
             if(binding.mode==lab::MidiCcMode::Absolute)dispatch({lab::SurfaceAction::QLinkSet,knob,data2,display});
             else {int delta=lab::midiCcDelta(binding.mode,data2);if(delta)dispatch({lab::SurfaceAction::QLinkTurn,knob,delta,display});}
         }
