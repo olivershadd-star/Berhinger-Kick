@@ -78,10 +78,12 @@ Pour KICK Windows, le profil visé est :
 | Encodeur 4D, rotation | Déplacement dans une liste ou changement de valeur |
 | Encodeur 4D, pression | Validation |
 | Encodeur 4D, directions | Changement de champ, page ou écran |
-| PLAY, STOP, REC | Transport KICK |
+| PLAY, STOP | Transport KICK |
 | SHIFT | Fonctions secondaires |
 
 Le profil ne doit pas supposer des numéros CC fixes : Controller Editor permet de les modifier. Il faut proposer un profil par défaut et un mode **MIDI Learn**.
+
+REC reste différé tant que le véritable enregistreur KICK n'est pas porté : une commande visible sans fonction audio réelle serait trompeuse.
 
 Les écrans matériels de Maschine+ affichent les affectations et pages gérées par son micrologiciel/Controller Editor. Le MIDI standard ne permet pas à KICK de leur envoyer librement son interface graphique. Les contrôles physiques sont donc exploitables, avec retour de LED MIDI possible, mais l'interface détaillée à deux écrans reste affichée sur le moniteur Windows. Une intégration propriétaire des écrans ne fait pas partie de cette première phase.
 
@@ -104,4 +106,6 @@ Sources officielles consultées :
 
 ## Point de reprise conseillé
 
-Les deux écrans et leurs huit encodeurs sont désormais reliés aux slots et paramètres d'effets existants, avec un focus, une sélection et un `DisplayBinding` indépendants. La page MIDI Control surveille les messages WinMM et apprend le canal, le CC et le mode absolu/relatif de P1–P8 au-dessus de la même couche `SurfaceAction`. La prochaine étape doit enregistrer ces affectations dans un profil Maschine+, puis apprendre transport, navigation 4D et Shift. Le navigateur de bibliothèque viendra ensuite sans remplacer ces contrôles.
+Les deux écrans et leurs huit encodeurs sont reliés aux slots et paramètres d'effets existants, avec un focus, une sélection et un `DisplayBinding` indépendants. Les cinq pages MIDI Control surveillent les messages WinMM et apprennent P1–P8, Play/Pause, Stop, Shift, Enter, les directions, le focus A/B et la rotation 4D. Notes et CC sont acceptés pour les boutons ; la rotation et les Q-Links gèrent les modes absolu et relatif. Le profil version 2 est sauvegardé atomiquement dans `profiles/MaschinePlus.kickmidi` et charge encore la version 1.
+
+Le prochain essai doit se faire avec la Maschine+ réelle afin de relever les notes/CC envoyés par Controller Editor et de valider les modes relatifs. Ensuite, le navigateur de bibliothèque pourra être relié aux mêmes actions de navigation sans remplacer ces contrôles. Le retour LED, l'horloge MIDI et REC restent hors de cette étape.

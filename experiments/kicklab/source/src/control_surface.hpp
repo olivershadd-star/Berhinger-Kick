@@ -19,6 +19,33 @@ struct MidiCcBinding {
     MidiCcMode mode = MidiCcMode::Absolute;
 };
 
+enum class MidiMessageKind { None, Note, ControlChange };
+
+enum class MidiCommandTarget {
+    PlayPause,
+    Stop,
+    Shift,
+    Enter,
+    Up,
+    Down,
+    Left,
+    Right,
+    ScreenA,
+    ScreenB,
+    Turn,
+    Count
+};
+
+constexpr int MidiCommandCount = static_cast<int>(MidiCommandTarget::Count);
+
+struct MidiCommandBinding {
+    MidiMessageKind kind = MidiMessageKind::None;
+    int channel = -1;
+    int number = -1;
+    MidiCcMode mode = MidiCcMode::Absolute;
+    int lastValue = -1;
+};
+
 inline int midiCcDelta(MidiCcMode mode, int value) {
     value = std::clamp(value, 0, 127);
     if (mode == MidiCcMode::Absolute) return 0;

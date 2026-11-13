@@ -1,12 +1,10 @@
 > **Base active du portage progressif.** Cette application conserve la sortie WinMM et le moteur AudIO déjà validés. Les modules KICK publiés y seront intégrés un par un, avec une commande souris pour toute fonction qui dépend normalement du matériel.
 
-# KICK Lab 0.2.4 — première banque de 14 effets
+# KICK Lab — portage Windows en développement
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-**[Télécharger le build Windows portable 0.2.4](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43166145754/artifacts/13920298199)**
-
-Cette version conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle ajoute douze processeurs au Lowpass et à PurestDrive déjà présents, tous repris des sources Airwindows du dépôt KICK.
+Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle intègre quatorze processeurs Airwindows repris du dépôt KICK, la surface à deux écrans et la première adaptation MIDI Learn pour Maschine+.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
@@ -55,8 +53,9 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Tempo : boutons − / + ou molette. Volume général : barre Master.
 - Clic droit sur un pad : charger un WAV. Glisser-déposer un WAV sur un pad ou sur l'éditeur est également possible.
 - MIDI : sélectionner une entrée avec le bouton MIDI ou depuis la page **MIDI Control** ; les notes 36 à 51 déclenchent les pads, tous canaux.
-- **MIDI Control** : ouvrir l'élément 16 du menu KICK. Les deux pages affichent P1–P4 puis P5–P8. Cliquer sur une ligne arme le MIDI Learn ; le prochain CC reçu mémorise son numéro et son canal. Un clic droit alterne `ABS`, relatif `1/127` et relatif `63/65`.
-- Un CC appris commande le même Q-Link que la souris dès que l'écran correspondant affiche une page d'inserts. Les huit affectations et leurs modes sont automatiquement enregistrés dans `profiles/MaschinePlus.kickmidi`, à côté de l'exécutable, puis rechargés au démarrage. Vélocité, Note Off, transport, retour LED et horloge MIDI ne sont pas encore gérés.
+- **MIDI Control** : ouvrir l'élément 16 du menu KICK. Les cinq pages regroupent P1–P4, P5–P8, Play/Pause–Stop–Shift–Enter, les quatre directions, puis le focus des écrans A/B et la rotation de l'encodeur 4D. Cliquer sur une ligne arme le MIDI Learn ; la prochaine note ou le prochain CC reçu mémorise son numéro et son canal. Les Q-Links et la rotation proposent `ABS`, relatif `1/127` et relatif `63/65` par clic droit.
+- Un CC appris commande le même Q-Link que la souris dès que l'écran correspondant affiche une page d'inserts. Les commandes apprises passent par la même couche de surface que le clavier et la souris. Toutes les affectations sont automatiquement enregistrées dans `profiles/MaschinePlus.kickmidi`, à côté de l'exécutable, puis rechargées au démarrage ; les anciens profils Q-Link version 1 restent lisibles et sont migrés à la prochaine sauvegarde.
+- REC n'est volontairement pas exposé : le portage ne possède pas encore de véritable enregistreur KICK. La vélocité expressive, le retour LED et l'horloge MIDI ne sont pas encore gérés.
 
 ## WAV et projets
 

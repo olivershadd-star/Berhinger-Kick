@@ -6,6 +6,11 @@ const std::array<std::wstring,16> surfaceMenuLabels={
     L"Color Editor",L"Sampler",L"Sample Editor",L"Program Edit",
     L"Pad Notes",L"Looper",L"Q-Links",L"MIDI Control"
 };
+const std::array<std::wstring,lab::MidiCommandCount> midiCommandLabels={
+    L"Play / Pause",L"Stop",L"Shift",L"Enter",
+    L"Haut",L"Bas",L"Gauche",L"Droite",
+    L"Écran A",L"Écran B",L"Rotation 4D"
+};
 
 Box surfaceModuleBox(int display)const{return {28+display*580,68,552,318};}
 Box surfaceDisplayBox(int display)const{return {40+display*580,80,456,294};}
@@ -83,6 +88,11 @@ std::wstring midiLastMessage()const{
     const int midiStatus=midiLastPacked&255,type=midiStatus&0xf0,channel=midiStatus&15,data1=(midiLastPacked>>8)&127,data2=(midiLastPacked>>16)&127;
     std::wstring kind=type==0x90?L"NOTE ON":type==0x80?L"NOTE OFF":type==0xb0?L"CC":L"MIDI";
     return kind+L"  canal "+number(channel+1)+L"  donnée "+number(data1)+L"  valeur "+number(data2)+L"  ·  #"+number(int(midiMessageCount));
+}
+
+std::wstring midiCommandBindingText(const lab::MidiCommandBinding& binding)const{
+    if(binding.kind==lab::MidiMessageKind::None)return L"Non assigné";
+    return std::wstring(binding.kind==lab::MidiMessageKind::Note?L"Note ":L"CC ")+number(binding.number)+L" · canal "+number(binding.channel+1);
 }
 
 void surfacePointer(int y){
@@ -167,11 +177,16 @@ bool surfaceClick(int x,int y,bool right){
         if(binding.module==lab::DisplayModule::MidiControl){
             if(surfaceMidiDeviceBox(display).contains(x,y)){midiMenu();return true;}
             if(surfaceMidiPreviousBox(display).contains(x,y)){binding.page=std::max(0,binding.page-1);return true;}
-            if(surfaceMidiNextBox(display).contains(x,y)){binding.page=std::min(1,binding.page+1);return true;}
+            if(surfaceMidiNextBox(display).contains(x,y)){binding.page=std::min(4,binding.page+1);return true;}
             for(int row=0;row<4;++row)if(surfaceMidiBindingBox(display,row).contains(x,y)){
-                const int target=binding.page*4+row;auto& learned=midiQlinks[target];
-                if(right){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;const bool saved=saveMidiProfile();status=L"P"+number(target+1)+L" : mode "+midiModeName(learned.mode)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");}
-                else {midiLearnTarget=target;status=L"MIDI Learn armé pour P"+number(target+1)+L" — tourne maintenant le contrôle physique.";}
+                if(binding.page<2){const int target=binding.page*4+row;auto& learned=midiQlinks[target];
+                    if(right){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;const bool saved=saveMidiProfile();status=L"P"+number(target+1)+L" : mode "+midiModeName(learned.mode)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");}
+                    else {midiLearnCommand=-1;midiLearnTarget=target;status=L"MIDI Learn armé pour P"+number(target+1)+L" — tourne maintenant le contrôle physique.";}
+                }else {const int target=(binding.page-2)*4+row;if(target>=lab::MidiCommandCount)return true;auto& learned=midiCommands[target];
+                    if(right&&target==int(lab::MidiCommandTarget::Turn)){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;const bool saved=saveMidiProfile();status=L"Rotation 4D : mode "+midiModeName(learned.mode)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");}
+                    else if(right){learned={};const bool saved=saveMidiProfile();status=midiCommandLabels[target]+(saved?L" : affectation effacée.":L" : effacement non sauvegardé.");}
+                    else {midiLearnTarget=-1;midiLearnCommand=target;status=L"MIDI Learn armé pour "+midiCommandLabels[target]+L" — actionne le contrôle physique.";}
+                }
                 return true;
             }
             return true;
@@ -207,16 +222,24 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     const auto& binding=surface.displays[display];
     if(binding.module==lab::DisplayModule::MidiControl){
         text(dc,{box.x+14,box.y+9,270,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MIDI CONTROL",12,focused?accent:muted,FW_SEMIBOLD);
-        text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / 2",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / 5",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         button(dc,surfaceMidiDeviceBox(display),midiInputName(),midiId>=0);button(dc,surfaceMidiPreviousBox(display),L"<");button(dc,surfaceMidiNextBox(display),L">");
         text(dc,{box.x+14,170,box.w-28,22},midiLastMessage(),9,midiMessageCount?accent:muted,FW_NORMAL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        text(dc,{box.x+14,194,box.w-28,22},midiLearnTarget>=0?L"LEARN : bouge le contrôle pour P"+number(midiLearnTarget+1):(midiProfileLoaded?L"Profil Maschine+ chargé · clic : Learn · droit : mode":L"Profil Maschine+ vide · clic : Learn · droit : mode"),9,midiLearnTarget>=0?RGB(241,184,88):muted,FW_SEMIBOLD);
-        for(int row=0;row<4;++row){const int target=binding.page*4+row;const auto& learned=midiQlinks[target];auto b=surfaceMidiBindingBox(display,row);const bool learning=midiLearnTarget==target;
-            if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
-            text(dc,{b.x+10,b.y,52,b.h},L"P"+number(target+1),10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
-            text(dc,{b.x+62,b.y,190,b.h},learned.cc<0?L"Non assigné":L"CC "+number(learned.cc)+L" · canal "+number(learned.channel+1),10,learned.cc<0?muted:ink);
-            text(dc,{b.x+262,b.y,122,b.h},midiModeName(learned.mode),9,muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        const bool anyLearn=midiLearnTarget>=0||midiLearnCommand>=0;std::wstring learnText=midiLearnTarget>=0?L"LEARN : bouge le contrôle pour P"+number(midiLearnTarget+1):midiLearnCommand>=0?L"LEARN : actionne "+midiCommandLabels[midiLearnCommand]:(midiProfileLoaded?L"Profil Maschine+ chargé · clic : Learn · droit : option":L"Profil Maschine+ vide · clic : Learn · droit : option");
+        text(dc,{box.x+14,194,box.w-28,22},learnText,9,anyLearn?RGB(241,184,88):muted,FW_SEMIBOLD);
+        for(int row=0;row<4;++row){auto b=surfaceMidiBindingBox(display,row);
+            if(binding.page<2){const int target=binding.page*4+row;const auto& learned=midiQlinks[target];const bool learning=midiLearnTarget==target;
+                if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
+                text(dc,{b.x+10,b.y,52,b.h},L"P"+number(target+1),10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
+                text(dc,{b.x+62,b.y,190,b.h},learned.cc<0?L"Non assigné":L"CC "+number(learned.cc)+L" · canal "+number(learned.channel+1),10,learned.cc<0?muted:ink);
+                text(dc,{b.x+262,b.y,122,b.h},midiModeName(learned.mode),9,muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            }else {const int target=(binding.page-2)*4+row;if(target>=lab::MidiCommandCount)continue;const auto& learned=midiCommands[target];const bool learning=midiLearnCommand==target;
+                if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
+                text(dc,{b.x+10,b.y,104,b.h},midiCommandLabels[target],10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
+                text(dc,{b.x+116,b.y,174,b.h},midiCommandBindingText(learned),10,learned.kind==lab::MidiMessageKind::None?muted:ink);
+                text(dc,{b.x+296,b.y,88,b.h},target==int(lab::MidiCommandTarget::Turn)?midiModeName(learned.mode):(learned.kind==lab::MidiMessageKind::Note?L"NOTE":learned.kind==lab::MidiMessageKind::ControlChange?L"CC":L""),9,muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            }
         }
         return;
     }
