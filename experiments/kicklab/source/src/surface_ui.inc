@@ -9,8 +9,19 @@ const std::array<std::wstring,16> surfaceMenuLabels={
 const std::array<std::wstring,lab::MidiCommandCount> midiCommandLabels={
     L"Play / Pause",L"Stop",L"Shift",L"Enter",
     L"Haut",L"Bas",L"Gauche",L"Droite",
-    L"Écran A",L"Écran B",L"Rotation 4D",L"Retour / Escape"
+    L"Écran A",L"Écran B",L"Rotation 4D",L"Retour / Escape",
+    L"Pad Mode",L"Keyboard",L"Chords",L"Step",
+    L"Browser",L"Mixer",L"Sampling",L"Next Sequence",
+    L"Song",L"File / Save",L"Settings",L"Track Mute",
+    L"Pad Mute",L"Select",L"Solo",L"Record",
+    L"Tempo",L"Swing"
 };
+static constexpr int surfaceMidiQlinkPages=4;
+static constexpr int surfaceMidiPadPages=4;
+static constexpr int surfaceMidiCommandPages=(lab::MidiCommandCount+3)/4;
+static constexpr int surfaceMidiPages=surfaceMidiQlinkPages+surfaceMidiPadPages+surfaceMidiCommandPages;
+
+int surfaceProgramPad(const lab::DisplayBinding& binding,const lab::Snapshot& snapshot)const{return lab::programPad(snapshot.bank,binding.pad);}
 
 Box surfaceModuleBox(int display)const{return {28+display*580,68,552,318};}
 Box surfaceDisplayBox(int display)const{return {40+display*580,80,456,294};}
@@ -53,6 +64,10 @@ void showSurfaceHome(){
     surface.focusDisplay(0);status=L"Menu KICK — les deux écrans sont revenus à l'accueil.";
 }
 
+void showSurfaceMenuItem(int item){
+    item=std::clamp(item,0,15);const int display=item/8;showSurfaceMenu(display);surface.menuSelections[display]=item%8;status=L"Menu KICK — "+surfaceMenuLabels[item]+L" sélectionné.";
+}
+
 void showSurfaceInserts(int display){
     display=std::clamp(display,0,1);
     auto& binding=surface.displays[display];
@@ -70,7 +85,7 @@ void showSurfaceProgram(int display){
 }
 
 void showSurfacePadPerform(int display){
-    display=std::clamp(display,0,1);auto snapshot=engine.snapshot();engine.setMelodicSourcePad(selected);if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)engine.setPerformanceMode(lab::PerformanceMode::Chromatic);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::PadPerform;binding.page=0;surface.focusDisplay(display);status=L"Pad Notes — les 16 pads jouent le sample source à des hauteurs différentes.";
+    display=std::clamp(display,0,1);auto snapshot=engine.snapshot();engine.setMelodicSourcePad(lab::programPad(snapshot.bank,selected));if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)engine.setPerformanceMode(lab::PerformanceMode::Chromatic);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::PadPerform;binding.page=0;surface.focusDisplay(display);status=L"Pad Notes — les 16 pads jouent le sample source à des hauteurs différentes.";
 }
 
 void showSurfaceNextSequence(int display){
@@ -87,11 +102,11 @@ double surfaceProgramRatio(const lab::PadEdit& edit,int page,int knob)const{
     return 0;
 }
 
-void setSurfaceProgramRatio(int display,int knob,double ratio){
+void setSurfaceProgramRatio(int display,int knob,double ratio,int layer=0){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks)return;auto& binding=surface.displays[display];if(binding.module!=lab::DisplayModule::Sample)return;
-    auto snapshot=engine.snapshot();const int pad=std::clamp(binding.pad,0,lab::Pads-1);auto edit=snapshot.edits[pad];ratio=std::clamp(ratio,0.,1.);
-    if(binding.page==0){if(knob==0)edit.gain=ratio*2.;else if(knob==1)edit.semitones=std::round(ratio*48.)-24.;else if(knob==2)edit.start=std::min(ratio,edit.end-.001);else if(knob==3)edit.end=std::max(ratio,edit.start+.001);}
-    else if(binding.page==1){if(knob==0)edit.attack=ratio;else if(knob==1)edit.decay=ratio;else if(knob==2)edit.sustain=ratio;else if(knob==3)edit.release=ratio;}
+    auto snapshot=engine.snapshot();const int pad=surfaceProgramPad(binding,snapshot),page=binding.page+layer*2;if(page>1)return;auto edit=snapshot.edits[pad];ratio=std::clamp(ratio,0.,1.);
+    if(page==0){if(knob==0)edit.gain=ratio*2.;else if(knob==1)edit.semitones=std::round(ratio*48.)-24.;else if(knob==2)edit.start=std::min(ratio,edit.end-.001);else if(knob==3)edit.end=std::max(ratio,edit.start+.001);}
+    else if(page==1){if(knob==0)edit.attack=ratio;else if(knob==1)edit.decay=ratio;else if(knob==2)edit.sustain=ratio;else if(knob==3)edit.release=ratio;}
     engine.setEdit(pad,edit);
 }
 
@@ -107,7 +122,7 @@ std::wstring surfaceProgramParameterValue(const lab::PadEdit& edit,int page,int 
 void showSurfaceMidiControl(int display){
     display=std::clamp(display,0,1);auto& binding=surface.displays[display];
     binding.module=lab::DisplayModule::MidiControl;binding.page=0;surface.focusDisplay(display);
-    status=L"MIDI Control — choisis une cible P1–P8 puis tourne le contrôle physique à apprendre.";
+    status=L"MIDI Control — 16 knobs logiques, huit banques de pads Maschine+ et raccourcis KICK.";
 }
 
 std::wstring surfaceBrowserModeName(int mode)const{
@@ -151,8 +166,8 @@ void moveSurfaceBrowserCategory(int display,int delta){
 
 void loadSurfaceBrowserSelection(int display){
     display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];if(browser.files.empty()){status=L"Browser KICK — cette catégorie ne contient encore aucun WAV.";return;}
-    auto& binding=surface.displays[display];const int pad=std::clamp(binding.pad,0,lab::Pads-1);std::string error;engine.stopPreview();
-    if(engine.load(pad,browser.files[browser.selected].u8string(),error,true)){selectPad(pad);status=L"Sample chargé sur le pad "+padName(pad)+L" sans modifier ses réglages : "+browser.files[browser.selected].filename().wstring();}
+    auto& binding=surface.displays[display];auto snapshot=engine.snapshot();const int local=std::clamp(binding.pad,0,lab::Pads-1),pad=lab::programPad(snapshot.bank,local);std::string error;engine.stopPreview();
+    if(engine.load(pad,browser.files[browser.selected].u8string(),error,true)){selectPad(local);status=L"Sample chargé sur le pad "+bankPadName(local)+L" sans modifier ses réglages : "+browser.files[browser.selected].filename().wstring();}
     else status=L"Chargement impossible : "+wide(error);
 }
 
@@ -167,30 +182,30 @@ void closeSurfaceModule(){
     else status=L"KICK / Retour — aucun écran enfant ouvert.";
 }
 
-void setSurfaceQLink(int display,int knob,double ratio){
+void setSurfaceQLink(int display,int knob,double ratio,int layer=0){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks)return;
-    auto& binding=surface.displays[display];ratio=std::clamp(ratio,0.,1.);if(binding.module==lab::DisplayModule::Sample){setSurfaceProgramRatio(display,knob,ratio);return;}
-    if(binding.module==lab::DisplayModule::PadPerform){auto snapshot=engine.snapshot();if(knob==0)engine.setPerformanceMode(lab::PerformanceMode(std::clamp(int(std::lround(ratio*3)),0,3)));else if(knob==1)engine.setMelodicSourcePad(std::clamp(int(std::lround(ratio*15)),0,15));else if(knob==2)engine.setRootNote(24+std::clamp(int(std::lround(ratio*60)),0,60));else engine.setViewBar(std::clamp(int(std::lround(ratio*(snapshot.sequences[snapshot.sequence].bars-1))),0,snapshot.sequences[snapshot.sequence].bars-1));return;}
+    auto& binding=surface.displays[display];ratio=std::clamp(ratio,0.,1.);if(binding.module==lab::DisplayModule::Sample){setSurfaceProgramRatio(display,knob,ratio,layer);return;}if(layer>0&&binding.module!=lab::DisplayModule::Inserts)return;
+    if(binding.module==lab::DisplayModule::PadPerform){auto snapshot=engine.snapshot();if(knob==0)engine.setPerformanceMode(lab::PerformanceMode(std::clamp(int(std::lround(ratio*3)),0,3)));else if(knob==1)engine.setMelodicSourcePad(lab::programPad(snapshot.bank,std::clamp(int(std::lround(ratio*15)),0,15)));else if(knob==2)engine.setRootNote(24+std::clamp(int(std::lround(ratio*60)),0,60));else engine.setViewBar(std::clamp(int(std::lround(ratio*(snapshot.sequences[snapshot.sequence].bars-1))),0,snapshot.sequences[snapshot.sequence].bars-1));return;}
     if(binding.module==lab::DisplayModule::NextSequence){auto snapshot=engine.snapshot();if(knob==0)engine.selectSequence(std::clamp(int(std::lround(ratio*15)),0,15));else if(knob==1)engine.setSequenceBars(1+std::clamp(int(std::lround(ratio*3)),0,3));else if(knob==2)engine.setViewBar(std::clamp(int(std::lround(ratio*(snapshot.sequences[snapshot.sequence].bars-1))),0,snapshot.sequences[snapshot.sequence].bars-1));else engine.setPerformanceMode(lab::PerformanceMode(std::clamp(int(std::lround(ratio*3)),0,3)));return;}
     if(binding.module==lab::DisplayModule::Song){auto snapshot=engine.snapshot();if(knob==0)songChoice=std::clamp(int(std::lround(ratio*15)),0,15);else if(knob==1)songRepeats=1+std::clamp(int(std::lround(ratio*127)),0,127);else if(knob==2)songSelected=std::clamp(int(std::lround(ratio*std::max(0,snapshot.songLength-1))),0,std::max(0,snapshot.songLength-1));return;}
     if(binding.module!=lab::DisplayModule::Inserts)return;
-    auto s=engine.snapshot();const int pad=std::clamp(binding.pad,0,lab::Pads-1),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
-    const int parameter=binding.parameterForKnob(knob);const auto effect=s.edits[pad].inserts[slot].effect;
+    auto s=engine.snapshot();const int pad=surfaceProgramPad(binding,s),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
+    const int parameter=(binding.page+layer*2)*lab::SurfaceQLinks+knob;const auto effect=s.edits[pad].inserts[slot].effect;
     if(parameter>=0&&parameter<lab::insertParameterCount(effect))engine.setInsertParameter(pad,slot,parameter,ratio);
 }
 
-void turnSurfaceQLink(int display,int knob,int delta){
+void turnSurfaceQLink(int display,int knob,int delta,int layer=0){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks||!delta)return;
     auto& binding=surface.displays[display];
-    if(binding.module==lab::DisplayModule::Sample){auto snapshot=engine.snapshot();const auto& edit=snapshot.edits[std::clamp(binding.pad,0,lab::Pads-1)];const double step=binding.page==0&&knob==1?1./48.:.01;setSurfaceProgramRatio(display,knob,surfaceProgramRatio(edit,binding.page,knob)+delta*step);return;}
-    if(binding.module==lab::DisplayModule::PadPerform){auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)engine.setPerformanceMode(lab::PerformanceMode(std::clamp(int(sequence.mode)+(delta>0?1:-1),0,3)));else if(knob==1)engine.setMelodicSourcePad(std::clamp(sequence.sourcePad+(delta>0?1:-1),0,15));else if(knob==2)engine.setRootNote(sequence.rootNote+(delta>0?1:-1));else engine.setViewBar(snapshot.viewBar+(delta>0?1:-1));return;}
+    if(binding.module==lab::DisplayModule::Sample){auto snapshot=engine.snapshot();const int page=binding.page+layer*2;if(page>1)return;const auto& edit=snapshot.edits[surfaceProgramPad(binding,snapshot)];const double step=page==0&&knob==1?1./48.:.01;setSurfaceProgramRatio(display,knob,surfaceProgramRatio(edit,page,knob)+delta*step,layer);return;}if(layer>0&&binding.module!=lab::DisplayModule::Inserts)return;
+    if(binding.module==lab::DisplayModule::PadPerform){auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)engine.setPerformanceMode(lab::PerformanceMode(std::clamp(int(sequence.mode)+(delta>0?1:-1),0,3)));else if(knob==1){const int local=std::clamp(sequence.sourcePad%lab::Pads+(delta>0?1:-1),0,lab::Pads-1);engine.setMelodicSourcePad(lab::programPad(snapshot.bank,local));}else if(knob==2)engine.setRootNote(sequence.rootNote+(delta>0?1:-1));else engine.setViewBar(snapshot.viewBar+(delta>0?1:-1));return;}
     if(binding.module==lab::DisplayModule::NextSequence){auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)engine.selectSequence(snapshot.sequence+(delta>0?1:-1));else if(knob==1)engine.setSequenceBars(sequence.bars+(delta>0?1:-1));else if(knob==2)engine.setViewBar(snapshot.viewBar+(delta>0?1:-1));else engine.setPerformanceMode(lab::PerformanceMode(std::clamp(int(sequence.mode)+(delta>0?1:-1),0,3)));return;}
     if(binding.module==lab::DisplayModule::Song){auto snapshot=engine.snapshot();if(knob==0)songChoice=std::clamp(songChoice+(delta>0?1:-1),0,15);else if(knob==1)songRepeats=std::clamp(songRepeats+(delta>0?1:-1),1,128);else if(knob==2)songSelected=std::clamp(songSelected+(delta>0?1:-1),0,std::max(0,snapshot.songLength-1));return;}
     if(binding.module!=lab::DisplayModule::Inserts)return;
     auto s=engine.snapshot();
-    const int pad=std::clamp(binding.pad,0,lab::Pads-1),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
+    const int pad=surfaceProgramPad(binding,s),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
     const auto& insert=s.edits[pad].inserts[slot];
-    const int parameter=binding.parameterForKnob(knob);
+    const int parameter=(binding.page+layer*2)*lab::SurfaceQLinks+knob;
     if(parameter<0||parameter>=lab::insertParameterCount(insert.effect))return;
     engine.setInsertParameter(pad,slot,parameter,insert.parameters[parameter]+delta*.01);
 }
@@ -245,9 +260,9 @@ void moveSurfaceMenu(int dx,int dy){
     if(module==lab::DisplayModule::NextSequence){if(dx)turnSurfaceQLink(surface.focusedDisplay,0,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,dy);return;}
     if(module==lab::DisplayModule::PadPerform){if(dx)turnSurfaceQLink(surface.focusedDisplay,0,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,-dy);return;}
     if(module==lab::DisplayModule::Song){if(dx)turnSurfaceQLink(surface.focusedDisplay,1,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,dy);return;}
-    if(module==lab::DisplayModule::MidiControl&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,8);return;}
+    if(module==lab::DisplayModule::MidiControl&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,surfaceMidiPages-1);return;}
     if(module==lab::DisplayModule::Sample&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,1);return;}
-    if(module==lab::DisplayModule::Inserts&&dx){auto& binding=surface.displays[surface.focusedDisplay];auto snapshot=engine.snapshot();const auto effect=snapshot.edits[binding.pad].inserts[binding.slot].effect;const int pages=std::max(1,(lab::insertParameterCount(effect)+3)/4);binding.page=std::clamp(binding.page+(dx>0?1:-1),0,pages-1);return;}
+    if(module==lab::DisplayModule::Inserts&&dx){auto& binding=surface.displays[surface.focusedDisplay];auto snapshot=engine.snapshot();const auto effect=snapshot.edits[surfaceProgramPad(binding,snapshot)].inserts[binding.slot].effect;const int pages=std::max(1,(lab::insertParameterCount(effect)+3)/4);binding.page=std::clamp(binding.page+(dx>0?1:-1),0,pages-1);return;}
     if(module!=lab::DisplayModule::Menu)return;
     const int first=surface.focusedDisplay*8;
     int local=surface.menuSelections[surface.focusedDisplay];
@@ -323,7 +338,7 @@ bool surfaceClick(int x,int y,bool right){
             return true;
         }
         if(binding.module==lab::DisplayModule::Inserts){
-            auto current=engine.snapshot();const int pages=std::max(1,(lab::insertParameterCount(current.edits[binding.pad].inserts[binding.slot].effect)+3)/4);
+            auto current=engine.snapshot();const int programPad=surfaceProgramPad(binding,current);const int pages=std::max(1,(lab::insertParameterCount(current.edits[programPad].inserts[binding.slot].effect)+3)/4);
             if(surfacePagePreviousBox(display).contains(x,y)){binding.page=std::max(0,binding.page-1);return true;}
             if(surfacePageNextBox(display).contains(x,y)){binding.page=std::min(pages-1,binding.page+1);return true;}
             for(int slot=0;slot<lab::InsertSlots;++slot)if(surfaceInsertSlotBox(display,slot).contains(x,y)){
@@ -331,8 +346,8 @@ bool surfaceClick(int x,int y,bool right){
             }
             if(surfaceInsertEffectBox(display).contains(x,y)){selectedInsert=binding.slot;insertMenu();binding.page=0;return true;}
             if(surfaceInsertBypassBox(display).contains(x,y)){
-                auto s=engine.snapshot();const auto& insert=s.edits[binding.pad].inserts[binding.slot];
-                if(insert.effect!=lab::InsertEffect::None)engine.setInsertBypass(binding.pad,binding.slot,!insert.bypass);
+                auto s=engine.snapshot();const int pad=surfaceProgramPad(binding,s);const auto& insert=s.edits[pad].inserts[binding.slot];
+                if(insert.effect!=lab::InsertEffect::None)engine.setInsertBypass(pad,binding.slot,!insert.bypass);
                 return true;
             }
             return true;
@@ -340,7 +355,7 @@ bool surfaceClick(int x,int y,bool right){
         if(binding.module==lab::DisplayModule::Sample){
             if(surfacePagePreviousBox(display).contains(x,y)){binding.page=std::max(0,binding.page-1);return true;}
             if(surfacePageNextBox(display).contains(x,y)){binding.page=std::min(1,binding.page+1);return true;}
-            if(surfaceProgramAuditionBox(display).contains(x,y)){engine.trigger(binding.pad);return true;}
+            if(surfaceProgramAuditionBox(display).contains(x,y)){auto s=engine.snapshot();engine.trigger(surfaceProgramPad(binding,s));return true;}
             return true;
         }
         if(binding.module==lab::DisplayModule::Song){
@@ -356,15 +371,15 @@ bool surfaceClick(int x,int y,bool right){
         if(binding.module==lab::DisplayModule::MidiControl){
             if(surfaceMidiDeviceBox(display).contains(x,y)){midiMenu();return true;}
             if(surfaceMidiPreviousBox(display).contains(x,y)){binding.page=std::max(0,binding.page-1);return true;}
-            if(surfaceMidiNextBox(display).contains(x,y)){binding.page=std::min(8,binding.page+1);return true;}
+            if(surfaceMidiNextBox(display).contains(x,y)){binding.page=std::min(surfaceMidiPages-1,binding.page+1);return true;}
             for(int row=0;row<4;++row)if(surfaceMidiBindingBox(display,row).contains(x,y)){
-                if(binding.page<2){const int target=binding.page*4+row;auto& learned=midiQlinks[target];
+                if(binding.page<surfaceMidiQlinkPages){const int target=binding.page*4+row;auto& learned=midiQlinks[target];
                     if(right){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;const bool saved=saveMidiProfile();status=L"P"+number(target+1)+L" : mode "+midiModeName(learned.mode)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");}
                     else {midiLearnCommand=midiLearnPad=-1;midiLearnTarget=target;status=L"MIDI Learn armé pour P"+number(target+1)+L" — tourne maintenant le contrôle physique.";}
-                }else if(binding.page<6){const int target=(binding.page-2)*4+row;auto& learned=midiPads[target];
+                }else if(binding.page<surfaceMidiQlinkPages+surfaceMidiPadPages){const int target=(binding.page-surfaceMidiQlinkPages)*4+row;auto& learned=midiPads[target];
                     if(right){learned={};const bool saved=saveMidiProfile();status=L"Pad "+number(target+1)+(saved?L" : affectation effacée.":L" : effacement non sauvegardé.");}
                     else {midiLearnTarget=midiLearnCommand=-1;midiLearnPad=target;status=L"MIDI Learn armé pour PAD "+number(target+1)+L" — frappe maintenant le pad physique.";}
-                }else {const int target=(binding.page-6)*4+row;if(target>=lab::MidiCommandCount)return true;auto& learned=midiCommands[target];
+                }else {const int target=(binding.page-surfaceMidiQlinkPages-surfaceMidiPadPages)*4+row;if(target>=lab::MidiCommandCount)return true;auto& learned=midiCommands[target];
                     if(right&&target==int(lab::MidiCommandTarget::Turn)){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;const bool saved=saveMidiProfile();status=L"Rotation 4D : mode "+midiModeName(learned.mode)+(saved?L" · profil sauvegardé.":L" · sauvegarde impossible.");}
                     else if(right){learned={};const bool saved=saveMidiProfile();status=midiCommandLabels[target]+(saved?L" : affectation effacée.":L" : effacement non sauvegardé.");}
                     else {midiLearnTarget=midiLearnPad=-1;midiLearnCommand=target;status=L"MIDI Learn armé pour "+midiCommandLabels[target]+L" — actionne le contrôle physique.";}
@@ -385,20 +400,21 @@ void paintSurfaceKnob(HDC dc,int display,int knob,const lab::Snapshot& snapshot)
     const int cx=538+display*580,cy=112+knob*67;
     double ratio=.5;bool assigned=false;
     const auto& binding=surface.displays[display];
-    if(binding.module==lab::DisplayModule::Sample){ratio=surfaceProgramRatio(snapshot.edits[std::clamp(binding.pad,0,lab::Pads-1)],binding.page,knob);assigned=true;}
-    else if(binding.module==lab::DisplayModule::PadPerform){const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)ratio=int(sequence.mode)/3.;else if(knob==1)ratio=sequence.sourcePad/15.;else if(knob==2)ratio=(sequence.rootNote-24)/60.;else ratio=sequence.bars>1?double(snapshot.viewBar)/(sequence.bars-1):0;assigned=true;}
-    else if(binding.module==lab::DisplayModule::NextSequence){const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)ratio=snapshot.sequence/15.;else if(knob==1)ratio=(sequence.bars-1)/3.;else if(knob==2)ratio=sequence.bars>1?double(snapshot.viewBar)/(sequence.bars-1):0;else ratio=int(sequence.mode)/3.;assigned=true;}
-    else if(binding.module==lab::DisplayModule::Song){if(knob==0)ratio=songChoice/15.;else if(knob==1)ratio=(songRepeats-1)/127.;else if(knob==2)ratio=snapshot.songLength>1?double(songSelected)/(snapshot.songLength-1):0;else ratio=0;assigned=knob<3;}
+    const int layer=knobLayer,effectivePage=binding.page+layer*2;
+    if(binding.module==lab::DisplayModule::Sample){if(effectivePage<2){ratio=surfaceProgramRatio(snapshot.edits[surfaceProgramPad(binding,snapshot)],effectivePage,knob);assigned=true;}}
+    else if(binding.module==lab::DisplayModule::PadPerform&&layer==0){const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)ratio=int(sequence.mode)/3.;else if(knob==1)ratio=(sequence.sourcePad%lab::Pads)/15.;else if(knob==2)ratio=(sequence.rootNote-24)/60.;else ratio=sequence.bars>1?double(snapshot.viewBar)/(sequence.bars-1):0;assigned=true;}
+    else if(binding.module==lab::DisplayModule::NextSequence&&layer==0){const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)ratio=snapshot.sequence/15.;else if(knob==1)ratio=(sequence.bars-1)/3.;else if(knob==2)ratio=sequence.bars>1?double(snapshot.viewBar)/(sequence.bars-1):0;else ratio=int(sequence.mode)/3.;assigned=true;}
+    else if(binding.module==lab::DisplayModule::Song&&layer==0){if(knob==0)ratio=songChoice/15.;else if(knob==1)ratio=(songRepeats-1)/127.;else if(knob==2)ratio=snapshot.songLength>1?double(songSelected)/(snapshot.songLength-1):0;else ratio=0;assigned=knob<3;}
     else if(binding.module==lab::DisplayModule::Inserts){
-        const auto& insert=snapshot.edits[binding.pad].inserts[binding.slot];
-        const int parameter=binding.parameterForKnob(knob);
+        const auto& insert=snapshot.edits[surfaceProgramPad(binding,snapshot)].inserts[binding.slot];
+        const int parameter=effectivePage*lab::SurfaceQLinks+knob;
         if(parameter>=0&&parameter<lab::insertParameterCount(insert.effect)){ratio=insert.parameters[parameter];assigned=true;}
     }
     HBRUSH brush=CreateSolidBrush(RGB(31,38,50));HPEN edge=CreatePen(PS_SOLID,2,line);
     auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-19,cy-19,cx+19,cy+19);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);
     constexpr double pi=3.14159265358979323846;const double angle=(135.+270.*ratio)*pi/180.;
     HPEN mark=CreatePen(PS_SOLID,3,assigned?accent:muted);oldP=SelectObject(dc,mark);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx+int(std::cos(angle)*12),cy+int(std::sin(angle)*12));SelectObject(dc,oldP);DeleteObject(mark);
-    text(dc,{cx-24,cy+21,48,16},L"P"+number(display*4+knob+1),9,assigned?accent:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{cx-24,cy+21,48,16},L"P"+number(layer*8+display*4+knob+1),9,assigned?accent:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 }
 
 void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
@@ -408,7 +424,7 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     const auto& binding=surface.displays[display];
     if(binding.module==lab::DisplayModule::Browser){
         const auto& browser=browsers[display];
-        text(dc,{box.x+14,box.y+9,290,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  BROWSER  ·  PAD "+padName(binding.pad),12,focused?accent:muted,FW_SEMIBOLD);
+        text(dc,{box.x+14,box.y+9,290,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  BROWSER  ·  PAD "+bankPadName(binding.pad),12,focused?accent:muted,FW_SEMIBOLD);
         text(dc,{box.x+310,box.y+9,130,24},number(int(browser.files.size()))+L" WAV",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         button(dc,surfaceBrowserPreviousBox(display),L"<");button(dc,surfaceBrowserCategoryBox(display),libraryCategories[browser.category],true);button(dc,surfaceBrowserNextBox(display),L">");
@@ -422,7 +438,7 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     }
     if(binding.module==lab::DisplayModule::PadPerform){
         const auto& sequence=snapshot.sequences[snapshot.sequence];text(dc,{box.x+14,box.y+9,360,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  PAD NOTES / KEYGROUP",12,focused?accent:muted,FW_SEMIBOLD);fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
-        const std::array<std::wstring,4> labels={L"Type",L"Sample source",L"Note racine",L"Mesure affichée"};const std::array<std::wstring,4> values={performanceModeName(sequence.mode),L"Pad "+padName(sequence.sourcePad)+L" · "+wide(snapshot.names[sequence.sourcePad]),noteName(sequence.rootNote),number(snapshot.viewBar+1)+L" / "+number(sequence.bars)};
+        const std::array<std::wstring,4> labels={L"Type",L"Sample source",L"Note racine",L"Mesure affichée"};const std::array<std::wstring,4> values={performanceModeName(sequence.mode),L"Pad "+std::wstring(1,wchar_t(L'A'+sequence.sourcePad/lab::Pads))+number(sequence.sourcePad%lab::Pads+1)+L" · "+wide(snapshot.names[sequence.sourcePad]),noteName(sequence.rootNote),number(snapshot.viewBar+1)+L" / "+number(sequence.bars)};
         for(int knob=0;knob<4;++knob){const int y=128+knob*55;fill(dc,{box.x+14,y,box.w-28,46},knob%2?RGB(18,31,35):RGB(17,28,33));text(dc,{box.x+24,y,42,46},L"P"+number(display*4+knob+1),10,accent,FW_SEMIBOLD);text(dc,{box.x+68,y,144,46},labels[knob],10,muted);text(dc,{box.x+210,y,216,46},values[knob],11,ink,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}return;
     }
     if(binding.module==lab::DisplayModule::NextSequence){
@@ -437,23 +453,23 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     }
     if(binding.module==lab::DisplayModule::MidiControl){
         text(dc,{box.x+14,box.y+9,270,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MIDI CONTROL",12,focused?accent:muted,FW_SEMIBOLD);
-        text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / 9",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / "+number(surfaceMidiPages),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         button(dc,surfaceMidiDeviceBox(display),midiInputName(),midiId>=0);button(dc,surfaceMidiPreviousBox(display),L"<");button(dc,surfaceMidiNextBox(display),L">");
         text(dc,{box.x+14,170,box.w-28,22},midiLastMessage(),9,midiMessageCount?accent:muted,FW_NORMAL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const bool anyLearn=midiLearnTarget>=0||midiLearnPad>=0||midiLearnCommand>=0;std::wstring learnText=midiLearnTarget>=0?L"EN ATTENTE : bouge le contrôle pour P"+number(midiLearnTarget+1):midiLearnPad>=0?L"EN ATTENTE : frappe le PAD "+number(midiLearnPad+1):midiLearnCommand>=0?L"EN ATTENTE : actionne "+midiCommandLabels[midiLearnCommand]:(midiProfileLoaded?L"Profil Maschine+ chargé · clic : Learn · droit : option":L"Profil Maschine+ vide · clic : Learn · droit : option");
         text(dc,{box.x+14,194,box.w-28,22},learnText,9,anyLearn?RGB(241,184,88):muted,FW_SEMIBOLD);
         for(int row=0;row<4;++row){auto b=surfaceMidiBindingBox(display,row);
-            if(binding.page<2){const int target=binding.page*4+row;const auto& learned=midiQlinks[target];const bool learning=midiLearnTarget==target;
+            if(binding.page<surfaceMidiQlinkPages){const int target=binding.page*4+row;const auto& learned=midiQlinks[target];const bool learning=midiLearnTarget==target;
                 if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
                 text(dc,{b.x+10,b.y,52,b.h},L"P"+number(target+1),10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
                 text(dc,{b.x+62,b.y,190,b.h},learned.cc<0?L"Non assigné":L"CC "+number(learned.cc)+L" · canal "+number(learned.channel+1),10,learned.cc<0?muted:ink);
                 text(dc,{b.x+262,b.y,122,b.h},midiModeName(learned.mode),9,muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-            }else if(binding.page<6){const int target=(binding.page-2)*4+row;const auto& learned=midiPads[target];const bool learning=midiLearnPad==target;
+            }else if(binding.page<surfaceMidiQlinkPages+surfaceMidiPadPages){const int target=(binding.page-surfaceMidiQlinkPages)*4+row;const auto& learned=midiPads[target];const bool learning=midiLearnPad==target;
                 if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
                 text(dc,{b.x+10,b.y,74,b.h},L"PAD "+number(target+1),10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
                 text(dc,{b.x+86,b.y,298,b.h},learning?L"EN ATTENTE — frappe le pad":midiPadBindingText(learned),10,learning?RGB(241,184,88):(learned.note<0?muted:ink));
-            }else {const int target=(binding.page-6)*4+row;if(target>=lab::MidiCommandCount)continue;const auto& learned=midiCommands[target];const bool learning=midiLearnCommand==target;
+            }else {const int target=(binding.page-surfaceMidiQlinkPages-surfaceMidiPadPages)*4+row;if(target>=lab::MidiCommandCount)continue;const auto& learned=midiCommands[target];const bool learning=midiLearnCommand==target;
                 if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
                 text(dc,{b.x+10,b.y,104,b.h},midiCommandLabels[target],10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
                 text(dc,{b.x+116,b.y,174,b.h},midiCommandBindingText(learned),10,learned.kind==lab::MidiMessageKind::None?muted:ink);
@@ -463,31 +479,31 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
         return;
     }
     if(binding.module==lab::DisplayModule::Inserts){
-        const int pad=std::clamp(binding.pad,0,lab::Pads-1),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
+        const int pad=surfaceProgramPad(binding,snapshot),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
         const auto& edit=snapshot.edits[pad];const auto& insert=edit.inserts[slot];const int count=lab::insertParameterCount(insert.effect);
         const int pages=std::max(1,(count+lab::SurfaceQLinks-1)/lab::SurfaceQLinks);
-        text(dc,{box.x+14,box.y+9,300,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  INSERTS  ·  PAD "+padName(pad),12,focused?accent:muted,FW_SEMIBOLD);
-        text(dc,{box.x+318,box.y+9,48,24},number(binding.page+1)+L"/"+number(pages),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);button(dc,surfacePagePreviousBox(display),L"<");button(dc,surfacePageNextBox(display),L">");
+        text(dc,{box.x+14,box.y+9,300,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  INSERTS  ·  PAD "+bankPadName(binding.pad),12,focused?accent:muted,FW_SEMIBOLD);
+        const int firstLogical=knobLayer*8+display*4+1;text(dc,{box.x+294,box.y+9,72,24},L"P"+number(firstLogical)+L"–P"+number(firstLogical+3),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);button(dc,surfacePagePreviousBox(display),L"<");button(dc,surfacePageNextBox(display),L">");
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         for(int s=0;s<lab::InsertSlots;++s)button(dc,surfaceInsertSlotBox(display,s),number(s+1)+L"  "+insertName(edit.inserts[s].effect),s==slot);
         button(dc,surfaceInsertEffectBox(display),insert.effect==lab::InsertEffect::None?L"Choisir un effet":L"Effet : "+insertName(insert.effect));
         button(dc,surfaceInsertBypassBox(display),insert.bypass?L"Slot bypass":L"Slot actif",insert.effect!=lab::InsertEffect::None&&!insert.bypass);
         for(int knob=0;knob<lab::SurfaceQLinks;++knob){
-            const int parameter=binding.parameterForKnob(knob),y=222+knob*34;
+            const int parameter=(binding.page+knobLayer*2)*lab::SurfaceQLinks+knob,y=222+knob*34;
             const bool valid=parameter>=0&&parameter<count;
             fill(dc,{box.x+14,y,box.w-28,28},knob%2?RGB(18,31,35):RGB(17,28,33));
-            text(dc,{box.x+24,y,42,28},L"P"+number(display*lab::SurfaceQLinks+knob+1),10,valid?accent:muted,FW_SEMIBOLD);
+            text(dc,{box.x+24,y,42,28},L"P"+number(knobLayer*8+display*lab::SurfaceQLinks+knob+1),10,valid?accent:muted,FW_SEMIBOLD);
             text(dc,{box.x+68,y,220,28},valid?wide(lab::insertParameterName(insert.effect,parameter)):L"—",10,valid?ink:muted);
             text(dc,{box.x+300,y,126,28},valid?insertValue(insert.effect,parameter,insert.parameters[parameter]):L"Non assigné",10,valid?accent:muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }
         return;
     }
     if(binding.module==lab::DisplayModule::Sample){
-        const int pad=std::clamp(binding.pad,0,lab::Pads-1);const auto& edit=snapshot.edits[pad];
-        text(dc,{box.x+14,box.y+9,300,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  PROGRAM EDIT  ·  PAD "+padName(pad),12,focused?accent:muted,FW_SEMIBOLD);
-        text(dc,{box.x+318,box.y+9,48,24},number(binding.page+1)+L"/2",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);button(dc,surfacePagePreviousBox(display),L"<");button(dc,surfacePageNextBox(display),L">");fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
+        const int pad=surfaceProgramPad(binding,snapshot);const auto& edit=snapshot.edits[pad];
+        text(dc,{box.x+14,box.y+9,300,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  PROGRAM EDIT  ·  PAD "+bankPadName(binding.pad),12,focused?accent:muted,FW_SEMIBOLD);
+        const int firstLogical=knobLayer*8+display*4+1;text(dc,{box.x+294,box.y+9,72,24},L"P"+number(firstLogical)+L"–P"+number(firstLogical+3),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);button(dc,surfacePagePreviousBox(display),L"<");button(dc,surfacePageNextBox(display),L">");fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         button(dc,surfaceProgramAuditionBox(display),L"Écouter  ·  "+wide(snapshot.names[pad]));
-        for(int knob=0;knob<4;++knob){const int y=174+knob*45;fill(dc,{box.x+14,y,box.w-28,38},knob%2?RGB(18,31,35):RGB(17,28,33));text(dc,{box.x+24,y,42,38},L"P"+number(display*4+knob+1),10,accent,FW_SEMIBOLD);text(dc,{box.x+68,y,220,38},surfaceProgramParameterName(binding.page,knob),11,ink);text(dc,{box.x+300,y,126,38},surfaceProgramParameterValue(edit,binding.page,knob),10,accent,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);}
+        for(int knob=0;knob<4;++knob){const int y=174+knob*45,page=binding.page+knobLayer*2,logical=knobLayer*8+display*4+knob;const bool valid=page<2;fill(dc,{box.x+14,y,box.w-28,38},knob%2?RGB(18,31,35):RGB(17,28,33));text(dc,{box.x+24,y,42,38},L"P"+number(logical+1),10,valid?accent:muted,FW_SEMIBOLD);text(dc,{box.x+68,y,220,38},valid?surfaceProgramParameterName(page,knob):L"—",11,valid?ink:muted);text(dc,{box.x+300,y,126,38},valid?surfaceProgramParameterValue(edit,page,knob):L"Non assigné",10,valid?accent:muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);}
         return;
     }
     text(dc,{box.x+14,box.y+9,250,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MENU KICK",12,focused?accent:muted,FW_SEMIBOLD);

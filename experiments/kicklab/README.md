@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle ajoute une première tranche cohérente du flux musical KICK : Pad Perform/Keygroup mélodique, seize séquences de une à quatre mesures, Next Sequence et arrangement Song. La version 0.4.1 complète le MIDI Learn pour Maschine+ avec les seize pads, l'encodeur 4D absolu et une commande Retour/Escape.
+Cette préversion conserve le moteur, la bibliothèque et le rack de quatre inserts validés. La version 0.5.0 ajoute le programme complet de huit banques A–H, soit 128 pads de samples, le suivi automatique des pages Maschine+, seize affectations de knobs et les modes de surface Pad, Keyboard, Chords/Scale et Step.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
@@ -15,7 +15,7 @@ Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et l
 3. Dans **Jouer**, cliquer sur les pads, ou charger **Démo** avant de lancer le pattern. Le pattern démarre volontairement vide.
 4. Cliquer dans l'écran A ou B, puis sur **Sample & FX**, charge les quatre inserts du pad sélectionné dans cet écran. Choisir un slot, cliquer sur son effet ou son bypass, puis régler ses paramètres avec P1–P4 ou P5–P8. Les flèches `<` et `>` changent de page lorsqu'un effet possède plus de quatre paramètres.
 5. Dans **Main**, l'élément **12 Program Edit** ouvre le volume, l'accordage, la découpe et l'enveloppe ADSR du pad. Les deux pages sont pilotées par P5–P8 dans l'écran B. L'éditeur détaillé transitoire reste accessible depuis **Sample Editor** dans le menu KICK.
-6. Ouvrir **13 Pad Notes**, choisir le sample source et la note racine, puis passer la grille sur **NOTES**. Les pads et les lignes de la grille deviennent des hauteurs chromatiques, majeures ou mineures.
+6. Choisir une banque **A–H**, puis utiliser **PAD**, **KEYBOARD**, **CHORDS** ou **STEP**. En STEP, les seize pads deviennent les seize pas de la ligne active ; le grand quadrillage permanent n'est plus nécessaire.
 7. Ouvrir **4 Sequences** pour sélectionner ou mettre en attente une des seize séquences. Ouvrir **8 Songs**, choisir les séquences avec les pads, régler les répétitions avec P2 et les ajouter à l'arrangement.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
@@ -58,8 +58,9 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 
 ## Pad Perform, séquences et Song
 
-- Chaque projet contient seize séquences de une à quatre mesures, en doubles croches. Les flèches `SEQ`, `BAR` et `LEN` au-dessus de la grille changent la séquence, la mesure visible et la longueur.
-- Chaque séquence conserve simultanément ses pistes de batterie et une piste mélodique. **DRUM** affiche les seize pistes de samples ; **NOTES** affiche les hauteurs du sample source. **Démo** charge un rythme et une courte ligne de basse.
+- Chaque projet contient seize séquences de une à quatre mesures, en doubles croches. Les flèches `SEQ`, `BAR` et `LONGUEUR` changent la séquence, la mesure visible et la longueur.
+- Les banques **A–H** contiennent chacune seize samples et leurs lignes rythmiques, soit 128 pads par programme. Les boutons F5–F12 offrent aussi un accès clavier direct.
+- **PAD** joue les one-shots, **KEYBOARD** joue le sample source chromatiquement, **CHORDS** expose actuellement la gamme majeure et **STEP** transforme les seize pads en seize pas. F1–F4 sélectionnent ces modes.
 - **Pad Notes / Keygroup** reprend la logique Pad Perform publiée dans KICK : modes chromatique, gamme majeure et gamme mineure, sample source et note racine. Un clic de pad, une touche AZERTY ou une note MIDI joue le même sample à une hauteur différente. La transposition change aussi la durée, sans time-stretch.
 - **Next Sequence** affecte les séquences 1–16 aux pads. À l'arrêt, le choix est immédiat ; pendant la lecture, la nouvelle séquence est mise en attente jusqu'à la fin complète de la séquence courante.
 - **Song Editor** enchaîne jusqu'à 32 étapes, chacune composée d'une séquence et de 1 à 128 répétitions. `Lire` lance l'arrangement et s'arrête à sa fin.
@@ -69,7 +70,8 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Tempo : boutons − / + ou molette. Volume général : barre Master.
 - Clic droit sur un pad : charger un WAV. Glisser-déposer un WAV sur un pad ou sur l'éditeur est également possible.
 - MIDI : sélectionner une entrée avec le bouton MIDI ou depuis la page **MIDI Control**. Les notes 36 à 51 restent le mapping initial ; chaque pad peut maintenant apprendre une autre note et un autre canal. Note Off et Note On de vélocité nulle libèrent l'enveloppe du pad.
-- **MIDI Control** : ouvrir l'élément 16 du menu KICK. Les neuf pages regroupent P1–P8, les pads 1–16, Play/Pause–Stop–Shift–Enter, les quatre directions, le focus des écrans A/B, la rotation 4D et Retour/Escape. Cliquer sur une ligne affiche explicitement `EN ATTENTE` ; la prochaine note ou le prochain CC mémorise son numéro et son canal. Un clic droit efface un pad ou une commande. Les Q-Links et la rotation proposent `ABS`, relatif `1/127` et relatif `63/65` par clic droit.
+- **MIDI Control** : ouvrir l'élément 16 du menu KICK. Les pages regroupent P1–P16, les pads 1–16 et les commandes de surface : transport, directions, écrans, rotation, Retour, modes Pad/Keyboard/Chords/Step, Browser, Mixer, Sampling, Next Sequence, Song, Save, Settings, mutes, Select, Solo, Record, Tempo et Swing. Cliquer sur une ligne arme le MIDI Learn ; un clic droit efface ou change le mode d'un encodeur.
+- Avec une entrée MIDI dont le nom contient **Maschine**, les notes 0–127 sélectionnent automatiquement la banque A–H et le pad 1–16 correspondant. Un contrôleur générique conserve le MIDI Learn des seize pads visibles.
 - Un CC appris commande le même Q-Link que la souris dès que l'écran correspondant affiche une page d'inserts ou de **Program Edit**. Les commandes apprises passent par la même couche de surface que le clavier et la souris. Toutes les affectations sont automatiquement enregistrées dans `profiles/MaschinePlus.kickmidi`, à côté de l'exécutable, puis rechargées au démarrage. Les profils KICKMIDI 1 et 2 restent lisibles ; la rotation 4D des anciens profils Maschine+ est migrée vers le mode absolu.
 - REC n'est volontairement pas exposé : le portage ne possède pas encore de véritable enregistreur KICK. La vélocité expressive, le retour LED et l'horloge MIDI ne sont pas encore gérés.
 
@@ -81,9 +83,9 @@ WAV PCM 16/24/32 bits ou flottant 32 bits, mono/stéréo, de 8 à 192 kHz, jusqu
 
 L'élément **Browser** du menu KICK ouvre maintenant la première page réellement portée du navigateur d'origine. Gauche/droite change de catégorie, haut/bas ou la rotation 4D parcourt les WAV, **Enter** ou **Charger** affecte le choix au pad et **Échap** revient au menu. La préécoute possède les modes `AUD OFF`, `AUD AUTO` et `AUD MAN` du Browser KICK ; elle utilise une voix AudIO séparée, joue le WAV une seule fois et ne remplace pas le sample du pad. Un chargement confirmé conserve le volume, l'accordage, la découpe, les fondus et les quatre inserts du pad. Le remplacement temporaire au sein du pattern, la recherche et les opérations de fichiers viendront dans une étape ultérieure.
 
-**Enregistrer projet / Ouvrir projet** sauvegarde les seize séquences, leurs pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Le nom du fichier enregistré ou chargé est confirmé dans la barre d'état. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement. Un chargement échoué conserve le projet courant.
+**Enregistrer projet / Ouvrir projet** sauvegarde les 128 pads A–H, les seize séquences, leurs pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement.
 
-Les projets **KICKLAB 1**, **KICKLAB 2**, **KICKLAB 3** et **KICKLAB 4** restent lisibles. Les nouveaux projets utilisent **KICKLAB 5** pour conserver les séquences, notes et Songs ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
+Les projets **KICKLAB 1 à 5** restent lisibles et leurs seize pads sont migrés dans la banque A. Les nouveaux projets utilisent **KICKLAB 6** pour conserver les huit banques ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 
@@ -123,7 +125,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, les bornes de découpe, la hauteur Pad Perform, les fades, l'enveloppe ADSR et sa libération, les vingt-six effets, les quatre inserts, Next Sequence, les répétitions Song, la persistance v5, la migration des projets v1/v2/v3/v4, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV jusque dans la banque H, les 128 pistes, la hauteur Pad Perform, l'ADSR, les vingt-six effets, les quatre inserts, Next Sequence, Song, la persistance v6, la migration v1–v4, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 

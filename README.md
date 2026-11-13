@@ -4,9 +4,9 @@ Ce dépôt adapte le code KICK publié par Music Tribe à un ordinateur Windows 
 
 ## Version recommandée
 
-**[Télécharger le build Windows 0.2.4 — première banque de 14 effets](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43166145754/artifacts/13920298199)**
+**[Télécharger KICK Lab 0.5.0 — Windows portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.5.0-preview)**
 
-Cette base possède une sortie audio Windows fonctionnelle, seize pads cliquables, le chargement de WAV, une Factory Sample Library personnelle, un séquenceur 16 pas et l'éditeur de sample. Chaque pad possède les quatre inserts du modèle KICK et une première sélection de 14 effets originaux. Elle reste une étape intermédiaire du portage.
+Cette base possède une sortie audio Windows fonctionnelle, huit banques A–H de seize pads, le chargement de WAV, une Factory Sample Library personnelle, seize séquences, les modes Pad/Keyboard/Chords/Step et 26 effets originaux dans quatre inserts. Elle reste une étape intermédiaire du portage.
 
 La préversion `v0.3.3-preview` qui chargeait toute l'interface originale d'un seul coup est conservée comme **référence technique uniquement**. Elle dépend encore de commandes matérielles, ne contient pas les programmes ni les samples retirés de la publication et n'est pas recommandée pour jouer.
 

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <memory>
@@ -8,7 +9,8 @@
 #include <vector>
 
 namespace lab {
-constexpr int Pads=16, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
+constexpr int Pads=16, PadBanks=8, ProgramPads=Pads*PadBanks;
+constexpr int Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
 constexpr int Sequences=16, MaxBars=4, MaxSequenceSteps=Steps*MaxBars, MaxSongSteps=32;
 // Values 1 and 2 are kept stable for KICKLAB 3 projects written by 0.2.3.
 enum class InsertEffect {
@@ -49,7 +51,10 @@ struct SequenceData {
     PerformanceMode mode=PerformanceMode::Drum;
     int sourcePad=12;
     int rootNote=48;
-    std::array<std::array<bool,MaxSequenceSteps>,Pads> drum{};
+    // KICK programs expose eight banks of sixteen pads. Drum events therefore
+    // retain the absolute A1..H16 program pad, while the physical surface still
+    // edits one bank of sixteen pads at a time.
+    std::array<std::array<bool,MaxSequenceSteps>,ProgramPads> drum{};
     std::array<int,MaxSequenceSteps> melody{};
     SequenceData(){melody.fill(-1);}
 };
@@ -61,19 +66,19 @@ const char* insertEffectName(InsertEffect effect);
 int insertParameterCount(InsertEffect effect);
 const char* insertParameterName(InsertEffect effect,int parameter);
 struct Snapshot {
-    std::array<std::string,Pads> names{},paths{};
+    std::array<std::string,ProgramPads> names{},paths{};
     // Projection of the selected sequence and visible bar for the Windows grid.
     std::array<std::array<bool,Steps>,Pads> pattern{};
     std::array<int,Steps> melody{};
     std::array<SequenceData,Sequences> sequences{};
     std::array<SongStep,MaxSongSteps> song{};
-    std::array<std::vector<float>,Pads> waveforms{};
-    std::array<bool,Pads> active{};
-    std::array<PadEdit,Pads> edits{};
-    std::array<double,Pads> durations{}, progress{};
+    std::array<std::vector<float>,ProgramPads> waveforms{};
+    std::array<bool,ProgramPads> active{};
+    std::array<PadEdit,ProgramPads> edits{};
+    std::array<double,ProgramPads> durations{}, progress{};
     double tempo=120,volume=.65;
     bool playing=false,songPlaying=false;
-    int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1;
+    int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1,bank=0;
     int songLength=0,songPosition=-1,songRepeat=0;
     float peak=0;
 };
@@ -100,6 +105,7 @@ public:
     void queueSequence(int sequence);
     void setSequenceBars(int bars);
     void setViewBar(int bar);
+    void setBank(int bank);
     void setPerformanceMode(PerformanceMode mode);
     void setMelodicSourcePad(int pad);
     void setRootNote(int note);
@@ -119,4 +125,7 @@ public:
 private:
     struct Impl; std::unique_ptr<Impl> impl;
 };
+
+inline int programPad(int bank,int pad){return std::clamp(bank,0,PadBanks-1)*Pads+std::clamp(pad,0,Pads-1);}
+inline char bankName(int bank){return char('A'+std::clamp(bank,0,PadBanks-1));}
 }

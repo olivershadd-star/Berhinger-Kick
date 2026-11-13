@@ -43,6 +43,24 @@ enum class MidiCommandTarget {
     ScreenB,
     Turn,
     Back,
+    PadMode,
+    KeyboardMode,
+    ChordsMode,
+    StepMode,
+    Browser,
+    Mixer,
+    Sampling,
+    NextSequence,
+    Song,
+    Save,
+    Settings,
+    TrackMute,
+    PadMute,
+    Select,
+    Solo,
+    Record,
+    Tempo,
+    Swing,
     Count
 };
 
@@ -93,12 +111,16 @@ enum class SurfaceAction {
     Back
 };
 
+enum class PadSurfaceMode { Pads, Keyboard, Chords, Step };
+
 struct SurfaceEvent {
     SurfaceAction action = SurfaceAction::PadPress;
     int index = 0;
     int value = 0;
     int display = 0;
     bool pressed = true;
+    int bank = -1;
+    int layer = 0;
 };
 
 enum class DisplayModule {

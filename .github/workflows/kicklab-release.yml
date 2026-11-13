@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.4.1
+        default: 0.5.0
 
 permissions:
   contents: write
@@ -58,12 +58,12 @@ jobs:
           body: |
             Windows x64 portable preview built and tested by GitHub Actions.
 
-            This preview adds Pad Perform/Keygroup sequencing, 16 sequences,
-            Next Sequence and the Song Editor while retaining the AudIO engine,
-            Program Edit, ADSR, four insert slots and 26 Airwindows effects.
+            Version 0.5.0 adds the complete A-H program layout (128 sample pads),
+            automatic Maschine+ pad-page following, 16 logical knob assignments
+            and contextual Pad, Keyboard, Chords/Scale and Step surfaces.
 
-            Version 0.4.1 also adds Maschine+ MIDI Learn for all 16 pads,
-            absolute 4D encoder navigation and an assignable Back/Escape command.
+            The permanent grid is replaced by the 16 physical-style pads in Step
+            mode. Projects use KICKLAB 6 and older project formats remain readable.
 
             Extract the complete ZIP before launching KickLab.exe.
           files: experiments/kicklab/dist/KickLab-Windows-x64-${{ inputs.version }}-preview.zip

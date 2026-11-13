@@ -30,6 +30,7 @@ int main(int argc,char**argv){try{
     check(midiCcDelta(MidiCcMode::Relative65,65)==1&&midiCcDelta(MidiCcMode::Relative65,63)==-1,"relative 63/65 MIDI decoding failed");
     check(midiAbsoluteDelta(-1,64)==0&&midiAbsoluteDelta(64,65)==1&&midiAbsoluteDelta(65,63)==-2,"absolute 4D wheel decoding failed");
     MidiPadBinding padBinding{0,12};check(padBinding.matches(0,12)&&!padBinding.matches(0,13)&&!padBinding.matches(1,12),"learned pad matching failed");
+    check(programPad(0,0)==0&&programPad(7,15)==127&&bankName(7)=='H',"A-H program pad addressing failed");
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
     wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);
@@ -68,7 +69,12 @@ int main(int argc,char**argv){try{
     arrangement=e.snapshot();check(arrangement.songPlaying&&arrangement.songPosition==1&&arrangement.sequence==2,"Song did not advance to its second step");
     for(int b=0;b<400;++b)e.render(block);arrangement=e.snapshot();check(arrangement.songPosition==1&&arrangement.songRepeat==1,"Song repetition counter is incorrect");
     for(int b=0;b<400;++b)e.render(block);arrangement=e.snapshot();check(!arrangement.playing&&!arrangement.songPlaying&&arrangement.songPosition==-1,"Song did not stop after its arrangement");
-    // KICKLAB 5 keeps all sequences, melodic notes and Song data.
+    // KICKLAB 6 keeps 8 pad banks (128 samples) and their independent drum lanes.
+    {
+        const int h1=programPad(7,0);check(e.load(h1,path("mono.wav"),error),error.c_str());e.selectSequence(15);e.clearPattern();e.setPerformanceMode(PerformanceMode::Drum);e.setBank(7);e.toggle(0,2);e.trigger(h1);e.render(block);double bankEnergy=0;for(float value:block)bankEnergy+=value*value;check(bankEnergy>1e-5,"bank H sample playback is silent");
+        check(e.save(path("banks.kicklab"),error),error.c_str());e.setBank(0);e.clearPattern();check(e.open(path("banks.kicklab"),error),error.c_str());auto bankState=e.snapshot();check(bankState.bank==7&&bankState.paths[h1]==path("mono.wav")&&bankState.pattern[0][2]&&bankState.sequences[15].drum[h1][2],"KICKLAB 6 bank roundtrip failed");e.setBank(0);e.selectSequence(0);
+    }
+    // KICKLAB 6 also keeps all sequences, melodic notes and Song data.
     e.selectSequence(0);e.setViewBar(1);
     check(e.save(path("pattern.kicklab"),error),error.c_str());e.clearPattern();check(e.open(path("pattern.kicklab"),error),error.c_str());e.setViewBar(0);check(e.snapshot().pattern[0][0]&&e.snapshot().pattern[1][4],"pattern roundtrip failed");
     arrangement=e.snapshot();
@@ -79,7 +85,7 @@ int main(int argc,char**argv){try{
     {std::ofstream f(std::filesystem::u8path(path("bad.kicklab")));f<<"INVALID";}check(!e.open(path("bad.kicklab"),error),"invalid project accepted");
     {std::ofstream f(std::filesystem::u8path(path("sparse.kicklab")));f<<"KICKLAB 1\n120 0.65\n";for(int p=0;p<Pads;++p)f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<'\n';}
     check(e.open(path("sparse.kicklab"),error),error.c_str());
-    check(e.snapshot().paths[1].empty(),"loading sparse project retained old clip");
+    check(e.snapshot().paths[1].empty()&&e.snapshot().paths[programPad(7,0)].empty()&&e.snapshot().bank==0,"loading sparse project retained old clips or a non-A bank");
     // Trim, pitch and fades use actual rendered samples, not UI metadata.
     PadEdit edit;edit.start=.25;edit.end=.5;edit.fadeMs=0;e.setEdit(0,edit);e.stop();e.trigger(0);
     int nonzero=0;for(int b=0;b<60;++b){e.render(block);for(int n=0;n<Block;++n){if(std::abs(block[n*2])>1e-5)++nonzero;if(b*Block+n>=12000)check(block[n*2]==0,"trim leaked beyond end");}}
@@ -146,7 +152,7 @@ int main(int argc,char**argv){try{
     envelope.attack=0;envelope.release=.1;e.setEdit(0,envelope);e.stop();e.trigger(0);e.render(block);e.release(0);for(int b=0;b<12;++b)e.render(block);check(!e.snapshot().active[0],"amplitude envelope release did not stop the voice");
     e.setInsertEffect(0,2,InsertEffect::PurestDrive);e.setInsertParameter(0,2,0,.42);e.setInsertBypass(0,2,true);restored=e.snapshot().edits[0];check(restored.inserts[2].effect==InsertEffect::PurestDrive&&restored.inserts[2].parameters[0]==.42&&restored.inserts[2].bypass,"insert control API failed");
     std::cout<<"PASS: trim, Pad Perform pitch, ADSR, 26 Airwindows effects and four AudIO inserts\n";
-    std::cout<<"PASS: 16 sequences, Next Sequence, Song arrangement, project v5 and v1/v2/v3/v4 compatibility\n";
+    std::cout<<"PASS: 16 sequences, Next Sequence, Song arrangement, 8 pad banks, project v6 and v1/v2/v3/v4 compatibility\n";
     // Batched driver completions across the ring boundary must preserve time order.
     AudioQueue<4> queue;std::array<bool,4> ready={true,true,true,false};std::vector<int> submitted;
     auto submit=[&](size_t b){submitted.push_back(int(b));ready[b]=false;return true;};
@@ -169,6 +175,6 @@ int main(int argc,char**argv){try{
     go=false;for(auto& thread:ui)thread.join();
     check(continuous,"UI activity changed audio samples or dropped blocks");
     std::cout<<"PASS: queue wraparound and concurrent UI/audio continuity ("<<snapshots<<" snapshots)\n";
-    std::cout<<"PASS: silence, WAV playback, mono, EOF, resampling, mute, 16-pad mixing, sequencer, save/load, invalid input\n";
+    std::cout<<"PASS: silence, WAV playback, mono, EOF, resampling, mute, 128-pad program, sequencer, save/load, invalid input\n";
     return 0;
 }catch(const std::exception& e){std::cerr<<"FAIL: "<<e.what()<<"\n";return 1;}}

@@ -109,22 +109,22 @@ struct Engine::Impl {
     std::vector<float> pool;
     std::unique_ptr<AudIO::Design> graph;
     std::unique_ptr<AudIO::Buffer<float>> buffer;
-    std::array<PadPlayback*,Pads> players{};
+    std::array<PadPlayback*,ProgramPads> players{};
     PadPlayback* previewPlayer{};
     // 1000 means no trigger; otherwise the value is a per-trigger semitone offset.
-    std::array<std::atomic<int>,Pads> pendingPitch{};
+    std::array<std::atomic<int>,ProgramPads> pendingPitch{};
     Snapshot state;
     // Waveform/string copies belong to the UI, never the render lock.
     std::mutex mutex, metadataMutex, audioMutex;
-    std::array<bool,Pads> loaded{};
+    std::array<bool,ProgramPads> loaded{};
     float currentVolume=.65f;
     double untilStep=0;
     int nextStep=0;
-    Impl():pool(512*Block) {
-        AudIO::MemoryPool<float>::get().initialize(pool.data(),512,Block);
+    Impl():pool(4096*Block) {
+        AudIO::MemoryPool<float>::get().initialize(pool.data(),4096,Block);
         graph=std::make_unique<AudIO::Design>(0,2);
         auto bus=graph->createBus();
-        for(int i=0;i<Pads;++i) {
+        for(int i=0;i<ProgramPads;++i) {
             auto player=std::make_unique<PadPlayback>();players[i]=player.get();
             auto id=graph->createObject(std::move(player));
             if(!graph->sendToBus(bus,id,1.f)) throw std::runtime_error("Echec du routage AudIO.");
@@ -142,7 +142,7 @@ struct Engine::Impl {
 };
 Engine::Engine():impl(std::make_unique<Impl>()) {} Engine::~Engine()=default;
 bool Engine::load(int pad,const std::string& path,std::string& error,bool preserveEdit) {
-    if(pad<0||pad>=Pads){error="Pad invalide.";return false;}
+    if(pad<0||pad>=ProgramPads){error="Pad invalide.";return false;}
     try {
         auto file=decode(path);
         std::vector<float> waveform(320,0);
@@ -173,11 +173,11 @@ bool Engine::preview(const std::string& path,std::string& error){
 }
 void Engine::stopPreview(){std::lock_guard<std::mutex> lock(impl->audioMutex);impl->previewPlayer->stop();}
 void Engine::trigger(int pad){triggerPitch(pad,0);}
-void Engine::triggerPitch(int pad,int semitones){if(pad>=0&&pad<Pads)impl->pendingPitch[pad].store(std::clamp(semitones,-48,48));}
-void Engine::release(int pad){if(pad<0||pad>=Pads)return;impl->pendingPitch[pad].store(1000);std::lock_guard<std::mutex> lock(impl->audioMutex);impl->players[pad]->release();}
+void Engine::triggerPitch(int pad,int semitones){if(pad>=0&&pad<ProgramPads)impl->pendingPitch[pad].store(std::clamp(semitones,-48,48));}
+void Engine::release(int pad){if(pad<0||pad>=ProgramPads)return;impl->pendingPitch[pad].store(1000);std::lock_guard<std::mutex> lock(impl->audioMutex);impl->players[pad]->release();}
 void Engine::releasePerformancePad(int){int source=0;{std::lock_guard<std::mutex> lock(impl->mutex);source=impl->state.sequences[impl->state.sequence].sourcePad;}release(source);}
 void Engine::setEdit(int pad,const PadEdit& requested){
-    if(pad<0||pad>=Pads)return;
+    if(pad<0||pad>=ProgramPads)return;
     const double values[]={requested.start,requested.end,requested.gain,requested.semitones,requested.fadeMs,requested.attack,requested.decay,requested.sustain,requested.release};
     for(double v:values)if(!std::isfinite(v))return;
     PadEdit edit=requested;
@@ -191,10 +191,10 @@ void Engine::setEdit(int pad,const PadEdit& requested){
     std::scoped_lock lock(impl->mutex,impl->audioMutex);
     impl->state.edits[pad]=edit;impl->players[pad]->edit=edit;if(replacement)impl->players[pad]->effects.swap(replacement);else impl->players[pad]->effects->sync(edit);
 }
-void Engine::setInsertEffect(int pad,int slot,InsertEffect effect){if(pad<0||pad>=Pads||slot<0||slot>=InsertSlots)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.inserts[slot]=defaultInsertState(effect);setEdit(pad,edit);}
-void Engine::setInsertBypass(int pad,int slot,bool bypass){if(pad<0||pad>=Pads||slot<0||slot>=InsertSlots)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.inserts[slot].bypass=bypass;setEdit(pad,edit);}
-void Engine::setInsertsBypass(int pad,bool bypass){if(pad<0||pad>=Pads)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.insertsBypass=bypass;setEdit(pad,edit);}
-void Engine::setInsertParameter(int pad,int slot,int parameter,double value){if(pad<0||pad>=Pads||slot<0||slot>=InsertSlots||!std::isfinite(value))return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}if(parameter<0||parameter>=insertParameterCount(edit.inserts[slot].effect))return;edit.inserts[slot].parameters[parameter]=std::clamp(value,0.,1.);setEdit(pad,edit);}
+void Engine::setInsertEffect(int pad,int slot,InsertEffect effect){if(pad<0||pad>=ProgramPads||slot<0||slot>=InsertSlots)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.inserts[slot]=defaultInsertState(effect);setEdit(pad,edit);}
+void Engine::setInsertBypass(int pad,int slot,bool bypass){if(pad<0||pad>=ProgramPads||slot<0||slot>=InsertSlots)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.inserts[slot].bypass=bypass;setEdit(pad,edit);}
+void Engine::setInsertsBypass(int pad,bool bypass){if(pad<0||pad>=ProgramPads)return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}edit.insertsBypass=bypass;setEdit(pad,edit);}
+void Engine::setInsertParameter(int pad,int slot,int parameter,double value){if(pad<0||pad>=ProgramPads||slot<0||slot>=InsertSlots||!std::isfinite(value))return;PadEdit edit;{std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}if(parameter<0||parameter>=insertParameterCount(edit.inserts[slot].effect))return;edit.inserts[slot].parameters[parameter]=std::clamp(value,0.,1.);setEdit(pad,edit);}
 namespace {
 int mappedPerformanceNote(PerformanceMode mode,int root,int pad){
     static constexpr int major[16]={0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26};
@@ -205,17 +205,18 @@ int mappedPerformanceNote(PerformanceMode mode,int root,int pad){
 }
 void Engine::toggle(int p,int step){
     if(p<0||p>=Pads||step<0||step>=Steps)return;std::lock_guard<std::mutex> lock(impl->mutex);auto& state=impl->state;auto& sequence=state.sequences[state.sequence];const int absolute=state.viewBar*Steps+step;
-    if(sequence.mode==PerformanceMode::Drum)sequence.drum[p][absolute]=!sequence.drum[p][absolute];
+    if(sequence.mode==PerformanceMode::Drum){const int pad=programPad(state.bank,p);sequence.drum[pad][absolute]=!sequence.drum[pad][absolute];}
     else {const int note=mappedPerformanceNote(sequence.mode,sequence.rootNote,p);sequence.melody[absolute]=sequence.melody[absolute]==note?-1:note;}
 }
 void Engine::clearPattern(){std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];sequence.drum={};sequence.melody.fill(-1);}
-void Engine::demoPattern(){std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];sequence.drum={};sequence.melody.fill(-1);sequence.bars=1;impl->state.viewBar=0;for(int s:{0,4,8,12})sequence.drum[0][s]=true;for(int s:{4,12})sequence.drum[1][s]=true;for(int s=0;s<16;s+=2)sequence.drum[2][s]=true;sequence.drum[3][14]=true;sequence.sourcePad=12;sequence.rootNote=48;const int notes[8]={48,48,50,55,53,50,48,55};for(int i=0;i<8;++i)sequence.melody[i*2]=notes[i];}
+void Engine::demoPattern(){std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];sequence.drum={};sequence.melody.fill(-1);sequence.bars=1;impl->state.bank=0;impl->state.viewBar=0;for(int s:{0,4,8,12})sequence.drum[0][s]=true;for(int s:{4,12})sequence.drum[1][s]=true;for(int s=0;s<16;s+=2)sequence.drum[2][s]=true;sequence.drum[3][14]=true;sequence.sourcePad=12;sequence.rootNote=48;const int notes[8]={48,48,50,55,53,50,48,55};for(int i=0;i<8;++i)sequence.melody[i*2]=notes[i];}
 void Engine::selectSequence(int requested){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;s.sequence=std::clamp(requested,0,Sequences-1);s.queuedSequence=-1;s.viewBar=0;s.playBar=0;s.step=-1;s.songPlaying=false;s.songPosition=-1;impl->nextStep=0;impl->untilStep=0;}
 void Engine::queueSequence(int requested){requested=std::clamp(requested,0,Sequences-1);bool playing=false;{std::lock_guard<std::mutex> lock(impl->mutex);playing=impl->state.playing;if(playing){impl->state.queuedSequence=requested;impl->state.songPlaying=false;}}if(!playing)selectSequence(requested);}
 void Engine::setSequenceBars(int bars){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;auto& sequence=s.sequences[s.sequence];sequence.bars=std::clamp(bars,1,MaxBars);s.viewBar=std::min(s.viewBar,sequence.bars-1);if(impl->nextStep>=sequence.bars*Steps)impl->nextStep=0;}
 void Engine::setViewBar(int bar){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;s.viewBar=std::clamp(bar,0,s.sequences[s.sequence].bars-1);}
+void Engine::setBank(int bank){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.bank=std::clamp(bank,0,PadBanks-1);}
 void Engine::setPerformanceMode(PerformanceMode mode){if(int(mode)<0||int(mode)>int(PerformanceMode::Minor))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].mode=mode;}
-void Engine::setMelodicSourcePad(int pad){if(pad<0||pad>=Pads)return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].sourcePad=pad;}
+void Engine::setMelodicSourcePad(int pad){if(pad<0||pad>=ProgramPads)return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].sourcePad=pad;}
 void Engine::setRootNote(int note){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].rootNote=std::clamp(note,0,101);}
 int Engine::performanceNote(int pad)const{if(pad<0||pad>=Pads)return 0;std::lock_guard<std::mutex> lock(impl->mutex);const auto& sequence=impl->state.sequences[impl->state.sequence];return mappedPerformanceNote(sequence.mode,sequence.rootNote,pad);}
 void Engine::addSongStep(int sequence,int repeats){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;if(s.songLength>=MaxSongSteps)return;s.song[s.songLength++]={std::clamp(sequence,0,Sequences-1),std::clamp(repeats,1,128)};}
@@ -224,7 +225,7 @@ void Engine::deleteSongStep(int position){std::lock_guard<std::mutex> lock(impl-
 void Engine::clearSong(){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;s.song={};s.songLength=0;s.songPlaying=false;s.songPosition=-1;s.songRepeat=0;}
 void Engine::playSong(){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;if(!s.songLength)return;s.songPlaying=true;s.songPosition=0;s.songRepeat=0;s.sequence=s.song[0].sequence;s.queuedSequence=-1;s.viewBar=s.playBar=0;s.step=-1;s.playing=true;impl->nextStep=0;impl->untilStep=0;}
 void Engine::setPlaying(bool b){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.playing=b;}
-void Engine::stop(){std::scoped_lock lock(impl->mutex,impl->audioMutex);auto& s=impl->state;s.playing=false;s.songPlaying=false;s.songPosition=-1;s.songRepeat=0;s.step=-1;s.playBar=0;impl->untilStep=0;impl->nextStep=0;for(int p=0;p<Pads;++p){impl->players[p]->stop();impl->pendingPitch[p].store(1000);}impl->previewPlayer->stop();}
+void Engine::stop(){std::scoped_lock lock(impl->mutex,impl->audioMutex);auto& s=impl->state;s.playing=false;s.songPlaying=false;s.songPosition=-1;s.songRepeat=0;s.step=-1;s.playBar=0;impl->untilStep=0;impl->nextStep=0;for(int p=0;p<ProgramPads;++p){impl->players[p]->stop();impl->pendingPitch[p].store(1000);}impl->previewPlayer->stop();}
 void Engine::setTempo(double t){if(!std::isfinite(t))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.tempo=std::clamp(t,40.,240.);}
 void Engine::setVolume(double v){if(!std::isfinite(v))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.volume=std::clamp(v,0.,1.);}
 Snapshot Engine::snapshot(){
@@ -232,8 +233,8 @@ Snapshot Engine::snapshot(){
     {std::lock_guard<std::mutex> lock(impl->metadataMutex);
      result.names=impl->state.names;result.paths=impl->state.paths;result.waveforms=impl->state.waveforms;result.durations=impl->state.durations;}
     {std::lock_guard<std::mutex> lock(impl->mutex);const auto& state=impl->state;result.active=state.active;result.edits=state.edits;result.progress=state.progress;result.sequences=state.sequences;result.song=state.song;
-     result.tempo=state.tempo;result.volume=state.volume;result.playing=state.playing;result.songPlaying=state.songPlaying;result.step=state.step;result.playBar=state.playBar;result.viewBar=state.viewBar;result.sequence=state.sequence;result.queuedSequence=state.queuedSequence;result.songLength=state.songLength;result.songPosition=state.songPosition;result.songRepeat=state.songRepeat;result.peak=state.peak;
-     const auto& sequence=state.sequences[state.sequence];const int first=state.viewBar*Steps;result.melody.fill(-1);for(int p=0;p<Pads;++p)for(int step=0;step<Steps;++step)result.pattern[p][step]=sequence.drum[p][first+step];for(int step=0;step<Steps;++step)result.melody[step]=sequence.melody[first+step];}
+     result.tempo=state.tempo;result.volume=state.volume;result.playing=state.playing;result.songPlaying=state.songPlaying;result.step=state.step;result.playBar=state.playBar;result.viewBar=state.viewBar;result.sequence=state.sequence;result.queuedSequence=state.queuedSequence;result.bank=state.bank;result.songLength=state.songLength;result.songPosition=state.songPosition;result.songRepeat=state.songRepeat;result.peak=state.peak;
+     const auto& sequence=state.sequences[state.sequence];const int first=state.viewBar*Steps,offset=state.bank*Pads;result.melody.fill(-1);for(int p=0;p<Pads;++p)for(int step=0;step<Steps;++step)result.pattern[p][step]=sequence.drum[offset+p][first+step];for(int step=0;step<Steps;++step)result.melody[step]=sequence.melody[first+step];}
     return result;
 }
 void Engine::render(float* out){
@@ -241,12 +242,12 @@ void Engine::render(float* out){
     // Never drop an audio block or pause the sample clock because the UI is reading.
     std::scoped_lock lock(impl->mutex,impl->audioMutex);
     auto& s=impl->state;
-    for(int p=0;p<Pads;++p){const int pitch=impl->pendingPitch[p].exchange(1000);if(pitch!=1000&&impl->loaded[p])impl->players[p]->trigger(pitch);}
+    for(int p=0;p<ProgramPads;++p){const int pitch=impl->pendingPitch[p].exchange(1000);if(pitch!=1000&&impl->loaded[p])impl->players[p]->trigger(pitch);}
     if(s.playing){
         if(impl->untilStep<=0){
             auto& sequence=s.sequences[s.sequence];const int absolute=impl->nextStep;s.step=absolute%Steps;s.playBar=absolute/Steps;s.viewBar=s.playBar;
-            for(int p=0;p<Pads;++p)if(sequence.drum[p][absolute]&&impl->loaded[p])impl->players[p]->trigger();
-            const int note=sequence.melody[absolute],source=sequence.sourcePad;if(note>=0&&source>=0&&source<Pads&&impl->loaded[source])impl->players[source]->trigger(note-sequence.rootNote);
+            for(int p=0;p<ProgramPads;++p)if(sequence.drum[p][absolute]&&impl->loaded[p])impl->players[p]->trigger();
+            const int note=sequence.melody[absolute],source=sequence.sourcePad;if(note>=0&&source>=0&&source<ProgramPads&&impl->loaded[source])impl->players[source]->trigger(note-sequence.rootNote);
             if(++impl->nextStep>=sequence.bars*Steps){
                 impl->nextStep=0;
                 if(s.songPlaying){
@@ -260,22 +261,24 @@ void Engine::render(float* out){
     }
     impl->graph->process(*impl->buffer);float peak=0;
     for(int n=0;n<Block;++n){impl->currentVolume+=(float(s.volume)-impl->currentVolume)*.004f;for(int c=0;c<2;++c){float v=impl->buffer->getOutputBuffer(c)[n]*(s.volume==0?0.f:impl->currentVolume)*.5f;if(!std::isfinite(v))v=0;peak=std::max(peak,std::abs(v));v=std::clamp(v,-.98f,.98f);out[n*2+c]=v;}}
-    s.peak=peak;for(int p=0;p<Pads;++p){s.active[p]=impl->players[p]->isPlaying();s.progress[p]=impl->players[p]->progress();}
+    s.peak=peak;for(int p=0;p<ProgramPads;++p){s.active[p]=impl->players[p]->isPlaying();s.progress[p]=impl->players[p]->progress();}
 }
 bool Engine::save(const std::string& path,std::string& error){
-    auto s=snapshot();std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 5\n"<<s.tempo<<' '<<s.volume<<'\n';
-    for(int p=0;p<Pads;++p){unsigned bits=0;for(int k=0;k<Steps;++k)if(s.sequences[0].drum[p][k])bits|=1u<<k;const auto& e=s.edits[p];f<<bits<<' '<<std::quoted(s.paths[p])<<' '<<e.start<<' '<<e.end<<' '<<e.gain<<' '<<e.semitones<<' '<<e.fadeMs<<' '<<e.attack<<' '<<e.decay<<' '<<e.sustain<<' '<<e.release<<' '<<e.insertsBypass;for(const auto& insert:e.inserts){int count=insertParameterCount(insert.effect);f<<' '<<int(insert.effect)<<' '<<insert.bypass<<' '<<count;for(int parameter=0;parameter<count;++parameter)f<<' '<<insert.parameters[parameter];}f<<'\n';}
+    auto s=snapshot();std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 6\n"<<s.tempo<<' '<<s.volume<<' '<<s.bank<<'\n';
+    for(int p=0;p<ProgramPads;++p){unsigned bits=0;for(int k=0;k<Steps;++k)if(s.sequences[0].drum[p][k])bits|=1u<<k;const auto& e=s.edits[p];f<<bits<<' '<<std::quoted(s.paths[p])<<' '<<e.start<<' '<<e.end<<' '<<e.gain<<' '<<e.semitones<<' '<<e.fadeMs<<' '<<e.attack<<' '<<e.decay<<' '<<e.sustain<<' '<<e.release<<' '<<e.insertsBypass;for(const auto& insert:e.inserts){int count=insertParameterCount(insert.effect);f<<' '<<int(insert.effect)<<' '<<insert.bypass<<' '<<count;for(int parameter=0;parameter<count;++parameter)f<<' '<<insert.parameters[parameter];}f<<'\n';}
     f<<"SEQUENCES "<<Sequences<<' '<<s.sequence<<' '<<s.viewBar<<'\n';
-    for(int index=0;index<Sequences;++index){const auto& sequence=s.sequences[index];f<<"SEQ "<<index<<' '<<std::quoted(sequence.name)<<' '<<sequence.bars<<' '<<int(sequence.mode)<<' '<<sequence.sourcePad<<' '<<sequence.rootNote<<'\n'<<"DRUM";for(int p=0;p<Pads;++p){unsigned long long bits=0;for(int step=0;step<MaxSequenceSteps;++step)if(sequence.drum[p][step])bits|=1ull<<step;f<<' '<<bits;}f<<"\nMELO";for(int note:sequence.melody)f<<' '<<note;f<<'\n';}
+    for(int index=0;index<Sequences;++index){const auto& sequence=s.sequences[index];f<<"SEQ "<<index<<' '<<std::quoted(sequence.name)<<' '<<sequence.bars<<' '<<int(sequence.mode)<<' '<<sequence.sourcePad<<' '<<sequence.rootNote<<'\n'<<"DRUM";for(int p=0;p<ProgramPads;++p){unsigned long long bits=0;for(int step=0;step<MaxSequenceSteps;++step)if(sequence.drum[p][step])bits|=1ull<<step;f<<' '<<bits;}f<<"\nMELO";for(int note:sequence.melody)f<<' '<<note;f<<'\n';}
     f<<"SONG "<<s.songLength<<'\n';for(int index=0;index<s.songLength;++index)f<<"STEP "<<s.song[index].sequence<<' '<<s.song[index].repeats<<'\n';
     if(!f){error="Erreur d'ecriture.";return false;}return true;
 }
 bool Engine::open(const std::string& path,std::string& error){
-    std::ifstream f(std::filesystem::u8path(path),std::ios::ate);if(!f||f.tellg()>1024*1024){error="Projet introuvable ou trop volumineux.";return false;}f.seekg(0);
+    std::ifstream f(std::filesystem::u8path(path),std::ios::ate);if(!f||f.tellg()>8*1024*1024){error="Projet introuvable ou trop volumineux.";return false;}f.seekg(0);
     std::string tag;int version;Snapshot s;
     for(int index=0;index<Sequences;++index)s.sequences[index].name="Sequence "+std::to_string(index+1);
-    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>5)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
-    for(int p=0;p<Pads;++p){unsigned bits;if(!(f>>bits>>std::quoted(s.paths[p]))||bits>65535){error="Pattern invalide.";return false;}for(int k=0;k<Steps;++k)s.pattern[p][k]=(bits&(1u<<k))!=0;
+    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>6)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
+    if(version>=6){if(!(f>>s.bank)||s.bank<0||s.bank>=PadBanks){error="Banque de pads invalide.";return false;}}else s.bank=0;
+    const int storedPads=version>=6?ProgramPads:Pads;
+    for(int p=0;p<storedPads;++p){unsigned bits;if(!(f>>bits>>std::quoted(s.paths[p]))||bits>65535){error="Pattern invalide.";return false;}if(p<Pads)for(int k=0;k<Steps;++k)s.pattern[p][k]=(bits&(1u<<k))!=0;
         auto& e=s.edits[p];
         if(version==2){double filterOpen=1,drive=0;bool bypass=false;if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs>>filterOpen>>drive>>bypass)||!std::isfinite(filterOpen)||!std::isfinite(drive)||filterOpen<0||filterOpen>1||drive<0||drive>1){error="Reglages du pad invalides.";return false;}e.insertsBypass=bypass;e.inserts[0].parameters[0]=filterOpen;e.inserts[0].bypass=filterOpen>=.9999;e.inserts[1].parameters[0]=drive;e.inserts[1].bypass=drive<=.0001;}
         if(version>=3){if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs)){error="Reglages du pad invalides.";return false;}if(version>=4&&!(f>>e.attack>>e.decay>>e.sustain>>e.release)){error="Enveloppe du pad invalide.";return false;}if(!(f>>e.insertsBypass)){error="Reglages du pad invalides.";return false;}for(auto& insert:e.inserts){int effect=0,count=0;bool bypass=false;if(!(f>>effect>>bypass>>count)||effect<int(InsertEffect::None)||effect>=int(InsertEffect::Count)||count<0||count>InsertParameters||count!=insertParameterCount(InsertEffect(effect))){error="Insert invalide.";return false;}InsertState parsed;parsed.effect=InsertEffect(effect);parsed.bypass=bypass;for(int parameter=0;parameter<count;++parameter){if(!(f>>parsed.parameters[parameter])||!std::isfinite(parsed.parameters[parameter])||parsed.parameters[parameter]<0||parsed.parameters[parameter]>1){error="Parametre d'insert invalide.";return false;}}insert=parsed;}
@@ -285,21 +288,21 @@ bool Engine::open(const std::string& path,std::string& error){
     if(version<5){for(int p=0;p<Pads;++p)for(int step=0;step<Steps;++step)s.sequences[0].drum[p][step]=s.pattern[p][step];}
     else {
         int count=0,current=0,view=0;if(!(f>>tag>>count>>current>>view)||tag!="SEQUENCES"||count!=Sequences||current<0||current>=Sequences){error="Liste de sequences invalide.";return false;}s.sequence=current;
-        for(int expected=0;expected<Sequences;++expected){int index=0,bars=0,mode=0,source=0,root=0;if(!(f>>tag>>index>>std::quoted(s.sequences[expected].name)>>bars>>mode>>source>>root)||tag!="SEQ"||index!=expected||s.sequences[expected].name.size()>128||bars<1||bars>MaxBars||mode<0||mode>int(PerformanceMode::Minor)||source<0||source>=Pads||root<0||root>101){error="Sequence invalide.";return false;}auto& sequence=s.sequences[expected];sequence.bars=bars;sequence.mode=PerformanceMode(mode);sequence.sourcePad=source;sequence.rootNote=root;
-            if(!(f>>tag)||tag!="DRUM"){error="Pistes de sequence manquantes.";return false;}for(int p=0;p<Pads;++p){unsigned long long bits=0;if(!(f>>bits)){error="Piste de batterie invalide.";return false;}for(int step=0;step<MaxSequenceSteps;++step)sequence.drum[p][step]=(bits&(1ull<<step))!=0;}
+        for(int expected=0;expected<Sequences;++expected){int index=0,bars=0,mode=0,source=0,root=0;if(!(f>>tag>>index>>std::quoted(s.sequences[expected].name)>>bars>>mode>>source>>root)||tag!="SEQ"||index!=expected||s.sequences[expected].name.size()>128||bars<1||bars>MaxBars||mode<0||mode>int(PerformanceMode::Minor)||source<0||source>=(version>=6?ProgramPads:Pads)||root<0||root>101){error="Sequence invalide.";return false;}auto& sequence=s.sequences[expected];sequence.bars=bars;sequence.mode=PerformanceMode(mode);sequence.sourcePad=source;sequence.rootNote=root;
+            if(!(f>>tag)||tag!="DRUM"){error="Pistes de sequence manquantes.";return false;}for(int p=0;p<(version>=6?ProgramPads:Pads);++p){unsigned long long bits=0;if(!(f>>bits)){error="Piste de batterie invalide.";return false;}for(int step=0;step<MaxSequenceSteps;++step)sequence.drum[p][step]=(bits&(1ull<<step))!=0;}
             if(!(f>>tag)||tag!="MELO"){error="Piste melodique manquante.";return false;}for(int& note:sequence.melody)if(!(f>>note)||note< -1||note>127){error="Note melodique invalide.";return false;}
         }
         s.viewBar=std::clamp(view,0,s.sequences[s.sequence].bars-1);if(!(f>>tag>>s.songLength)||tag!="SONG"||s.songLength<0||s.songLength>MaxSongSteps){error="Arrangement Song invalide.";return false;}for(int index=0;index<s.songLength;++index){if(!(f>>tag>>s.song[index].sequence>>s.song[index].repeats)||tag!="STEP"||s.song[index].sequence<0||s.song[index].sequence>=Sequences||s.song[index].repeats<1||s.song[index].repeats>128){error="Etape Song invalide.";return false;}}
     }
     s.queuedSequence=-1;s.songPlaying=false;s.songPosition=-1;s.songRepeat=0;s.step=-1;s.playBar=0;
-    std::array<std::unique_ptr<AudioFile<float>>,Pads> clips;
-    try{for(int p=0;p<Pads;++p)if(!s.paths[p].empty())clips[p]=decode(s.paths[p]);}catch(const std::exception& e){error=std::string("Projet non charge : ")+e.what();return false;}
+    std::array<std::unique_ptr<AudioFile<float>>,ProgramPads> clips;
+    try{for(int p=0;p<ProgramPads;++p)if(!s.paths[p].empty())clips[p]=decode(s.paths[p]);}catch(const std::exception& e){error=std::string("Projet non charge : ")+e.what();return false;}
     // Build names and waveforms before acquiring any render-side lock.
-    for(int p=0;p<Pads;++p){if(clips[p]){s.durations[p]=double(clips[p]->getNumSamplesPerChannel())/Rate;s.names[p]=std::filesystem::u8path(s.paths[p]).stem().u8string();s.waveforms[p].assign(320,0.f);auto& a=clips[p]->samples[0];for(size_t n=0;n<a.size();++n){size_t j=std::min<size_t>(319,n*320/a.size());s.waveforms[p][j]=std::max(s.waveforms[p][j],std::abs(a[n]));}}else s.names[p]="Vide";}
-    std::array<std::unique_ptr<PadEffects>,Pads> fx;for(int p=0;p<Pads;++p)fx[p]=std::make_unique<PadEffects>(s.edits[p]);
-    std::array<std::unique_ptr<AudioFile<float>>,Pads> old;
+    for(int p=0;p<ProgramPads;++p){if(clips[p]){s.durations[p]=double(clips[p]->getNumSamplesPerChannel())/Rate;s.names[p]=std::filesystem::u8path(s.paths[p]).stem().u8string();s.waveforms[p].assign(320,0.f);auto& a=clips[p]->samples[0];for(size_t n=0;n<a.size();++n){size_t j=std::min<size_t>(319,n*320/a.size());s.waveforms[p][j]=std::max(s.waveforms[p][j],std::abs(a[n]));}}else s.names[p]="Vide";}
+    std::array<std::unique_ptr<PadEffects>,ProgramPads> fx;for(int p=0;p<ProgramPads;++p)fx[p]=std::make_unique<PadEffects>(s.edits[p]);
+    std::array<std::unique_ptr<AudioFile<float>>,ProgramPads> old;
     {std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);
-     for(int p=0;p<Pads;++p){impl->loaded[p]=bool(clips[p]);old[p]=impl->players[p]->replaceFile(std::move(clips[p]));impl->pendingPitch[p].store(1000);impl->players[p]->edit=s.edits[p];impl->players[p]->effects.swap(fx[p]);impl->players[p]->resetMix();}
+     for(int p=0;p<ProgramPads;++p){impl->loaded[p]=bool(clips[p]);old[p]=impl->players[p]->replaceFile(std::move(clips[p]));impl->pendingPitch[p].store(1000);impl->players[p]->edit=s.edits[p];impl->players[p]->effects.swap(fx[p]);impl->players[p]->resetMix();}
      std::swap(impl->state,s);impl->untilStep=0;impl->nextStep=0;}
     // Retired clips and metadata are destroyed here, on the loading thread.
 

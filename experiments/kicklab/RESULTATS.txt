@@ -1,11 +1,13 @@
-KICK Lab 0.4.1 — intégration MIDI Maschine+ corrigée
+KICK Lab 0.5.0 — banques A–H et surface Maschine+ contextuelle
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; enveloppe ADSR et Note Off ; construction et rendu fini des 26 effets ; ordre des quatre inserts ; bypass ; changement Next Sequence à la frontière de boucle ; répétitions et fin du Song ; séquences, notes, arrangement, paramètres et enveloppes sauvegardés/rechargés en KICKLAB 5 ; migration des projets KICKLAB 1 à 4 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV jusque dans la banque H ; programme de 128 pads ; découpe et hauteur Pad Perform ; ADSR ; rendu des 26 effets ; quatre inserts ; Next Sequence ; Song ; huit banques, séquences, notes et paramètres sauvegardés/rechargés en KICKLAB 6 ; migration des projets KICKLAB 1 à 4 ; remise en file des buffers ; continuité sous activité graphique.
+
+0.5.0 ajoute huit banques A–H de seize samples et leurs 128 lignes de séquence. Une entrée Maschine+ suit automatiquement ses pages de notes 0–127. Le profil KICKMIDI 4 contient seize affectations de knobs et les raccourcis Pad/Keyboard/Chords/Step, Browser, Mixer, Sampling, Next Sequence, Song, Save, Settings et commandes de mixage/transport. La grille permanente est remplacée par les seize pads contextuels : en mode STEP, ils éditent directement les seize doubles croches de la ligne active. F1–F4 sélectionnent les modes et F5–F12 les banques.
 
 0.4.1 ajoute le MIDI Learn individuel des seize pads, une commande Retour/Escape assignable et le format de profil KICKMIDI 3. L'encodeur 4D de Maschine+ est maintenant interprété comme une valeur absolue afin que les deux sens fonctionnent. Dans Sample & FX, sa rotation parcourt les quatre slots et son appui ouvre le choix d'effet. La rotation du menu traverse désormais les éléments 8 et 9 entre les deux écrans. Un bouton Menu ramène les deux écrans à l'accueil et le potentiomètre Master surdimensionné est remplacé par un vumètre avec niveau, maintien visuel et indication CLIP.
 
