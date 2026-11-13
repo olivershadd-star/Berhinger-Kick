@@ -34,6 +34,7 @@ int main(int argc,char**argv){try{
     auto path=[&](const char* n){return (dir/n).u8string();};
     wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);
     Engine e;float block[Block*2];std::string error;
+    std::cerr<<"STAGE engine-created"<<std::endl;
     e.render(block);for(float v:block)check(v==0,"empty engine is not silent");
     check(e.preview(path("mono.wav"),error),error.c_str());e.render(block);double previewEnergy=0;for(float value:block)previewEnergy+=value*value;
     check(previewEnergy>1e-5,"browser preview is silent");auto previewState=e.snapshot();check(previewState.paths[0].empty(),"browser preview replaced a pad sample");
@@ -49,6 +50,7 @@ int main(int argc,char**argv){try{
     check(preservedState.gain==.37&&preservedState.semitones==-5&&preservedState.inserts[2].effect==InsertEffect::Chorus,"confirmed browser load reset pad editing");
     e.trigger(0);e.setVolume(0);e.render(block);for(float v:block)check(v==0,"master mute failed");e.setVolume(.65);e.stop();
     for(int p=0;p<Pads;++p)check(e.load(p,path("long.wav"),error),error.c_str());for(int p=0;p<Pads;++p)e.trigger(p);e.render(block);for(float v:block)check(std::isfinite(v)&&std::abs(v)<=.98f,"mixing overflow");
+    std::cerr<<"STAGE base-audio"<<std::endl;
     e.stop();e.demoPattern();e.setTempo(120);e.setPlaying(true);e.render(block);e.setPlaying(false);int paused=e.snapshot().step;for(int b=0;b<30;++b)e.render(block);check(e.snapshot().step==paused,"pause advances sequencer");e.stop();e.setPlaying(true);std::ofstream raw(std::filesystem::u8path(path("demo.f32")),std::ios::binary);
     int transitions=0,last=-1;double sum=0;for(int b=0;b<375;++b){e.render(block);raw.write(reinterpret_cast<const char*>(block),sizeof(block));for(float v:block)sum+=v*v;int s=e.snapshot().step;if(s!=last){++transitions;last=s;}}check(transitions==16,"sequencer timing failed");check(sum>1,"sequencer is silent");e.stop();
     // KICK Pad Perform / Keygroup: one sample can be played and sequenced chromatically.
@@ -75,6 +77,7 @@ int main(int argc,char**argv){try{
     check(arrangement.sequences[0].bars==2&&arrangement.sequences[0].mode==PerformanceMode::Chromatic&&arrangement.sequences[0].sourcePad==12&&arrangement.sequences[0].rootNote==48,"sequence settings roundtrip failed");
     check(arrangement.sequences[0].melody[19]==55&&arrangement.sequences[1].drum[0][0]&&arrangement.sequences[2].drum[1][0],"multi-sequence roundtrip failed");
     check(arrangement.songLength==2&&arrangement.song[0].sequence==1&&arrangement.song[0].repeats==1&&arrangement.song[1].sequence==2&&arrangement.song[1].repeats==2,"Song roundtrip failed");
+    std::cerr<<"STAGE sequence-roundtrip"<<std::endl;
     // Maschine-style A-H groups keep independent samples and pad settings while
     // reusing the same sixteen active AudIO voices.
     e.setGroup(1);check(e.snapshot().group==1&&e.snapshot().paths[0].empty(),"new group was not empty");
@@ -83,6 +86,7 @@ int main(int argc,char**argv){try{
     e.setGroup(1);check(e.snapshot().paths[0]==path("mono.wav")&&e.snapshot().edits[0].gain==.23&&e.snapshot().edits[0].semitones==5,"group B was not restored");
     check(e.save(path("groups.kicklab"),error),error.c_str());e.setGroup(2);check(e.load(0,path("resample.wav"),error),error.c_str());check(e.open(path("groups.kicklab"),error),error.c_str());
     check(e.snapshot().group==1&&e.snapshot().paths[0]==path("mono.wav")&&e.snapshot().edits[0].gain==.23,"KICKLAB 6 active group roundtrip failed");e.setGroup(0);check(!e.snapshot().paths[0].empty(),"KICKLAB 6 group A roundtrip failed");
+    std::cerr<<"STAGE group-roundtrip"<<std::endl;
     {std::ofstream f(std::filesystem::u8path(path("broken.wav")),std::ios::binary);f<<"RIFF";}check(!e.load(0,path("broken.wav"),error),"truncated WAV accepted");
     {std::ofstream f(std::filesystem::u8path(path("bad.kicklab")));f<<"INVALID";}check(!e.open(path("bad.kicklab"),error),"invalid project accepted");
     {std::ofstream f(std::filesystem::u8path(path("sparse.kicklab")));f<<"KICKLAB 1\n120 0.65\n";for(int p=0;p<Pads;++p)f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<'\n';}
@@ -141,6 +145,7 @@ int main(int argc,char**argv){try{
     check(e.save(path("edited.kicklab"),error),error.c_str());e.setEdit(0,{});check(e.open(path("edited.kicklab"),error),error.c_str());auto restored=e.snapshot().edits[0];
     check(restored.start==edit.start&&restored.end==edit.end&&restored.semitones==-7&&restored.gain==.75&&restored.fadeMs==4.5&&restored.attack==.2&&restored.decay==.3&&restored.sustain==.6&&restored.release==.4&&restored.insertsBypass,"edited project roundtrip failed");
     for(int slot=0;slot<InsertSlots;++slot){check(restored.inserts[slot].effect==edit.inserts[slot].effect&&restored.inserts[slot].bypass==edit.inserts[slot].bypass,"insert identity roundtrip failed");for(int parameter=0;parameter<insertParameterCount(edit.inserts[slot].effect);++parameter)check(restored.inserts[slot].parameters[parameter]==edit.inserts[slot].parameters[parameter],"insert parameter roundtrip failed");}
+    std::cerr<<"STAGE effects-roundtrip"<<std::endl;
     check(e.open(path("sparse.kicklab"),error),error.c_str());restored=e.snapshot().edits[0];check(restored.inserts[0].effect==InsertEffect::Lowpass&&restored.inserts[0].bypass&&restored.inserts[1].effect==InsertEffect::PurestDrive&&restored.inserts[1].bypass,"v1 project did not restore bypassed default inserts");
     {std::ofstream f(std::filesystem::u8path(path("legacy-v2.kicklab")));f<<"KICKLAB 2\n120 0.65\n";for(int p=0;p<Pads;++p)f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<" 0.1 0.9 0.75 -3 4 0.4 0.8 1\n";}
     check(e.open(path("legacy-v2.kicklab"),error),error.c_str());restored=e.snapshot().edits[0];
