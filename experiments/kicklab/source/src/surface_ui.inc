@@ -34,11 +34,11 @@ void showSurfaceInserts(int display){
     binding.slot=std::clamp(selectedInsert,0,lab::InsertSlots-1);
     binding.page=0;
     surface.focusDisplay(display);
-    status=L"Écran A — paramètres réels du slot d'effet sélectionné.";
+    status=L"Écran "+std::wstring(display?L"B":L"A")+L" — paramètres réels du slot d'effet sélectionné.";
 }
 
 void turnSurfaceQLink(int display,int knob,int delta){
-    if(display!=0||knob<0||knob>=lab::SurfaceQLinks||!delta)return;
+    if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks||!delta)return;
     auto& binding=surface.displays[display];
     if(binding.module!=lab::DisplayModule::Inserts)return;
     auto s=engine.snapshot();
@@ -85,7 +85,8 @@ void activateSurfaceMenu(){
     if(surface.displays[surface.focusedDisplay].module!=lab::DisplayModule::Menu)return;
     const int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
     if(item==0){status=L"KICK / Browser — choix d'un sample pour le pad sélectionné.";sampleMenu();return;}
-    if(item==9||item==10||item==11){tab=1;status=L"KICK / "+surfaceMenuLabels[item]+L" — éditeur transitoire, avant intégration complète dans les deux écrans.";return;}
+    if(item==11){showSurfaceInserts(surface.focusedDisplay);return;}
+    if(item==9||item==10){tab=1;status=L"KICK / "+surfaceMenuLabels[item]+L" — éditeur transitoire, avant intégration complète dans les deux écrans.";return;}
     status=L"KICK / "+surfaceMenuLabels[item]+L" sélectionné — module original pas encore relié à cette base Windows.";
 }
 
@@ -106,7 +107,7 @@ bool surfaceClick(int x,int y,bool right){
     for(int display=0;display<2;++display){
         for(int knob=0;knob<4;++knob)if(surfaceKnobBox(display,knob).contains(x,y)){
             surface.focusDisplay(display);
-            if(!right&&display==0&&surface.displays[display].module==lab::DisplayModule::Inserts){
+            if(!right&&surface.displays[display].module==lab::DisplayModule::Inserts){
                 surfaceDragDisplay=display;surfaceDragKnob=knob;surfaceDragStartY=y;surfaceDragLastStep=0;SetCapture(window);
             }
             return true;
@@ -114,7 +115,7 @@ bool surfaceClick(int x,int y,bool right){
         if(!surfaceDisplayBox(display).contains(x,y))continue;
         surface.focusDisplay(display);
         auto& binding=surface.displays[display];
-        if(binding.module==lab::DisplayModule::Inserts&&display==0){
+        if(binding.module==lab::DisplayModule::Inserts){
             for(int slot=0;slot<lab::InsertSlots;++slot)if(surfaceInsertSlotBox(display,slot).contains(x,y)){
                 binding.slot=slot;binding.page=0;selectedInsert=slot;return true;
             }
@@ -138,7 +139,7 @@ void paintSurfaceKnob(HDC dc,int display,int knob,const lab::Snapshot& snapshot)
     const int cx=538+display*580,cy=112+knob*67;
     double ratio=.5;bool assigned=false;
     const auto& binding=surface.displays[display];
-    if(display==0&&binding.module==lab::DisplayModule::Inserts){
+    if(binding.module==lab::DisplayModule::Inserts){
         const auto& insert=snapshot.edits[binding.pad].inserts[binding.slot];
         const int parameter=binding.parameterForKnob(knob);
         if(parameter>=0&&parameter<lab::insertParameterCount(insert.effect)){ratio=insert.parameters[parameter];assigned=true;}
@@ -155,11 +156,11 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     round(dc,module,panel,focused?accent:line);
     round(dc,box,RGB(9,18,22),focused?accent:RGB(34,48,57));
     const auto& binding=surface.displays[display];
-    if(display==0&&binding.module==lab::DisplayModule::Inserts){
+    if(binding.module==lab::DisplayModule::Inserts){
         const int pad=std::clamp(binding.pad,0,lab::Pads-1),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
         const auto& edit=snapshot.edits[pad];const auto& insert=edit.inserts[slot];const int count=lab::insertParameterCount(insert.effect);
         const int pages=std::max(1,(count+lab::SurfaceQLinks-1)/lab::SurfaceQLinks);
-        text(dc,{box.x+14,box.y+9,300,24},L"ÉCRAN A  ·  INSERTS  ·  PAD "+padName(pad),12,focused?accent:muted,FW_SEMIBOLD);
+        text(dc,{box.x+14,box.y+9,300,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  INSERTS  ·  PAD "+padName(pad),12,focused?accent:muted,FW_SEMIBOLD);
         text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / "+number(pages),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         for(int s=0;s<lab::InsertSlots;++s)button(dc,surfaceInsertSlotBox(display,s),number(s+1)+L"  "+insertName(edit.inserts[s].effect),s==slot);
@@ -169,7 +170,7 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
             const int parameter=binding.parameterForKnob(knob),y=222+knob*34;
             const bool valid=parameter>=0&&parameter<count;
             fill(dc,{box.x+14,y,box.w-28,28},knob%2?RGB(18,31,35):RGB(17,28,33));
-            text(dc,{box.x+24,y,42,28},L"P"+number(knob+1),10,valid?accent:muted,FW_SEMIBOLD);
+            text(dc,{box.x+24,y,42,28},L"P"+number(display*lab::SurfaceQLinks+knob+1),10,valid?accent:muted,FW_SEMIBOLD);
             text(dc,{box.x+68,y,220,28},valid?wide(lab::insertParameterName(insert.effect,parameter)):L"—",10,valid?ink:muted);
             text(dc,{box.x+300,y,126,28},valid?insertValue(insert.effect,parameter,insert.parameters[parameter]):L"Non assigné",10,valid?accent:muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }

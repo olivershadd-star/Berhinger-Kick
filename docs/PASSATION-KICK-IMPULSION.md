@@ -104,4 +104,4 @@ Sources officielles consultées :
 
 ## Point de reprise conseillé
 
-La prochaine modification doit être uniquement visuelle et contrôlable : dessiner les deux écrans et les huit encodeurs, afficher leurs `DisplayBinding`, puis relier les quatre encodeurs de l'écran A au slot d'effet sélectionné. Après validation visuelle et fonctionnelle, relier l'écran B et seulement ensuite construire le navigateur de bibliothèque.
+Les deux écrans et leurs huit encodeurs sont désormais reliés aux slots et paramètres d'effets existants, avec un focus, une sélection et un `DisplayBinding` indépendants. La prochaine étape doit construire le moniteur MIDI puis le MIDI Learn au-dessus de la même couche `SurfaceAction`, avant le profil Maschine+. Le navigateur de bibliothèque viendra ensuite sans remplacer ces contrôles.

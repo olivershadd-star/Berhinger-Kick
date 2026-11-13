@@ -143,7 +143,7 @@ public:
         if(Box{28,12,150,42}.contains(x,y)){tab=0;return;}
         if(tab==1&&Box{1014,16,158,34}.contains(x,y)){tab=0;status=L"Retour à la surface principale KICK.";return;}
         if(Box{42,410,112,34}.contains(x,y)){tab=0;showSurfaceMenu(surface.focusedDisplay);status=L"Surface principale KICK.";return;}
-        if(Box{166,410,112,34}.contains(x,y)){tab=0;showSurfaceInserts(0);return;}
+        if(Box{166,410,112,34}.contains(x,y)){tab=0;showSurfaceInserts(surface.focusedDisplay);return;}
         if(tab==1){editorClick(x,y,right);return;}
         if(surfaceClick(x,y,right))return;
         if(Box{42,452,112,34}.contains(x,y))sampleMenu();
