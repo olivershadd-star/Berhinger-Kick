@@ -414,7 +414,7 @@ bool maschineClick(int x,int y,bool right){
         return true;
     }
     for(int group=0;group<8;++group)if(groupBox(group).contains(x,y)){
-        padGroup=group;status=L"Groupe "+std::wstring(1,wchar_t(L'A'+group))+L" sélectionné.";return true;
+        engine.setGroup(group);padGroup=engine.snapshot().group;selectPad(0);stepTrack=0;status=L"Groupe "+std::wstring(1,wchar_t(L'A'+group))+L" sélectionné — 16 pads et réglages propres à cette banque.";return true;
     }
     for(int mode=0;mode<4;++mode)if(modeBox(mode).contains(x,y)){
         if(mode==2){status=L"Chords — commande KICK réservée ; moteur d'accords pas encore porté.";return true;}

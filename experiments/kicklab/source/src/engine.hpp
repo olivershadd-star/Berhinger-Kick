@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace lab {
-constexpr int Pads=16, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
+constexpr int Pads=16, Groups=8, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
 constexpr int Sequences=16, MaxBars=4, MaxSequenceSteps=Steps*MaxBars, MaxSongSteps=32;
 // Values 1 and 2 are kept stable for KICKLAB 3 projects written by 0.2.3.
 enum class InsertEffect {
@@ -73,7 +73,7 @@ struct Snapshot {
     std::array<double,Pads> durations{}, progress{};
     double tempo=120,volume=.65;
     bool playing=false,songPlaying=false;
-    int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1;
+    int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1,group=0;
     int songLength=0,songPosition=-1,songRepeat=0;
     float peak=0;
 };
@@ -100,6 +100,7 @@ public:
     void queueSequence(int sequence);
     void setSequenceBars(int bars);
     void setViewBar(int bar);
+    void setGroup(int group);
     void setPerformanceMode(PerformanceMode mode);
     void setMelodicSourcePad(int pad);
     void setRootNote(int note);
