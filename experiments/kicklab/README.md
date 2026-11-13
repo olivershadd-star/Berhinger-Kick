@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle intègre quatorze processeurs Airwindows repris du dépôt KICK, la surface à deux écrans et la première adaptation MIDI Learn pour Maschine+.
+Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle intègre vingt-six processeurs Airwindows repris du dépôt KICK, une enveloppe ADSR par pad, la surface à deux écrans et la première adaptation MIDI Learn pour Maschine+.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
@@ -13,7 +13,8 @@ Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et l
 1. Extraire entièrement le ZIP dans un dossier accessible en écriture.
 2. Ouvrir **KickLab.exe**, en gardant le dossier **demo-kit** à côté. Le dossier **samples** de la bibliothèque est créé automatiquement.
 3. Dans **Jouer**, cliquer sur les pads, ou charger **Démo** avant de lancer le pattern. Le pattern démarre volontairement vide.
-4. Cliquer dans l'écran A ou B, puis sur **Sample & FX**, charge les quatre inserts du pad sélectionné dans cet écran. Choisir un slot, cliquer sur son effet ou son bypass, puis régler ses paramètres avec P1–P4 ou P5–P8. L'éditeur détaillé transitoire reste accessible depuis **Sample Editor** dans le menu KICK.
+4. Cliquer dans l'écran A ou B, puis sur **Sample & FX**, charge les quatre inserts du pad sélectionné dans cet écran. Choisir un slot, cliquer sur son effet ou son bypass, puis régler ses paramètres avec P1–P4 ou P5–P8. Les flèches `<` et `>` changent de page lorsqu'un effet possède plus de quatre paramètres.
+5. Dans **Main**, l'élément **12 Program Edit** ouvre le volume, l'accordage, la découpe et l'enveloppe ADSR du pad. Les deux pages sont pilotées par P5–P8 dans l'écran B. L'éditeur détaillé transitoire reste accessible depuis **Sample Editor** dans le menu KICK.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
@@ -21,7 +22,7 @@ Windows 10/11 x64, sans installation. Aucun compilateur, Python ou JUCE nécessa
 
 ## Sample & FX
 
-La surface principale expose maintenant le slot d'effet sélectionné directement dans l'écran qui possède le focus. Les valeurs affichées viennent du véritable état du moteur : P1–P4 règlent l'écran A et P5–P8 l'écran B, par glissement vertical ou avec la molette. Un paramètre non disponible reste explicitement non assigné. Cliquer d'abord dans A ou B puis sur **Sample & FX** permet donc d'ouvrir deux slots différents, ou deux vues du même état audio partagé.
+La surface principale expose maintenant le slot d'effet sélectionné directement dans l'écran qui possède le focus. Les valeurs affichées viennent du véritable état du moteur : P1–P4 règlent l'écran A et P5–P8 l'écran B, par glissement vertical ou avec la molette. Un paramètre non disponible reste explicitement non assigné. Cliquer d'abord dans A ou B puis sur **Sample & FX** permet donc d'ouvrir deux slots différents, ou deux pages du même effet. Par exemple, TapeDelay2 peut afficher Time/Regen/Freq/Reso à gauche et Flutter/Dry-Wet à droite.
 
 - **Début / fin** : glisser les deux repères sur la forme d'onde. Le WAV original n'est pas modifié.
 - **Volume** : réglage indépendant par pad, de 0 à 200 %, lissé pendant la lecture.
@@ -34,14 +35,21 @@ La surface principale expose maintenant le slot d'effet sélectionné directemen
 - **Ambience** : Chorus et StarChild.
 - **Reverb** : Reverb.
 - **Distortion** : Loud et Mackity.
-- **Paramètres** : chaque effet affiche ses noms et valeurs initiales d'origine, jusqu'à trois potentiomètres dans ce premier lot.
+- **EQ** : Baxandall2.
+- **Modulation** : AutoPan et ChorusEnsemble.
+- **Delay** : PurestEcho et TapeDelay2.
+- **Lo-Fi** : DeRez2 et BitGlitter.
+- **Filter, Dynamics et Reverb étendus** : Biquad2, Pressure5, Pop2, Chamber2 et Galactic complètent les effets précédents.
+- **Paramètres** : chaque effet affiche ses noms et valeurs initiales d'origine. Les processeurs de cinq ou six paramètres utilisent deux pages indépendantes ; les flèches de l'écran ou gauche/droite au clavier changent de page.
 - **Bypass du slot** : contourne uniquement l'effet sélectionné. **Bypass de la chaîne** contourne les quatre slots du pad.
 - **Potentiomètres** : glisser verticalement pour un réglage continu. La molette agit sur le potentiomètre survolé ; ailleurs, elle continue de régler le tempo.
 - **Réinitialiser ce pad** : remet les réglages à leur valeur initiale et conserve son sample.
 - Cliquer directement sur un pad déclenche son one-shot. **Stop** arrête le transport et les voix.
 - **Ajouter à la bibliothèque** : copie le WAV source du pad dans Kicks, Snares, Hats, Percussions, Basses, Pads, Leads, FX ou Autres, puis rattache le pad à cette copie en conservant ses réglages. Les effets ne sont pas rendus dans le WAV copié.
 
-La découpe, l'accordage et les fondus sont appliqués au prochain déclenchement. Le volume évolue pendant la lecture avec lissage. La chaîne est : lecteur AudIO étendu → inserts 1 à 4 → volume du pad → bus AudIO → volume général.
+La page **Program Edit** 1/2 regroupe Volume, Accordage, Début et Fin. La page 2/2 regroupe Attack, Decay, Sustain et Release. Attack et Decay vont jusqu'à 2 secondes, Release jusqu'à 4 secondes, avec une courbe de réglage plus précise près de zéro. La touche relâchée ou le MIDI Note Off lance le Release ; les pas du séquenceur et les clics de pad restent des déclenchements one-shot.
+
+La découpe, l'accordage, les fondus et l'enveloppe sont appliqués au prochain déclenchement. Le volume évolue pendant la lecture avec lissage. La chaîne est : lecteur AudIO étendu → ADSR → inserts 1 à 4 → volume du pad → bus AudIO → volume général.
 
 Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la voix de ce pad ; les autres pads continuent. Un nouveau déclenchement relance le sample : cette version n'a qu'une voix par pad.
 
@@ -52,9 +60,9 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Pads au clavier, par rangée : **A Z E R / Q S D F / W X C V / 1 2 3 4**. Le clic est toujours disponible.
 - Tempo : boutons − / + ou molette. Volume général : barre Master.
 - Clic droit sur un pad : charger un WAV. Glisser-déposer un WAV sur un pad ou sur l'éditeur est également possible.
-- MIDI : sélectionner une entrée avec le bouton MIDI ou depuis la page **MIDI Control** ; les notes 36 à 51 déclenchent les pads, tous canaux.
+- MIDI : sélectionner une entrée avec le bouton MIDI ou depuis la page **MIDI Control** ; les notes 36 à 51 déclenchent les pads, tous canaux. Note Off et Note On de vélocité nulle libèrent l'enveloppe du pad.
 - **MIDI Control** : ouvrir l'élément 16 du menu KICK. Les cinq pages regroupent P1–P4, P5–P8, Play/Pause–Stop–Shift–Enter, les quatre directions, puis le focus des écrans A/B et la rotation de l'encodeur 4D. Cliquer sur une ligne arme le MIDI Learn ; la prochaine note ou le prochain CC reçu mémorise son numéro et son canal. Les Q-Links et la rotation proposent `ABS`, relatif `1/127` et relatif `63/65` par clic droit.
-- Un CC appris commande le même Q-Link que la souris dès que l'écran correspondant affiche une page d'inserts. Les commandes apprises passent par la même couche de surface que le clavier et la souris. Toutes les affectations sont automatiquement enregistrées dans `profiles/MaschinePlus.kickmidi`, à côté de l'exécutable, puis rechargées au démarrage ; les anciens profils Q-Link version 1 restent lisibles et sont migrés à la prochaine sauvegarde.
+- Un CC appris commande le même Q-Link que la souris dès que l'écran correspondant affiche une page d'inserts ou de **Program Edit**. Les commandes apprises passent par la même couche de surface que le clavier et la souris. Toutes les affectations sont automatiquement enregistrées dans `profiles/MaschinePlus.kickmidi`, à côté de l'exécutable, puis rechargées au démarrage ; les anciens profils Q-Link version 1 restent lisibles et sont migrés à la prochaine sauvegarde.
 - REC n'est volontairement pas exposé : le portage ne possède pas encore de véritable enregistreur KICK. La vélocité expressive, le retour LED et l'horloge MIDI ne sont pas encore gérés.
 
 ## WAV et projets
@@ -67,13 +75,13 @@ L'élément **Browser** du menu KICK ouvre maintenant la première page réellem
 
 **Enregistrer projet / Ouvrir projet** sauvegarde le pattern, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Le nom du fichier enregistré ou chargé est confirmé dans la barre d'état. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement. Un chargement échoué conserve le projet courant.
 
-Les projets **KICKLAB 1** et **KICKLAB 2** restent lisibles. Les nouveaux projets utilisent **KICKLAB 3** pour conserver le type, le bypass et les paramètres de chaque slot ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
+Les projets **KICKLAB 1**, **KICKLAB 2** et **KICKLAB 3** restent lisibles. Les nouveaux projets utilisent **KICKLAB 4** pour conserver en plus l'enveloppe ADSR de chaque pad ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 
 - **AudIO** : graphe `Design`, lecteur `AudioPlayback`, bus, mixage et modèle original `DawInserts` à quatre slots.
 - **AudioFile** : décodeur WAV livré dans le dépôt, après validation et normalisation de l'en-tête.
-- **Airwindows** : les quatorze processeurs utilisent les sources originales et l'adaptation `AudioEffectX` fournies dans 0700-AAM. Chaque instance est créée par l'`ObjectFactory` d'AudIO dans le slot choisi.
+- **Airwindows** : les vingt-six processeurs utilisent les sources originales et l'adaptation `AudioEffectX` fournies dans 0700-AAM. Chaque instance est créée par l'`ObjectFactory` d'AudIO dans le slot choisi.
 - **Ajouts du prototype** : interface Win32, éditeur, extension du lecteur (découpe, interpolation pour la hauteur, fondus), séquenceur simple, MIDI, sortie WinMM, persistance et tests.
 
 L'éditeur JUCE complet et les classes de voix KICK dépendent encore des couches manquantes. Cette version étend le lecteur AudIO qui fonctionne déjà sur Windows ; elle ne prétend pas porter l'éditeur ou le séquenceur KICK complet. Voir `source/vendor/AudIO/DESKTOP-CHANGES.patch`.
@@ -86,7 +94,7 @@ Les corrections de 0.1.1 et 0.1.2 sont conservées : ordre des buffers, attente 
 
 Sortie fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames (environ 85 ms de réserve, plus le pilote). Pas d'ASIO ni de VST3 pour l'instant. Le séquenceur est quantifié au bloc de 256 trames (environ 5,33 ms), sans dérive cumulative du compteur. Le volume général et une saturation de sécurité protègent la sortie ; une accumulation de pads très forts peut néanmoins être écrêtée.
 
-Pas encore de kits avec médias intégrés, de séquenceur KICK avancé, de keygroups, d'enregistrement, de synthétiseurs KICK ni de banque complète d'effets. Une seule instance du moteur est utilisée par processus ; les pools globaux d'AudIO ne sont pas encore adaptés à un plugin multi-instance.
+Pas encore de kits avec médias intégrés, de séquenceur KICK avancé, de keygroups, d'enregistrement, de synthétiseurs KICK ni de banque complète d'effets. L'enveloppe est commune au programme de sample actuel : les modes de lecture One Shot/Note On du firmware ne sont pas encore exposés séparément. Une seule instance du moteur est utilisée par processus ; les pools globaux d'AudIO ne sont pas encore adaptés à un plugin multi-instance.
 
 ## Développer
 
@@ -107,7 +115,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, les bornes de découpe, la durée et la fréquence à l'octave, les fades, les quatre inserts, les bypass, la persistance v3, la migration des projets v1/v2, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, les bornes de découpe, la durée et la fréquence à l'octave, les fades, l'enveloppe ADSR et sa libération, les vingt-six effets, les quatre inserts, les bypass, la persistance v4, la migration des projets v1/v2/v3, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 

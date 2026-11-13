@@ -13,7 +13,10 @@ constexpr int Pads=16, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertPar
 enum class InsertEffect {
     None=0, Lowpass=1, PurestDrive=2, Highpass=3, Isolator=4,
     Tube2=5, Mojo=6, DrumSlam=7, ButterComp2=8, SoftGate=9,
-    Chorus=10, StarChild=11, Reverb=12, Loud=13, Mackity=14
+    Chorus=10, StarChild=11, Reverb=12, Loud=13, Mackity=14,
+    Baxandall2=15, Biquad2=16, Pressure5=17, Pop2=18,
+    AutoPan=19, ChorusEnsemble=20, PurestEcho=21, TapeDelay2=22,
+    Chamber2=23, Galactic=24, DeRez2=25, BitGlitter=26, Count=27
 };
 struct InsertState {
     InsertEffect effect=InsertEffect::None;
@@ -25,14 +28,15 @@ struct InsertEffectInfo {
     const char* name;
     const char* category;
     int parameterCount;
-    std::array<const char*,3> parameterNames;
-    std::array<double,3> defaults;
+    std::array<const char*,InsertParameters> parameterNames;
+    std::array<double,InsertParameters> defaults;
     int tailBlocks;
 };
-const std::array<InsertEffectInfo,14>& insertEffectCatalog();
+const std::array<InsertEffectInfo,26>& insertEffectCatalog();
 InsertState defaultInsertState(InsertEffect effect);
 struct PadEdit {
     double start=0, end=1, gain=1, semitones=0, fadeMs=2;
+    double attack=0, decay=0, sustain=1, release=0;
     bool insertsBypass=false;
     std::array<InsertState,InsertSlots> inserts{};
     PadEdit(){inserts[0]=defaultInsertState(InsertEffect::Lowpass);inserts[0].bypass=true;inserts[1]=defaultInsertState(InsertEffect::PurestDrive);inserts[1].bypass=true;}
@@ -61,6 +65,7 @@ public:
     bool preview(const std::string& path,std::string& error);
     void stopPreview();
     void trigger(int pad);
+    void release(int pad);
     void setEdit(int pad, const PadEdit& edit);
     void setInsertEffect(int pad,int slot,InsertEffect effect);
     void setInsertBypass(int pad,int slot,bool bypass);

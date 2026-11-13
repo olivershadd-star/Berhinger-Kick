@@ -17,8 +17,8 @@ namespace AudIO { const std::string _emptyStr{""}; }
 #include "pad_voice.hpp"
 
 namespace lab {
-const std::array<InsertEffectInfo,14>& insertEffectCatalog(){
-    static const std::array<InsertEffectInfo,14> catalog={{
+const std::array<InsertEffectInfo,26>& insertEffectCatalog(){
+    static const std::array<InsertEffectInfo,26> catalog={{
         {InsertEffect::Lowpass,"Lowpass","Filter",3,{"Lowpass","Soft/Hard","Dry/Wet"},{1,.5,1},32},
         {InsertEffect::PurestDrive,"PurestDrive","Saturation",1,{"Drive","",""},{0,0,0},32},
         {InsertEffect::Highpass,"Highpass","Filter",3,{"Highpass","Loose/Tight","Dry/Wet"},{0,.5,1},32},
@@ -32,7 +32,19 @@ const std::array<InsertEffectInfo,14>& insertEffectCatalog(){
         {InsertEffect::StarChild,"StarChild","Ambience",3,{"Sustain","Grain","Dry/Wet"},{1,.7,.2},750},
         {InsertEffect::Reverb,"Reverb","Reverb",2,{"Big","Wet",""},{.5,.5,0},750},
         {InsertEffect::Loud,"Loud","Distortion",3,{"Boost","Output Level","Dry/Wet"},{0,1,1},32},
-        {InsertEffect::Mackity,"Mackity","Distortion",2,{"In Trim","Out Pad",""},{.1,1,0},32}
+        {InsertEffect::Mackity,"Mackity","Distortion",2,{"In Trim","Out Pad"},{.1,1},32},
+        {InsertEffect::Baxandall2,"Baxandall2","EQ",2,{"Treble","Bass"},{.5,.5},32},
+        {InsertEffect::Biquad2,"Biquad2","Filter",5,{"Type","Freq","Q","Output","Inv/Wet"},{1,.5,.5,1,1},32},
+        {InsertEffect::Pressure5,"Pressure5","Dynamics",6,{"Pressure","Speed","Mewiness","PawClaw","Output","Dry/Wet"},{0,.25,1,.5,.5,1},32},
+        {InsertEffect::Pop2,"Pop2","Dynamics",5,{"Compress","Attack","Release","Drive","Dry/Wet"},{.5,.5,.5,.5,1},32},
+        {InsertEffect::AutoPan,"AutoPan","Modulation",4,{"Rate","Phase","Width","Dry/Wet"},{.1,.5,0,1},32},
+        {InsertEffect::ChorusEnsemble,"ChorusEnsemble","Modulation",3,{"Speed","Range","Dry/Wet"},{.5,.5,.8},96},
+        {InsertEffect::PurestEcho,"PurestEcho","Delay",5,{"Time","Tap 1","Tap 2","Tap 3","Tap 4"},{1,1,0,0,0},1500},
+        {InsertEffect::TapeDelay2,"TapeDelay2","Delay",6,{"Time","Regen","Freq","Reso","Flutter","Dry/Wet"},{1,0,.5,0,0,1},1500},
+        {InsertEffect::Chamber2,"Chamber2","Reverb",4,{"Delay","Regen","Thick","Wet"},{.34,.31,.28,.25},1500},
+        {InsertEffect::Galactic,"Galactic","Reverb",5,{"Replace","Brightness","Detune","Bigness","Dry/Wet"},{.5,.5,.5,1,1},1500},
+        {InsertEffect::DeRez2,"DeRez2","Lo-Fi",4,{"Rate","Resolution","Hard","Dry/Wet"},{1,1,1,1},32},
+        {InsertEffect::BitGlitter,"BitGlitter","Lo-Fi",4,{"Input","Glitter","Output","Dry/Wet"},{.5,0,.5,1},32}
     }};
     return catalog;
 }
@@ -159,15 +171,17 @@ bool Engine::preview(const std::string& path,std::string& error){
 }
 void Engine::stopPreview(){std::lock_guard<std::mutex> lock(impl->audioMutex);impl->previewPlayer->stop();}
 void Engine::trigger(int pad){if(pad>=0&&pad<Pads)impl->pending[pad].store(true);}
+void Engine::release(int pad){if(pad<0||pad>=Pads)return;impl->pending[pad].store(false);std::lock_guard<std::mutex> lock(impl->audioMutex);impl->players[pad]->release();}
 void Engine::setEdit(int pad,const PadEdit& requested){
     if(pad<0||pad>=Pads)return;
-    const double values[]={requested.start,requested.end,requested.gain,requested.semitones,requested.fadeMs};
+    const double values[]={requested.start,requested.end,requested.gain,requested.semitones,requested.fadeMs,requested.attack,requested.decay,requested.sustain,requested.release};
     for(double v:values)if(!std::isfinite(v))return;
     PadEdit edit=requested;
     edit.start=std::clamp(edit.start,0.,.999);edit.end=std::clamp(edit.end,edit.start+.001,1.);
     edit.gain=std::clamp(edit.gain,0.,2.);edit.semitones=std::clamp(edit.semitones,-24.,24.);
     edit.fadeMs=std::clamp(edit.fadeMs,0.,20.);
-    for(auto& insert:edit.inserts){int type=int(insert.effect);if(type<int(InsertEffect::None)||type>int(InsertEffect::Mackity))return;for(double& value:insert.parameters){if(!std::isfinite(value))return;value=std::clamp(value,0.,1.);}}
+    edit.attack=std::clamp(edit.attack,0.,1.);edit.decay=std::clamp(edit.decay,0.,1.);edit.sustain=std::clamp(edit.sustain,0.,1.);edit.release=std::clamp(edit.release,0.,1.);
+    for(auto& insert:edit.inserts){int type=int(insert.effect);if(type<int(InsertEffect::None)||type>=int(InsertEffect::Count))return;for(double& value:insert.parameters){if(!std::isfinite(value))return;value=std::clamp(value,0.,1.);}}
     bool rebuild=false;{std::lock_guard<std::mutex> lock(impl->mutex);for(int slot=0;slot<InsertSlots;++slot)if(impl->state.edits[pad].inserts[slot].effect!=edit.inserts[slot].effect)rebuild=true;}
     std::unique_ptr<PadEffects> replacement;if(rebuild)replacement=std::make_unique<PadEffects>(edit);
     std::scoped_lock lock(impl->mutex,impl->audioMutex);
@@ -208,18 +222,18 @@ void Engine::render(float* out){
     for(int n=0;n<Block;++n){impl->currentVolume+=(float(s.volume)-impl->currentVolume)*.004f;for(int c=0;c<2;++c){float v=impl->buffer->getOutputBuffer(c)[n]*(s.volume==0?0.f:impl->currentVolume)*.5f;if(!std::isfinite(v))v=0;v=std::clamp(v,-.98f,.98f);out[n*2+c]=v;peak=std::max(peak,std::abs(v));}}
     s.peak=peak;for(int p=0;p<Pads;++p){s.active[p]=impl->players[p]->isPlaying();s.progress[p]=impl->players[p]->progress();}
 }
-bool Engine::save(const std::string& path,std::string& error){auto s=snapshot();std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 3\n"<<s.tempo<<' '<<s.volume<<'\n';for(int p=0;p<Pads;++p){unsigned bits=0;for(int k=0;k<Steps;++k)if(s.pattern[p][k])bits|=1u<<k;const auto& e=s.edits[p];f<<bits<<' '<<std::quoted(s.paths[p])<<' '<<e.start<<' '<<e.end<<' '<<e.gain<<' '<<e.semitones<<' '<<e.fadeMs<<' '<<e.insertsBypass;for(const auto& insert:e.inserts){int count=insertParameterCount(insert.effect);f<<' '<<int(insert.effect)<<' '<<insert.bypass<<' '<<count;for(int parameter=0;parameter<count;++parameter)f<<' '<<insert.parameters[parameter];}f<<'\n';}if(!f){error="Erreur d'ecriture.";return false;}return true;}
+bool Engine::save(const std::string& path,std::string& error){auto s=snapshot();std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 4\n"<<s.tempo<<' '<<s.volume<<'\n';for(int p=0;p<Pads;++p){unsigned bits=0;for(int k=0;k<Steps;++k)if(s.pattern[p][k])bits|=1u<<k;const auto& e=s.edits[p];f<<bits<<' '<<std::quoted(s.paths[p])<<' '<<e.start<<' '<<e.end<<' '<<e.gain<<' '<<e.semitones<<' '<<e.fadeMs<<' '<<e.attack<<' '<<e.decay<<' '<<e.sustain<<' '<<e.release<<' '<<e.insertsBypass;for(const auto& insert:e.inserts){int count=insertParameterCount(insert.effect);f<<' '<<int(insert.effect)<<' '<<insert.bypass<<' '<<count;for(int parameter=0;parameter<count;++parameter)f<<' '<<insert.parameters[parameter];}f<<'\n';}if(!f){error="Erreur d'ecriture.";return false;}return true;}
 bool Engine::open(const std::string& path,std::string& error){
     std::ifstream f(std::filesystem::u8path(path),std::ios::ate);if(!f||f.tellg()>65536){error="Projet introuvable ou trop volumineux.";return false;}f.seekg(0);
     std::string tag;int version;Snapshot s;
-    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>3)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
+    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>4)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
     for(int p=0;p<Pads;++p){unsigned bits;if(!(f>>bits>>std::quoted(s.paths[p]))||bits>65535){error="Pattern invalide.";return false;}for(int k=0;k<Steps;++k)s.pattern[p][k]=(bits&(1u<<k))!=0;
         auto& e=s.edits[p];
         if(version==2){double filterOpen=1,drive=0;bool bypass=false;if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs>>filterOpen>>drive>>bypass)||!std::isfinite(filterOpen)||!std::isfinite(drive)||filterOpen<0||filterOpen>1||drive<0||drive>1){error="Reglages du pad invalides.";return false;}e.insertsBypass=bypass;e.inserts[0].parameters[0]=filterOpen;e.inserts[0].bypass=filterOpen>=.9999;e.inserts[1].parameters[0]=drive;e.inserts[1].bypass=drive<=.0001;}
-        if(version==3){if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs>>e.insertsBypass)){error="Reglages du pad invalides.";return false;}for(auto& insert:e.inserts){int effect=0,count=0;bool bypass=false;if(!(f>>effect>>bypass>>count)||effect<int(InsertEffect::None)||effect>int(InsertEffect::Mackity)||count<0||count>InsertParameters||count!=insertParameterCount(InsertEffect(effect))){error="Insert invalide.";return false;}InsertState parsed;parsed.effect=InsertEffect(effect);parsed.bypass=bypass;for(int parameter=0;parameter<count;++parameter){if(!(f>>parsed.parameters[parameter])||!std::isfinite(parsed.parameters[parameter])||parsed.parameters[parameter]<0||parsed.parameters[parameter]>1){error="Parametre d'insert invalide.";return false;}}insert=parsed;}
+        if(version>=3){if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs)){error="Reglages du pad invalides.";return false;}if(version>=4&&!(f>>e.attack>>e.decay>>e.sustain>>e.release)){error="Enveloppe du pad invalide.";return false;}if(!(f>>e.insertsBypass)){error="Reglages du pad invalides.";return false;}for(auto& insert:e.inserts){int effect=0,count=0;bool bypass=false;if(!(f>>effect>>bypass>>count)||effect<int(InsertEffect::None)||effect>=int(InsertEffect::Count)||count<0||count>InsertParameters||count!=insertParameterCount(InsertEffect(effect))){error="Insert invalide.";return false;}InsertState parsed;parsed.effect=InsertEffect(effect);parsed.bypass=bypass;for(int parameter=0;parameter<count;++parameter){if(!(f>>parsed.parameters[parameter])||!std::isfinite(parsed.parameters[parameter])||parsed.parameters[parameter]<0||parsed.parameters[parameter]>1){error="Parametre d'insert invalide.";return false;}}insert=parsed;}
         }
-        const double v[]={e.start,e.end,e.gain,e.semitones,e.fadeMs};for(double x:v)if(!std::isfinite(x)){error="Reglages non finis.";return false;}
-        if(e.start<0||e.end>1||e.end-e.start<.000999||e.gain<0||e.gain>2||e.semitones< -24||e.semitones>24||e.fadeMs<0||e.fadeMs>20){error="Reglages hors limites.";return false;}}
+        const double v[]={e.start,e.end,e.gain,e.semitones,e.fadeMs,e.attack,e.decay,e.sustain,e.release};for(double x:v)if(!std::isfinite(x)){error="Reglages non finis.";return false;}
+        if(e.start<0||e.end>1||e.end-e.start<.000999||e.gain<0||e.gain>2||e.semitones< -24||e.semitones>24||e.fadeMs<0||e.fadeMs>20||e.attack<0||e.attack>1||e.decay<0||e.decay>1||e.sustain<0||e.sustain>1||e.release<0||e.release>1){error="Reglages hors limites.";return false;}}
     std::array<std::unique_ptr<AudioFile<float>>,Pads> clips;
     try{for(int p=0;p<Pads;++p)if(!s.paths[p].empty())clips[p]=decode(s.paths[p]);}catch(const std::exception& e){error=std::string("Projet non charge : ")+e.what();return false;}
     // Build names and waveforms before acquiring any render-side lock.

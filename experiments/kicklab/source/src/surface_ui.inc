@@ -19,6 +19,9 @@ Box surfaceKnobBox(int display,int knob)const{return {514+display*580,88+knob*67
 Box surfaceInsertSlotBox(int display,int slot)const{return {54+display*580+slot*104,127,96,34};}
 Box surfaceInsertEffectBox(int display)const{return {54+display*580,174,250,36};}
 Box surfaceInsertBypassBox(int display)const{return {314+display*580,174,136,36};}
+Box surfacePagePreviousBox(int display)const{return {408+display*580,88,28,24};}
+Box surfacePageNextBox(int display)const{return {440+display*580,88,28,24};}
+Box surfaceProgramAuditionBox(int display)const{return {54+display*580,126,396,34};}
 Box surfaceMidiDeviceBox(int display)const{return {54+display*580,126,240,34};}
 Box surfaceMidiPreviousBox(int display)const{return {354+display*580,126,44,34};}
 Box surfaceMidiNextBox(int display)const{return {406+display*580,126,44,34};}
@@ -52,6 +55,34 @@ void showSurfaceInserts(int display){
     binding.page=0;
     surface.focusDisplay(display);
     status=L"Écran "+std::wstring(display?L"B":L"A")+L" — paramètres réels du slot d'effet sélectionné.";
+}
+
+void showSurfaceProgram(int display){
+    display=std::clamp(display,0,1);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::Sample;binding.pad=selected;binding.page=0;surface.focusDisplay(display);
+    status=L"Program Edit — lecture et enveloppe d'amplitude du pad "+padName(selected)+L".";
+}
+
+double surfaceProgramRatio(const lab::PadEdit& edit,int page,int knob)const{
+    if(page==0){if(knob==0)return edit.gain/2.;if(knob==1)return (edit.semitones+24.)/48.;if(knob==2)return edit.start;if(knob==3)return edit.end;}
+    if(page==1){if(knob==0)return edit.attack;if(knob==1)return edit.decay;if(knob==2)return edit.sustain;if(knob==3)return edit.release;}
+    return 0;
+}
+
+void setSurfaceProgramRatio(int display,int knob,double ratio){
+    if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks)return;auto& binding=surface.displays[display];if(binding.module!=lab::DisplayModule::Sample)return;
+    auto snapshot=engine.snapshot();const int pad=std::clamp(binding.pad,0,lab::Pads-1);auto edit=snapshot.edits[pad];ratio=std::clamp(ratio,0.,1.);
+    if(binding.page==0){if(knob==0)edit.gain=ratio*2.;else if(knob==1)edit.semitones=std::round(ratio*48.)-24.;else if(knob==2)edit.start=std::min(ratio,edit.end-.001);else if(knob==3)edit.end=std::max(ratio,edit.start+.001);}
+    else if(binding.page==1){if(knob==0)edit.attack=ratio;else if(knob==1)edit.decay=ratio;else if(knob==2)edit.sustain=ratio;else if(knob==3)edit.release=ratio;}
+    engine.setEdit(pad,edit);
+}
+
+std::wstring surfaceProgramParameterName(int page,int knob)const{
+    static const std::array<std::wstring,8> names={L"Volume",L"Accordage",L"Début",L"Fin",L"Attack",L"Decay",L"Sustain",L"Release"};return names[std::clamp(page*4+knob,0,7)];
+}
+
+std::wstring surfaceProgramParameterValue(const lab::PadEdit& edit,int page,int knob)const{
+    if(page==0){if(knob==0)return decimal(edit.gain*100,0)+L" %";if(knob==1)return (edit.semitones>=0?L"+":L"")+decimal(edit.semitones,0)+L" st";if(knob==2)return decimal(edit.start*100,1)+L" %";return decimal(edit.end*100,1)+L" %";}
+    if(knob==0)return decimal(edit.attack*edit.attack*2000,0)+L" ms";if(knob==1)return decimal(edit.decay*edit.decay*2000,0)+L" ms";if(knob==2)return decimal(edit.sustain*100,0)+L" %";return decimal(edit.release*edit.release*4000,0)+L" ms";
 }
 
 void showSurfaceMidiControl(int display){
@@ -119,7 +150,7 @@ void closeSurfaceModule(){
 
 void setSurfaceQLink(int display,int knob,double ratio){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks)return;
-    auto& binding=surface.displays[display];if(binding.module!=lab::DisplayModule::Inserts)return;
+    auto& binding=surface.displays[display];if(binding.module==lab::DisplayModule::Sample){setSurfaceProgramRatio(display,knob,ratio);return;}if(binding.module!=lab::DisplayModule::Inserts)return;
     auto s=engine.snapshot();const int pad=std::clamp(binding.pad,0,lab::Pads-1),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
     const int parameter=binding.parameterForKnob(knob);const auto effect=s.edits[pad].inserts[slot].effect;
     if(parameter>=0&&parameter<lab::insertParameterCount(effect))engine.setInsertParameter(pad,slot,parameter,ratio);
@@ -128,6 +159,7 @@ void setSurfaceQLink(int display,int knob,double ratio){
 void turnSurfaceQLink(int display,int knob,int delta){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks||!delta)return;
     auto& binding=surface.displays[display];
+    if(binding.module==lab::DisplayModule::Sample){auto snapshot=engine.snapshot();const auto& edit=snapshot.edits[std::clamp(binding.pad,0,lab::Pads-1)];const double step=binding.page==0&&knob==1?1./48.:.01;setSurfaceProgramRatio(display,knob,surfaceProgramRatio(edit,binding.page,knob)+delta*step);return;}
     if(binding.module!=lab::DisplayModule::Inserts)return;
     auto s=engine.snapshot();
     const int pad=std::clamp(binding.pad,0,lab::Pads-1),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
@@ -179,6 +211,8 @@ void selectSurfaceMenu(int item){
 void moveSurfaceMenu(int dx,int dy){
     const auto module=surface.displays[surface.focusedDisplay].module;
     if(module==lab::DisplayModule::Browser){if(dx)moveSurfaceBrowserCategory(surface.focusedDisplay,dx);if(dy)moveSurfaceBrowserSelection(surface.focusedDisplay,dy);return;}
+    if(module==lab::DisplayModule::Sample&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,1);return;}
+    if(module==lab::DisplayModule::Inserts&&dx){auto& binding=surface.displays[surface.focusedDisplay];auto snapshot=engine.snapshot();const auto effect=snapshot.edits[binding.pad].inserts[binding.slot].effect;const int pages=std::max(1,(lab::insertParameterCount(effect)+3)/4);binding.page=std::clamp(binding.page+(dx>0?1:-1),0,pages-1);return;}
     if(module!=lab::DisplayModule::Menu)return;
     const int first=surface.focusedDisplay*8;
     int local=surface.menuSelections[surface.focusedDisplay];
@@ -201,7 +235,7 @@ void activateSurfaceMenu(){
     if(surface.displays[surface.focusedDisplay].module!=lab::DisplayModule::Menu)return;
     const int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
     if(item==0){showSurfaceBrowser(surface.focusedDisplay);return;}
-    if(item==11){showSurfaceInserts(surface.focusedDisplay);return;}
+    if(item==11){showSurfaceProgram(surface.focusedDisplay);return;}
     if(item==15){showSurfaceMidiControl(surface.focusedDisplay);return;}
     if(item==9||item==10){tab=1;status=L"KICK / "+surfaceMenuLabels[item]+L" — éditeur transitoire, avant intégration complète dans les deux écrans.";return;}
     status=L"KICK / "+surfaceMenuLabels[item]+L" sélectionné — module original pas encore relié à cette base Windows.";
@@ -245,15 +279,24 @@ bool surfaceClick(int x,int y,bool right){
             return true;
         }
         if(binding.module==lab::DisplayModule::Inserts){
+            auto current=engine.snapshot();const int pages=std::max(1,(lab::insertParameterCount(current.edits[binding.pad].inserts[binding.slot].effect)+3)/4);
+            if(surfacePagePreviousBox(display).contains(x,y)){binding.page=std::max(0,binding.page-1);return true;}
+            if(surfacePageNextBox(display).contains(x,y)){binding.page=std::min(pages-1,binding.page+1);return true;}
             for(int slot=0;slot<lab::InsertSlots;++slot)if(surfaceInsertSlotBox(display,slot).contains(x,y)){
                 binding.slot=slot;binding.page=0;selectedInsert=slot;return true;
             }
-            if(surfaceInsertEffectBox(display).contains(x,y)){selectedInsert=binding.slot;insertMenu();return true;}
+            if(surfaceInsertEffectBox(display).contains(x,y)){selectedInsert=binding.slot;insertMenu();binding.page=0;return true;}
             if(surfaceInsertBypassBox(display).contains(x,y)){
                 auto s=engine.snapshot();const auto& insert=s.edits[binding.pad].inserts[binding.slot];
                 if(insert.effect!=lab::InsertEffect::None)engine.setInsertBypass(binding.pad,binding.slot,!insert.bypass);
                 return true;
             }
+            return true;
+        }
+        if(binding.module==lab::DisplayModule::Sample){
+            if(surfacePagePreviousBox(display).contains(x,y)){binding.page=std::max(0,binding.page-1);return true;}
+            if(surfacePageNextBox(display).contains(x,y)){binding.page=std::min(1,binding.page+1);return true;}
+            if(surfaceProgramAuditionBox(display).contains(x,y)){dispatch({lab::SurfaceAction::PadPress,binding.pad});return true;}
             return true;
         }
         if(binding.module==lab::DisplayModule::MidiControl){
@@ -285,7 +328,8 @@ void paintSurfaceKnob(HDC dc,int display,int knob,const lab::Snapshot& snapshot)
     const int cx=538+display*580,cy=112+knob*67;
     double ratio=.5;bool assigned=false;
     const auto& binding=surface.displays[display];
-    if(binding.module==lab::DisplayModule::Inserts){
+    if(binding.module==lab::DisplayModule::Sample){ratio=surfaceProgramRatio(snapshot.edits[std::clamp(binding.pad,0,lab::Pads-1)],binding.page,knob);assigned=true;}
+    else if(binding.module==lab::DisplayModule::Inserts){
         const auto& insert=snapshot.edits[binding.pad].inserts[binding.slot];
         const int parameter=binding.parameterForKnob(knob);
         if(parameter>=0&&parameter<lab::insertParameterCount(insert.effect)){ratio=insert.parameters[parameter];assigned=true;}
@@ -344,7 +388,7 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
         const auto& edit=snapshot.edits[pad];const auto& insert=edit.inserts[slot];const int count=lab::insertParameterCount(insert.effect);
         const int pages=std::max(1,(count+lab::SurfaceQLinks-1)/lab::SurfaceQLinks);
         text(dc,{box.x+14,box.y+9,300,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  INSERTS  ·  PAD "+padName(pad),12,focused?accent:muted,FW_SEMIBOLD);
-        text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / "+number(pages),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        text(dc,{box.x+318,box.y+9,48,24},number(binding.page+1)+L"/"+number(pages),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);button(dc,surfacePagePreviousBox(display),L"<");button(dc,surfacePageNextBox(display),L">");
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         for(int s=0;s<lab::InsertSlots;++s)button(dc,surfaceInsertSlotBox(display,s),number(s+1)+L"  "+insertName(edit.inserts[s].effect),s==slot);
         button(dc,surfaceInsertEffectBox(display),insert.effect==lab::InsertEffect::None?L"Choisir un effet":L"Effet : "+insertName(insert.effect));
@@ -357,6 +401,14 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
             text(dc,{box.x+68,y,220,28},valid?wide(lab::insertParameterName(insert.effect,parameter)):L"—",10,valid?ink:muted);
             text(dc,{box.x+300,y,126,28},valid?insertValue(insert.effect,parameter,insert.parameters[parameter]):L"Non assigné",10,valid?accent:muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }
+        return;
+    }
+    if(binding.module==lab::DisplayModule::Sample){
+        const int pad=std::clamp(binding.pad,0,lab::Pads-1);const auto& edit=snapshot.edits[pad];
+        text(dc,{box.x+14,box.y+9,300,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  PROGRAM EDIT  ·  PAD "+padName(pad),12,focused?accent:muted,FW_SEMIBOLD);
+        text(dc,{box.x+318,box.y+9,48,24},number(binding.page+1)+L"/2",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);button(dc,surfacePagePreviousBox(display),L"<");button(dc,surfacePageNextBox(display),L">");fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
+        button(dc,surfaceProgramAuditionBox(display),L"Écouter  ·  "+wide(snapshot.names[pad]));
+        for(int knob=0;knob<4;++knob){const int y=174+knob*45;fill(dc,{box.x+14,y,box.w-28,38},knob%2?RGB(18,31,35):RGB(17,28,33));text(dc,{box.x+24,y,42,38},L"P"+number(display*4+knob+1),10,accent,FW_SEMIBOLD);text(dc,{box.x+68,y,220,38},surfaceProgramParameterName(binding.page,knob),11,ink);text(dc,{box.x+300,y,126,38},surfaceProgramParameterValue(edit,binding.page,knob),10,accent,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);}
         return;
     }
     text(dc,{box.x+14,box.y+9,250,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MENU KICK",12,focused?accent:muted,FW_SEMIBOLD);

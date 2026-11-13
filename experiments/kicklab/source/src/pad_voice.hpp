@@ -75,6 +75,66 @@ namespace awmackity {
 #include "airwindows/src/Mackity/Mackity.cpp"
 #include "airwindows/src/Mackity/MackityProc.cpp"
 }
+namespace awbaxandall2 {
+#include "airwindows/src/Baxandall2/Baxandall2.h"
+#include "airwindows/src/Baxandall2/Baxandall2.cpp"
+#include "airwindows/src/Baxandall2/Baxandall2Proc.cpp"
+}
+namespace awbiquad2 {
+#include "airwindows/src/Biquad2/Biquad2.h"
+#include "airwindows/src/Biquad2/Biquad2.cpp"
+#include "airwindows/src/Biquad2/Biquad2Proc.cpp"
+}
+namespace awpressure5 {
+#include "airwindows/src/Pressure5/Pressure5.h"
+#include "airwindows/src/Pressure5/Pressure5.cpp"
+#include "airwindows/src/Pressure5/Pressure5Proc.cpp"
+}
+namespace awpop2 {
+#include "airwindows/src/Pop2/Pop2.h"
+#include "airwindows/src/Pop2/Pop2.cpp"
+#include "airwindows/src/Pop2/Pop2Proc.cpp"
+}
+namespace awautopan {
+#include "airwindows/src/AutoPan/AutoPan.h"
+#include "airwindows/src/AutoPan/AutoPan.cpp"
+#include "airwindows/src/AutoPan/AutoPanProc.cpp"
+}
+namespace awchorusensemble {
+#include "airwindows/src/ChorusEnsemble/ChorusEnsemble.h"
+#include "airwindows/src/ChorusEnsemble/ChorusEnsemble.cpp"
+#include "airwindows/src/ChorusEnsemble/ChorusEnsembleProc.cpp"
+}
+namespace awpurestecho {
+#include "airwindows/src/PurestEcho/PurestEcho.h"
+#include "airwindows/src/PurestEcho/PurestEcho.cpp"
+#include "airwindows/src/PurestEcho/PurestEchoProc.cpp"
+}
+namespace awtapedelay2 {
+#include "airwindows/src/TapeDelay2/TapeDelay2.h"
+#include "airwindows/src/TapeDelay2/TapeDelay2.cpp"
+#include "airwindows/src/TapeDelay2/TapeDelay2Proc.cpp"
+}
+namespace awchamber2 {
+#include "airwindows/src/Chamber2/Chamber2.h"
+#include "airwindows/src/Chamber2/Chamber2.cpp"
+#include "airwindows/src/Chamber2/Chamber2Proc.cpp"
+}
+namespace awgalactic {
+#include "airwindows/src/Galactic/Galactic.h"
+#include "airwindows/src/Galactic/Galactic.cpp"
+#include "airwindows/src/Galactic/GalacticProc.cpp"
+}
+namespace awderez2 {
+#include "airwindows/src/DeRez2/DeRez2.h"
+#include "airwindows/src/DeRez2/DeRez2.cpp"
+#include "airwindows/src/DeRez2/DeRez2Proc.cpp"
+}
+namespace awbitglitter {
+#include "airwindows/src/BitGlitter/BitGlitter.h"
+#include "airwindows/src/BitGlitter/BitGlitter.cpp"
+#include "airwindows/src/BitGlitter/BitGlitterProc.cpp"
+}
 #undef __audioeffect__
 
 static AudIO::ObjectFactoryRegistration<awlow::Lowpass> registerLowpass("Lowpass",1,"AirWindows","Plugin","Filter");
@@ -91,6 +151,18 @@ static AudIO::ObjectFactoryRegistration<awstarchild::StarChild> registerStarChil
 static AudIO::ObjectFactoryRegistration<awreverb::Reverb> registerReverb("Reverb",1,"AirWindows","Plugin","Reverb");
 static AudIO::ObjectFactoryRegistration<awloud::Loud> registerLoud("Loud",1,"AirWindows","Plugin","Distortion");
 static AudIO::ObjectFactoryRegistration<awmackity::Mackity> registerMackity("Mackity",1,"AirWindows","Plugin","Distortion");
+static AudIO::ObjectFactoryRegistration<awbaxandall2::Baxandall2> registerBaxandall2("Baxandall2",1,"AirWindows","Plugin","EQ");
+static AudIO::ObjectFactoryRegistration<awbiquad2::Biquad2> registerBiquad2("Biquad2",1,"AirWindows","Plugin","Filter");
+static AudIO::ObjectFactoryRegistration<awpressure5::Pressure5> registerPressure5("Pressure5",1,"AirWindows","Plugin","Dynamics");
+static AudIO::ObjectFactoryRegistration<awpop2::Pop2> registerPop2("Pop2",1,"AirWindows","Plugin","Dynamics");
+static AudIO::ObjectFactoryRegistration<awautopan::AutoPan> registerAutoPan("AutoPan",1,"AirWindows","Plugin","Modulation");
+static AudIO::ObjectFactoryRegistration<awchorusensemble::ChorusEnsemble> registerChorusEnsemble("ChorusEnsemble",1,"AirWindows","Plugin","Modulation");
+static AudIO::ObjectFactoryRegistration<awpurestecho::PurestEcho> registerPurestEcho("PurestEcho",1,"AirWindows","Plugin","Delay");
+static AudIO::ObjectFactoryRegistration<awtapedelay2::TapeDelay2> registerTapeDelay2("TapeDelay2",1,"AirWindows","Plugin","Delay");
+static AudIO::ObjectFactoryRegistration<awchamber2::Chamber2> registerChamber2("Chamber2",1,"AirWindows","Plugin","Reverb");
+static AudIO::ObjectFactoryRegistration<awgalactic::Galactic> registerGalactic("Galactic",1,"AirWindows","Plugin","Reverb");
+static AudIO::ObjectFactoryRegistration<awderez2::DeRez2> registerDeRez2("DeRez2",1,"AirWindows","Plugin","Lo-Fi");
+static AudIO::ObjectFactoryRegistration<awbitglitter::BitGlitter> registerBitGlitter("BitGlitter",1,"AirWindows","Plugin","Lo-Fi");
 
 struct PadEffects : public AudIO::DawInserts {
     static_assert(lab::InsertSlots==AudIO::DawInserts::MAX_INSERTS,"KICK insert count changed");
@@ -128,20 +200,47 @@ public:
         // explicit KICK loop mode, never by importing or auditioning a WAV.
         setLooping(false);
         play(true);tail=effects->tailBlocks();
+        envelope=edit.attack<=0?1.:0.;
+        envelopeStage=edit.attack<=0?(edit.decay<=0?EnvelopeStage::Sustain:EnvelopeStage::Decay):EnvelopeStage::Attack;
     }
-    void stop(){AudIO::AudioPlayback::stop();tail=0;}
-    void resetMix(){gain=edit.gain;tail=0;}
+    void release(){
+        if(envelopeStage==EnvelopeStage::Idle||envelopeStage==EnvelopeStage::Release)return;
+        if(edit.release<=0){envelope=0;envelopeStage=EnvelopeStage::Idle;AudIO::AudioPlayback::stop();tail=effects->tailBlocks();return;}
+        releaseStep=envelope/(std::max(.0001,edit.release*edit.release*4.)*lab::Rate);envelopeStage=EnvelopeStage::Release;
+    }
+    void stop(){AudIO::AudioPlayback::stop();tail=0;envelope=0;envelopeStage=EnvelopeStage::Idle;}
+    void resetMix(){gain=edit.gain;tail=0;envelope=0;envelopeStage=EnvelopeStage::Idle;}
 protected:
     void process(AudIO::Buffer<float>& buffer)override {
         AudIO::AudioPlayback::process(buffer);
-        const bool sounded=isPlaying();
+        const bool envelopeWasRunning=envelopeStage!=EnvelopeStage::Idle;
+        float* out[2]={buffer.getOutputBuffer(0),buffer.getOutputBuffer(1)};
+        for(int n=0;n<lab::Block;++n){
+            advanceEnvelope();
+            for(int c=0;c<2;++c)out[c][n]=float(out[c][n]*envelope);
+        }
+        const bool sounded=isPlaying()||envelopeWasRunning;
+        if(!isPlaying()&&envelopeStage!=EnvelopeStage::Release){envelope=0;envelopeStage=EnvelopeStage::Idle;}
         if(sounded)tail=effects->tailBlocks();else if(tail>0)--tail;
         if(tail>0)effects->render(buffer);
-        float* out[2]={buffer.getOutputBuffer(0),buffer.getOutputBuffer(1)};
         for(int n=0;n<lab::Block;++n){gain+=(edit.gain-gain)*.004;
             for(int c=0;c<2;++c)out[c][n]=(tail>0||sounded)?float(out[c][n]*gain):0.f;}
     }
 private:
+    enum class EnvelopeStage { Idle,Attack,Decay,Sustain,Release };
+    void advanceEnvelope(){
+        if(envelopeStage==EnvelopeStage::Attack){
+            envelope+=1./(std::max(.0001,edit.attack*edit.attack*2.)*lab::Rate);
+            if(envelope>=1.){envelope=1.;envelopeStage=edit.decay<=0?EnvelopeStage::Sustain:EnvelopeStage::Decay;}
+        }else if(envelopeStage==EnvelopeStage::Decay){
+            const double target=std::clamp(edit.sustain,0.,1.);
+            envelope-=(1.-target)/(std::max(.0001,edit.decay*edit.decay*2.)*lab::Rate);
+            if(envelope<=target){envelope=target;envelopeStage=EnvelopeStage::Sustain;}
+        }else if(envelopeStage==EnvelopeStage::Sustain)envelope=std::clamp(edit.sustain,0.,1.);
+        else if(envelopeStage==EnvelopeStage::Release){envelope-=releaseStep;if(envelope<=0){envelope=0;envelopeStage=EnvelopeStage::Idle;AudIO::AudioPlayback::stop();}}
+    }
     double gain=1;
+    double envelope=0,releaseStep=0;
+    EnvelopeStage envelopeStage=EnvelopeStage::Idle;
     int tail=0;
 };

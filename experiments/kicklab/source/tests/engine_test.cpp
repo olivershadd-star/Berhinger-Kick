@@ -84,7 +84,7 @@ int main(int argc,char**argv){try{
     auto driveThenLow=dry;driveThenLow.inserts[0]=lowThenDrive.inserts[1];driveThenLow.inserts[1]=lowThenDrive.inserts[0];auto secondOrder=measure(driveThenLow);double orderDifference=0;
     for(size_t i=0;i<firstOrder.size();++i)orderDifference+=std::pow(firstOrder[i]-secondOrder[i],2);
     check(orderDifference>dryEnergy*1e-8,"insert slot order does not affect processing order");
-    check(insertEffectCatalog().size()==14,"effect catalog is incomplete");
+    check(insertEffectCatalog().size()==26,"effect catalog is incomplete");
     for(const auto& info:insertEffectCatalog()){
         check(info.parameterCount==insertParameterCount(info.effect),"effect parameter count mismatch");
         auto settings=dry;settings.inserts={};settings.inserts[0]=defaultInsertState(info.effect);auto signal=measure(settings);double effectEnergy=0;
@@ -97,20 +97,25 @@ int main(int argc,char**argv){try{
     saturated.insertsBypass=true;auto bypass=measure(saturated);double bypassDifference=0;
     for(size_t i=0;i<clean.size();++i)bypassDifference+=std::pow(clean[i]-bypass[i],2);
     check(bypassDifference<dryEnergy*1e-8,"FX bypass changes dry signal");
-    edit={};edit.start=.12;edit.end=.83;edit.gain=.75;edit.semitones=-7;edit.fadeMs=4.5;edit.insertsBypass=true;
+    edit={};edit.start=.12;edit.end=.83;edit.gain=.75;edit.semitones=-7;edit.fadeMs=4.5;edit.attack=.2;edit.decay=.3;edit.sustain=.6;edit.release=.4;edit.insertsBypass=true;
     edit.inserts[0]=defaultInsertState(InsertEffect::Highpass);edit.inserts[0].parameters[0]=.4;edit.inserts[0].parameters[1]=.2;edit.inserts[0].parameters[2]=.7;
     edit.inserts[1]=defaultInsertState(InsertEffect::DrumSlam);edit.inserts[1].parameters[0]=.8;
     edit.inserts[2]=defaultInsertState(InsertEffect::Chorus);edit.inserts[2].parameters[0]=.35;
     edit.inserts[3]=defaultInsertState(InsertEffect::Reverb);edit.inserts[3].bypass=true;edit.inserts[3].parameters[0]=.65;edit.inserts[3].parameters[1]=.75;e.setEdit(0,edit);
     check(e.save(path("edited.kicklab"),error),error.c_str());e.setEdit(0,{});check(e.open(path("edited.kicklab"),error),error.c_str());auto restored=e.snapshot().edits[0];
-    check(restored.start==edit.start&&restored.end==edit.end&&restored.semitones==-7&&restored.gain==.75&&restored.fadeMs==4.5&&restored.insertsBypass,"edited project roundtrip failed");
+    check(restored.start==edit.start&&restored.end==edit.end&&restored.semitones==-7&&restored.gain==.75&&restored.fadeMs==4.5&&restored.attack==.2&&restored.decay==.3&&restored.sustain==.6&&restored.release==.4&&restored.insertsBypass,"edited project roundtrip failed");
     for(int slot=0;slot<InsertSlots;++slot){check(restored.inserts[slot].effect==edit.inserts[slot].effect&&restored.inserts[slot].bypass==edit.inserts[slot].bypass,"insert identity roundtrip failed");for(int parameter=0;parameter<insertParameterCount(edit.inserts[slot].effect);++parameter)check(restored.inserts[slot].parameters[parameter]==edit.inserts[slot].parameters[parameter],"insert parameter roundtrip failed");}
     check(e.open(path("sparse.kicklab"),error),error.c_str());restored=e.snapshot().edits[0];check(restored.inserts[0].effect==InsertEffect::Lowpass&&restored.inserts[0].bypass&&restored.inserts[1].effect==InsertEffect::PurestDrive&&restored.inserts[1].bypass,"v1 project did not restore bypassed default inserts");
     {std::ofstream f(std::filesystem::u8path(path("legacy-v2.kicklab")));f<<"KICKLAB 2\n120 0.65\n";for(int p=0;p<Pads;++p)f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<" 0.1 0.9 0.75 -3 4 0.4 0.8 1\n";}
     check(e.open(path("legacy-v2.kicklab"),error),error.c_str());restored=e.snapshot().edits[0];
     check(restored.insertsBypass&&restored.inserts[0].effect==InsertEffect::Lowpass&&!restored.inserts[0].bypass&&restored.inserts[0].parameters[0]==.4&&restored.inserts[1].effect==InsertEffect::PurestDrive&&!restored.inserts[1].bypass&&restored.inserts[1].parameters[0]==.8,"v2 effect migration failed");
+    {std::ofstream f(std::filesystem::u8path(path("legacy-v3.kicklab")));f<<"KICKLAB 3\n120 0.65\n";for(int p=0;p<Pads;++p){f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<" 0 1 1 0 2 0";for(int slot=0;slot<InsertSlots;++slot)f<<" 0 0 0";f<<'\n';}}
+    check(e.open(path("legacy-v3.kicklab"),error),error.c_str());restored=e.snapshot().edits[0];check(restored.attack==0&&restored.decay==0&&restored.sustain==1&&restored.release==0,"v3 project did not receive the default envelope");
+    PadEdit envelope;envelope.fadeMs=0;e.setEdit(0,envelope);e.stop();e.trigger(0);e.render(block);double immediateEnergy=0;for(float value:block)immediateEnergy+=value*value;
+    envelope.attack=.5;e.setEdit(0,envelope);e.stop();e.trigger(0);e.render(block);double attackEnergy=0;for(float value:block)attackEnergy+=value*value;check(attackEnergy<immediateEnergy*.01,"amplitude envelope attack is ineffective");
+    envelope.attack=0;envelope.release=.1;e.setEdit(0,envelope);e.stop();e.trigger(0);e.render(block);e.release(0);for(int b=0;b<12;++b)e.render(block);check(!e.snapshot().active[0],"amplitude envelope release did not stop the voice");
     e.setInsertEffect(0,2,InsertEffect::PurestDrive);e.setInsertParameter(0,2,0,.42);e.setInsertBypass(0,2,true);restored=e.snapshot().edits[0];check(restored.inserts[2].effect==InsertEffect::PurestDrive&&restored.inserts[2].parameters[0]==.42&&restored.inserts[2].bypass,"insert control API failed");
-    std::cout<<"PASS: trim, octave pitch, 14 Airwindows effects, four AudIO inserts, project v3 and v1/v2 compatibility\n";
+    std::cout<<"PASS: trim, pitch, ADSR, 26 Airwindows effects, four AudIO inserts, project v4 and v1/v2/v3 compatibility\n";
     // Batched driver completions across the ring boundary must preserve time order.
     AudioQueue<4> queue;std::array<bool,4> ready={true,true,true,false};std::vector<int> submitted;
     auto submit=[&](size_t b){submitted.push_back(int(b));ready[b]=false;return true;};

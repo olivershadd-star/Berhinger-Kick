@@ -156,7 +156,7 @@ public:
             const bool saved=saveMidiProfile();status=L"MIDI Learn : CC "+number(data1)+L" canal "+number(channel+1)+L" assigné à P"+number(midiLearnTarget+1)+(saved?L" · profil Maschine+ sauvegardé.":L" · impossible de sauvegarder le profil.");
             midiLearnTarget=-1;return;
         }
-        if(type==0x90&&data2&&data1>=36&&data1<52)dispatch({lab::SurfaceAction::PadPress,data1-36});
+        if((type==0x90||type==0x80)&&data1>=36&&data1<52)dispatch({lab::SurfaceAction::PadPress,data1-36,0,0,type==0x90&&data2>0});
         if(type==0x90||type==0x80){for(int target=0;target<lab::MidiCommandCount;++target){auto& binding=midiCommands[target];if(binding.kind!=lab::MidiMessageKind::Note||binding.channel!=channel||binding.number!=data1)continue;const bool pressed=type==0x90&&data2>0;if(pressed||binding.lastValue>0)dispatchMidiCommand(target,pressed);binding.lastValue=pressed?data2:0;}}
         if(type==0xb0){for(int target=0;target<lab::MidiCommandCount;++target){auto& binding=midiCommands[target];if(binding.kind!=lab::MidiMessageKind::ControlChange||binding.channel!=channel||binding.number!=data1)continue;if(target==int(lab::MidiCommandTarget::Turn)){int delta=binding.mode==lab::MidiCcMode::Absolute?(binding.lastValue<0?0:std::clamp(data2-binding.lastValue,-16,16)):lab::midiCcDelta(binding.mode,data2);binding.lastValue=data2;if(delta)dispatch({lab::SurfaceAction::CenterTurn,0,delta});}else{const bool pressed=data2>0;if(pressed!=(binding.lastValue>0))dispatchMidiCommand(target,pressed);binding.lastValue=data2;}}}
         if(type!=0xb0)return;
@@ -179,7 +179,7 @@ public:
     void play(int p){selectPad(p);engine.trigger(selected);flashed[selected]=GetTickCount64()+130;}
     void dispatch(const lab::SurfaceEvent& event){
         switch(event.action){
-        case lab::SurfaceAction::PadPress:if(event.pressed&&event.index>=0&&event.index<lab::SurfacePads)play(event.index);break;
+        case lab::SurfaceAction::PadPress:if(event.index>=0&&event.index<lab::SurfacePads){if(event.pressed)play(event.index);else engine.release(event.index);}break;
         case lab::SurfaceAction::StepToggle:if(event.index>=0&&event.index<lab::SurfacePads&&event.value>=0&&event.value<lab::SurfaceSteps){selectPad(event.index);engine.toggle(event.index,event.value);}break;
         case lab::SurfaceAction::PlayPause:{auto s=engine.snapshot();engine.setPlaying(!s.playing);break;}
         case lab::SurfaceAction::Stop:engine.stop();break;
@@ -320,7 +320,7 @@ case WM_LBUTTONUP:if(app->editorDrag||app->surfaceDragDisplay>=0){app->editorDra
 case WM_CAPTURECHANGED:app->editorDrag=0;app->surfaceDragDisplay=-1;app->surfaceDragKnob=-1;return 0;
 case WM_MOUSEWHEEL:{POINT point{GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(!app->surfaceWheel(x,y,GET_WHEEL_DELTA_WPARAM(w))&&!app->editorWheel(x,y,GET_WHEEL_DELTA_WPARAM(w)))app->dispatch({lab::SurfaceAction::TempoDelta,0,GET_WHEEL_DELTA_WPARAM(w)>0?1:-1});InvalidateRect(h,nullptr,FALSE);return 0;}
 case WM_KEYDOWN:if(w==VK_SHIFT)app->dispatch({lab::SurfaceAction::Shift,0,0,0,true});else app->key(w,l);return 0;
-case WM_KEYUP:if(w==VK_SHIFT)app->dispatch({lab::SurfaceAction::Shift,0,0,0,false});return 0;
+case WM_KEYUP:if(w==VK_SHIFT)app->dispatch({lab::SurfaceAction::Shift,0,0,0,false});else for(int p=0;p<16;++p)if(w==WPARAM(keys[p])){app->dispatch({lab::SurfaceAction::PadPress,p,0,0,false});break;}return 0;
 case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*1200/app->width,y=point.y*800/app->height;if(app->tab==0){for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selectPad(p);}else if(app->tab==1){for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y))app->selectPad(p);}if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
 case SurfaceMessage:app->dispatch({static_cast<lab::SurfaceAction>(w),int(l)});InvalidateRect(h,nullptr,FALSE);return 0;
 case MidiMessage:app->midiData(unsigned(w));InvalidateRect(h,nullptr,FALSE);return 0;
@@ -338,7 +338,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,1200,800};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.2.4 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.3.0 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }
