@@ -57,7 +57,9 @@ public:
     Engine(); ~Engine();
     Engine(const Engine&)=delete;
     Engine& operator=(const Engine&)=delete;
-    bool load(int pad,const std::string& path,std::string& error);
+    bool load(int pad,const std::string& path,std::string& error,bool preserveEdit=false);
+    bool preview(const std::string& path,std::string& error);
+    void stopPreview();
     void trigger(int pad);
     void setEdit(int pad, const PadEdit& edit);
     void setInsertEffect(int pad,int slot,InsertEffect effect);

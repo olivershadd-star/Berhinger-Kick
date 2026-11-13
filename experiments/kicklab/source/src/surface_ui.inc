@@ -23,6 +23,14 @@ Box surfaceMidiDeviceBox(int display)const{return {54+display*580,126,240,34};}
 Box surfaceMidiPreviousBox(int display)const{return {354+display*580,126,44,34};}
 Box surfaceMidiNextBox(int display)const{return {406+display*580,126,44,34};}
 Box surfaceMidiBindingBox(int display,int row)const{return {54+display*580,226+row*34,396,28};}
+Box surfaceBrowserPreviousBox(int display)const{return {54+display*580,126,42,34};}
+Box surfaceBrowserCategoryBox(int display)const{return {102+display*580,126,300,34};}
+Box surfaceBrowserNextBox(int display)const{return {408+display*580,126,42,34};}
+Box surfaceBrowserFileBox(int display,int row)const{return {54+display*580,170+row*31,396,27};}
+Box surfaceBrowserModeBox(int display)const{return {54+display*580,332,82,30};}
+Box surfaceBrowserAuditionBox(int display)const{return {142+display*580,332,82,30};}
+Box surfaceBrowserLoadBox(int display)const{return {230+display*580,332,100,30};}
+Box surfaceBrowserRefreshBox(int display)const{return {336+display*580,332,114,30};}
 
 int surfaceDragDisplay=-1,surfaceDragKnob=-1,surfaceDragStartY=0,surfaceDragLastStep=0;
 
@@ -50,6 +58,63 @@ void showSurfaceMidiControl(int display){
     display=std::clamp(display,0,1);auto& binding=surface.displays[display];
     binding.module=lab::DisplayModule::MidiControl;binding.page=0;surface.focusDisplay(display);
     status=L"MIDI Control — choisis une cible P1–P8 puis tourne le contrôle physique à apprendre.";
+}
+
+std::wstring surfaceBrowserModeName(int mode)const{
+    return mode==1?L"AUD AUTO":mode==2?L"AUD MAN":L"AUD OFF";
+}
+
+void auditionSurfaceBrowser(int display){
+    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];
+    if(browser.selected<0||browser.selected>=int(browser.files.size())){engine.stopPreview();return;}
+    std::string error;
+    if(engine.preview(browser.files[browser.selected].u8string(),error))status=L"Préécoute one-shot : "+browser.files[browser.selected].filename().wstring();
+    else status=L"Préécoute impossible : "+wide(error);
+}
+
+void refreshSurfaceBrowser(int display,bool audition=false){
+    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];
+    browser.category=std::clamp(browser.category,0,int(libraryCategories.size())-1);browser.files.clear();
+    std::error_code error;const auto folder=library/libraryCategories[browser.category];
+    for(std::filesystem::directory_iterator it(folder,error),end;!error&&it!=end;it.increment(error)){
+        if(!it->is_regular_file(error))continue;auto extension=it->path().extension().wstring();
+        std::transform(extension.begin(),extension.end(),extension.begin(),[](wchar_t c){return wchar_t(std::towlower(c));});
+        if(extension==L".wav")browser.files.push_back(it->path());
+    }
+    std::sort(browser.files.begin(),browser.files.end(),[](const auto& a,const auto& b){return a.filename().wstring()<b.filename().wstring();});
+    if(browser.files.empty()){browser.selected=browser.scroll=0;engine.stopPreview();}
+    else{browser.selected=std::clamp(browser.selected,0,int(browser.files.size())-1);browser.scroll=std::clamp(browser.scroll,0,std::max(0,int(browser.files.size())-5));if(browser.selected<browser.scroll)browser.scroll=browser.selected;if(browser.selected>=browser.scroll+5)browser.scroll=browser.selected-4;if(audition&&browser.auditionMode==1)auditionSurfaceBrowser(display);}
+}
+
+void moveSurfaceBrowserSelection(int display,int delta){
+    auto& browser=browsers[std::clamp(display,0,lab::SurfaceDisplays-1)];if(browser.files.empty()||!delta)return;
+    const int previous=browser.selected;browser.selected=std::clamp(browser.selected+(delta>0?1:-1),0,int(browser.files.size())-1);
+    if(browser.selected<browser.scroll)browser.scroll=browser.selected;if(browser.selected>=browser.scroll+5)browser.scroll=browser.selected-4;
+    if(browser.selected!=previous&&browser.auditionMode==1)auditionSurfaceBrowser(display);
+}
+
+void moveSurfaceBrowserCategory(int display,int delta){
+    auto& browser=browsers[std::clamp(display,0,lab::SurfaceDisplays-1)];if(!delta)return;
+    const int category=std::clamp(browser.category+(delta>0?1:-1),0,int(libraryCategories.size())-1);if(category==browser.category)return;
+    browser.category=category;browser.selected=browser.scroll=0;refreshSurfaceBrowser(display,true);
+}
+
+void loadSurfaceBrowserSelection(int display){
+    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];if(browser.files.empty()){status=L"Browser KICK — cette catégorie ne contient encore aucun WAV.";return;}
+    auto& binding=surface.displays[display];const int pad=std::clamp(binding.pad,0,lab::Pads-1);std::string error;engine.stopPreview();
+    if(engine.load(pad,browser.files[browser.selected].u8string(),error,true)){selectPad(pad);status=L"Sample chargé sur le pad "+padName(pad)+L" sans modifier ses réglages : "+browser.files[browser.selected].filename().wstring();}
+    else status=L"Chargement impossible : "+wide(error);
+}
+
+void showSurfaceBrowser(int display){
+    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::Browser;binding.pad=selected;binding.page=0;surface.focusDisplay(display);refreshSurfaceBrowser(display,true);
+    status=L"Browser KICK — flèches/encodeur : parcourir · Enter : charger · Échap : fermer.";
+}
+
+void closeSurfaceModule(){
+    const int display=surface.focusedDisplay;if(surface.displays[display].module==lab::DisplayModule::Browser)engine.stopPreview();
+    if(surface.displays[display].module!=lab::DisplayModule::Menu){showSurfaceMenu(display);status=L"Retour au menu KICK de l'écran "+std::wstring(display?L"B.":L"A.");}
+    else status=L"KICK / Retour — aucun écran enfant ouvert.";
 }
 
 void setSurfaceQLink(int display,int knob,double ratio){
@@ -112,7 +177,9 @@ void selectSurfaceMenu(int item){
 }
 
 void moveSurfaceMenu(int dx,int dy){
-    if(surface.displays[surface.focusedDisplay].module!=lab::DisplayModule::Menu)return;
+    const auto module=surface.displays[surface.focusedDisplay].module;
+    if(module==lab::DisplayModule::Browser){if(dx)moveSurfaceBrowserCategory(surface.focusedDisplay,dx);if(dy)moveSurfaceBrowserSelection(surface.focusedDisplay,dy);return;}
+    if(module!=lab::DisplayModule::Menu)return;
     const int first=surface.focusedDisplay*8;
     int local=surface.menuSelections[surface.focusedDisplay];
     int row=local/2,col=local%2;
@@ -121,16 +188,19 @@ void moveSurfaceMenu(int dx,int dy){
 }
 
 void turnSurfaceMenu(int delta){
-    if(!delta||surface.displays[surface.focusedDisplay].module!=lab::DisplayModule::Menu)return;
+    if(!delta)return;const auto module=surface.displays[surface.focusedDisplay].module;
+    if(module==lab::DisplayModule::Browser){moveSurfaceBrowserSelection(surface.focusedDisplay,delta);return;}
+    if(module!=lab::DisplayModule::Menu)return;
     const int first=surface.focusedDisplay*8,last=first+7;
     int item=first+surface.menuSelections[surface.focusedDisplay];
     selectSurfaceMenu(std::clamp(item+(delta>0?1:-1),first,last));
 }
 
 void activateSurfaceMenu(){
+    if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Browser){loadSurfaceBrowserSelection(surface.focusedDisplay);return;}
     if(surface.displays[surface.focusedDisplay].module!=lab::DisplayModule::Menu)return;
     const int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
-    if(item==0){status=L"KICK / Browser — choix d'un sample pour le pad sélectionné.";sampleMenu();return;}
+    if(item==0){showSurfaceBrowser(surface.focusedDisplay);return;}
     if(item==11){showSurfaceInserts(surface.focusedDisplay);return;}
     if(item==15){showSurfaceMidiControl(surface.focusedDisplay);return;}
     if(item==9||item==10){tab=1;status=L"KICK / "+surfaceMenuLabels[item]+L" — éditeur transitoire, avant intégration complète dans les deux écrans.";return;}
@@ -145,6 +215,7 @@ bool surfaceWheel(int x,int y,int delta){
     for(int display=0;display<2;++display)if(surfaceDisplayBox(display).contains(x,y)){
         surface.focusDisplay(display);
         if(surface.displays[display].module==lab::DisplayModule::Menu)turnSurfaceMenu(delta);
+        else if(surface.displays[display].module==lab::DisplayModule::Browser)moveSurfaceBrowserSelection(display,delta);
         return true;
     }
     return false;
@@ -162,6 +233,17 @@ bool surfaceClick(int x,int y,bool right){
         if(!surfaceDisplayBox(display).contains(x,y))continue;
         surface.focusDisplay(display);
         auto& binding=surface.displays[display];
+        if(binding.module==lab::DisplayModule::Browser){
+            auto& browser=browsers[display];
+            if(surfaceBrowserPreviousBox(display).contains(x,y)){moveSurfaceBrowserCategory(display,-1);return true;}
+            if(surfaceBrowserNextBox(display).contains(x,y)){moveSurfaceBrowserCategory(display,1);return true;}
+            for(int row=0;row<5;++row)if(surfaceBrowserFileBox(display,row).contains(x,y)){const int index=browser.scroll+row;if(index<int(browser.files.size())){browser.selected=index;if(browser.auditionMode==1)auditionSurfaceBrowser(display);}return true;}
+            if(surfaceBrowserModeBox(display).contains(x,y)){browser.auditionMode=(browser.auditionMode+1)%3;if(browser.auditionMode==0)engine.stopPreview();else if(browser.auditionMode==1)auditionSurfaceBrowser(display);status=L"Browser KICK — mode de préécoute "+surfaceBrowserModeName(browser.auditionMode)+L".";return true;}
+            if(surfaceBrowserAuditionBox(display).contains(x,y)){if(browser.auditionMode!=0)auditionSurfaceBrowser(display);return true;}
+            if(surfaceBrowserLoadBox(display).contains(x,y)){loadSurfaceBrowserSelection(display);return true;}
+            if(surfaceBrowserRefreshBox(display).contains(x,y)){refreshSurfaceBrowser(display,true);status=L"Bibliothèque actualisée : "+number(int(browser.files.size()))+L" WAV dans "+libraryCategories[browser.category]+L".";return true;}
+            return true;
+        }
         if(binding.module==lab::DisplayModule::Inserts){
             for(int slot=0;slot<lab::InsertSlots;++slot)if(surfaceInsertSlotBox(display,slot).contains(x,y)){
                 binding.slot=slot;binding.page=0;selectedInsert=slot;return true;
@@ -220,6 +302,20 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     round(dc,module,panel,focused?accent:line);
     round(dc,box,RGB(9,18,22),focused?accent:RGB(34,48,57));
     const auto& binding=surface.displays[display];
+    if(binding.module==lab::DisplayModule::Browser){
+        const auto& browser=browsers[display];
+        text(dc,{box.x+14,box.y+9,290,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  BROWSER  ·  PAD "+padName(binding.pad),12,focused?accent:muted,FW_SEMIBOLD);
+        text(dc,{box.x+310,box.y+9,130,24},number(int(browser.files.size()))+L" WAV",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
+        button(dc,surfaceBrowserPreviousBox(display),L"<");button(dc,surfaceBrowserCategoryBox(display),libraryCategories[browser.category],true);button(dc,surfaceBrowserNextBox(display),L">");
+        for(int row=0;row<5;++row){auto b=surfaceBrowserFileBox(display,row);const int index=browser.scroll+row;const bool selectedFile=index==browser.selected&&index<int(browser.files.size());
+            if(selectedFile)round(dc,b,accent,accent);else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
+            const std::wstring name=index<int(browser.files.size())?browser.files[index].filename().wstring():(row==0&&browser.files.empty()?L"Bibliothèque vide — ajoute des WAV via Bibliothèque":L"");
+            text(dc,{b.x+10,b.y,b.w-20,b.h},name,10,selectedFile?bg:(browser.files.empty()?muted:ink),selectedFile?FW_SEMIBOLD:FW_NORMAL);
+        }
+        button(dc,surfaceBrowserModeBox(display),surfaceBrowserModeName(browser.auditionMode),browser.auditionMode>0);button(dc,surfaceBrowserAuditionBox(display),L"Écouter",browser.auditionMode>0);button(dc,surfaceBrowserLoadBox(display),L"Charger",!browser.files.empty());button(dc,surfaceBrowserRefreshBox(display),L"Actualiser");
+        return;
+    }
     if(binding.module==lab::DisplayModule::MidiControl){
         text(dc,{box.x+14,box.y+9,270,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MIDI CONTROL",12,focused?accent:muted,FW_SEMIBOLD);
         text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / 5",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);

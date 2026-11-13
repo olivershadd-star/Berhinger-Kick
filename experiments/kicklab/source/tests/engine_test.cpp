@@ -33,12 +33,18 @@ int main(int argc,char**argv){try{
     wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);
     Engine e;float block[Block*2];std::string error;
     e.render(block);for(float v:block)check(v==0,"empty engine is not silent");
+    check(e.preview(path("mono.wav"),error),error.c_str());e.render(block);double previewEnergy=0;for(float value:block)previewEnergy+=value*value;
+    check(previewEnergy>1e-5,"browser preview is silent");auto previewState=e.snapshot();check(previewState.paths[0].empty(),"browser preview replaced a pad sample");
+    e.stopPreview();e.render(block);for(float value:block)check(value==0,"browser preview did not stop");
     check(e.load(0,path("mono.wav"),error),error.c_str());e.trigger(0);e.render(block);
     // The short clip now has 2 ms fades plus the engine startup ramp.
     double energy=0;for(int n=0;n<Block;++n){check(block[n*2]==block[n*2+1],"mono is not duplicated");energy+=block[n*2]*block[n*2];}check(energy>1e-5,"playback is silent with short fade");
     e.render(block);check(block[43*2]==0,"end fade is not silent at boundary");for(int n=44;n<Block;++n)check(block[n*2]==0&&block[n*2+1]==0,"stale samples after EOF");e.render(block);for(float v:block)check(v==0,"one-shot does not stop");
     check(e.load(1,path("resample.wav"),error),error.c_str());e.trigger(1);int active=0;for(int b=0;b<24;++b){e.render(block);for(int n=0;n<Block;++n)if(std::abs(block[n*2])>.00001)++active;}check(active>4500&&active<4801,"44.1 kHz conversion duration incorrect");
     check(e.load(0,path("long.wav"),error),error.c_str());e.stop();e.trigger(0);for(int b=0;b<200;++b)e.render(block);check(!e.snapshot().active[0],"manual pad audition looped after WAV end");
+    PadEdit preserved;preserved.gain=.37;preserved.semitones=-5;preserved.inserts[2]=defaultInsertState(InsertEffect::Chorus);e.setEdit(0,preserved);
+    check(e.load(0,path("mono.wav"),error,true),error.c_str());auto preservedState=e.snapshot().edits[0];
+    check(preservedState.gain==.37&&preservedState.semitones==-5&&preservedState.inserts[2].effect==InsertEffect::Chorus,"confirmed browser load reset pad editing");
     e.trigger(0);e.setVolume(0);e.render(block);for(float v:block)check(v==0,"master mute failed");e.setVolume(.65);e.stop();
     for(int p=0;p<Pads;++p)check(e.load(p,path("long.wav"),error),error.c_str());for(int p=0;p<Pads;++p)e.trigger(p);e.render(block);for(float v:block)check(std::isfinite(v)&&std::abs(v)<=.98f,"mixing overflow");
     e.stop();e.demoPattern();e.setTempo(120);e.setPlaying(true);e.render(block);e.setPlaying(false);int paused=e.snapshot().step;for(int b=0;b<30;++b)e.render(block);check(e.snapshot().step==paused,"pause advances sequencer");e.stop();e.setPlaying(true);std::ofstream raw(std::filesystem::u8path(path("demo.f32")),std::ios::binary);

@@ -98,6 +98,7 @@ struct Engine::Impl {
     std::unique_ptr<AudIO::Design> graph;
     std::unique_ptr<AudIO::Buffer<float>> buffer;
     std::array<PadPlayback*,Pads> players{};
+    PadPlayback* previewPlayer{};
     std::array<std::atomic<bool>,Pads> pending{};
     Snapshot state;
     // Waveform/string copies belong to the UI, never the render lock.
@@ -117,13 +118,16 @@ struct Engine::Impl {
             state.names[i]="Vide";
             pending[i].store(false);
         }
+        auto preview=std::make_unique<PadPlayback>();previewPlayer=preview.get();
+        auto previewId=graph->createObject(std::move(preview));
+        if(!graph->sendToBus(bus,previewId,1.f)) throw std::runtime_error("Echec du routage de la preecoute AudIO.");
         graph->setDesignOutput(bus);graph->setBypass(false);graph->prepareToPlay(Rate,Block);
         buffer=std::make_unique<AudIO::Buffer<float>>(0,false,2,true);
     }
     ~Impl(){graph->teardown();buffer.reset();graph.reset();}
 };
 Engine::Engine():impl(std::make_unique<Impl>()) {} Engine::~Engine()=default;
-bool Engine::load(int pad,const std::string& path,std::string& error) {
+bool Engine::load(int pad,const std::string& path,std::string& error,bool preserveEdit) {
     if(pad<0||pad>=Pads){error="Pad invalide.";return false;}
     try {
         auto file=decode(path);
@@ -132,18 +136,28 @@ bool Engine::load(int pad,const std::string& path,std::string& error) {
         for(size_t i=0;i<samples.size();++i){size_t j=std::min<size_t>(319,i*320/samples.size());waveform[j]=std::max(waveform[j],std::abs(samples[i]));}
         auto name=std::filesystem::u8path(path).stem().u8string();
         auto storedPath=path;
-        PadEdit freshEdit;auto effects=std::make_unique<PadEffects>(freshEdit);
+        PadEdit edit;
+        if(preserveEdit){std::lock_guard<std::mutex> lock(impl->mutex);edit=impl->state.edits[pad];}
+        auto effects=std::make_unique<PadEffects>(edit);
         const double duration=double(samples.size())/Rate;
         {std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);
          file=impl->players[pad]->replaceFile(std::move(file));
          impl->loaded[pad]=true;
          impl->state.names[pad].swap(name);impl->state.paths[pad].swap(storedPath);
          impl->state.waveforms[pad].swap(waveform);
-         impl->state.durations[pad]=duration;impl->state.edits[pad]=freshEdit;
-         impl->players[pad]->edit=freshEdit;impl->players[pad]->effects.swap(effects);impl->players[pad]->resetMix();}
+         impl->state.durations[pad]=duration;impl->state.edits[pad]=edit;
+         impl->players[pad]->edit=edit;impl->players[pad]->effects.swap(effects);impl->players[pad]->resetMix();}
         return true;
     } catch(const std::exception& e){error=e.what();return false;}
 }
+bool Engine::preview(const std::string& path,std::string& error){
+    try{
+        auto file=decode(path);std::unique_ptr<AudioFile<float>> retired;
+        {std::lock_guard<std::mutex> lock(impl->audioMutex);impl->previewPlayer->stop();retired=impl->previewPlayer->replaceFile(std::move(file));impl->previewPlayer->edit={};impl->previewPlayer->resetMix();impl->previewPlayer->trigger();}
+        return true;
+    }catch(const std::exception& e){error=e.what();return false;}
+}
+void Engine::stopPreview(){std::lock_guard<std::mutex> lock(impl->audioMutex);impl->previewPlayer->stop();}
 void Engine::trigger(int pad){if(pad>=0&&pad<Pads)impl->pending[pad].store(true);}
 void Engine::setEdit(int pad,const PadEdit& requested){
     if(pad<0||pad>=Pads)return;
@@ -167,7 +181,7 @@ void Engine::toggle(int p,int s){if(p<0||p>=Pads||s<0||s>=Steps)return;std::lock
 void Engine::clearPattern(){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.pattern={};}
 void Engine::demoPattern(){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.pattern={};for(int s:{0,4,8,12})impl->state.pattern[0][s]=true;for(int s:{4,12})impl->state.pattern[1][s]=true;for(int s=0;s<16;s+=2)impl->state.pattern[2][s]=true;impl->state.pattern[3][14]=true;}
 void Engine::setPlaying(bool b){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.playing=b;}
-void Engine::stop(){std::scoped_lock lock(impl->mutex,impl->audioMutex);impl->state.playing=false;impl->state.step=-1;impl->untilStep=0;impl->nextStep=0;for(int p=0;p<Pads;++p){impl->players[p]->stop();impl->pending[p].store(false);}}
+void Engine::stop(){std::scoped_lock lock(impl->mutex,impl->audioMutex);impl->state.playing=false;impl->state.step=-1;impl->untilStep=0;impl->nextStep=0;for(int p=0;p<Pads;++p){impl->players[p]->stop();impl->pending[p].store(false);}impl->previewPlayer->stop();}
 void Engine::setTempo(double t){if(!std::isfinite(t))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.tempo=std::clamp(t,40.,240.);}
 void Engine::setVolume(double v){if(!std::isfinite(v))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.volume=std::clamp(v,0.,1.);}
 Snapshot Engine::snapshot(){
