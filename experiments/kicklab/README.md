@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.6.0 conserve le moteur audio validé et réorganise la surface Windows selon le contrôleur Maschine+ : deux écrans KICK indépendants, huit knobs contextuels, groupes A–H, commandes physiques et seize pads commutables entre Pad, Keyboard et Step. Elle conserve aussi Pad Perform/Keygroup, seize séquences de une à quatre mesures, Next Sequence, Song, Program Edit et quatre inserts par pad.
+La version 0.6.1 conserve le moteur audio validé et réorganise la surface Windows selon le contrôleur Maschine+ : deux écrans KICK indépendants, huit knobs contextuels, groupes A–H, commandes physiques et seize pads commutables entre Pad, Keyboard et Step. Elle conserve aussi Pad Perform/Keygroup, seize séquences de une à quatre mesures, Next Sequence, Song, Program Edit et quatre inserts par pad.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -71,8 +71,8 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Tempo : boutons − / + ou molette. Volume général : barre Master.
 - Clic droit sur un pad : charger un WAV. Glisser-déposer un WAV sur un pad ou sur l'éditeur est également possible.
 - MIDI : sélectionner Maschine+ depuis **SETTINGS** ou **MIDI Control**. Les notes 36 à 51 restent le secours initial du groupe actif. Note Off et Note On de vélocité nulle libèrent l'enveloppe.
-- **MIDI Control** apprend 16 CC de knobs (deux pages physiques), 128 pads répartis dans A–H, les huit touches Soft, les groupes, les modes, le transport, les commandes latérales, les raccourcis, les directions, la rotation 4D et Retour/Escape. La page de pads suit le groupe A–H actif. Un clic droit efface une affectation ou change le mode d'un encodeur.
-- Un CC appris commande le même Q-Link que la souris. Les deux pages physiques de knobs peuvent viser les huit paramètres visibles. Les commandes apprises passent par la même couche que le clavier et la souris. Le profil `KICKMIDI 4` est enregistré dans `profiles/MaschinePlus.kickmidi`; les versions 1–3 restent lisibles. Une nouvelle rotation 4D est apprise en relatif `1/127`, ce qui gère les deux sens ; `ABS` et relatif `63/65` restent disponibles.
+- **MIDI Control** apprend 16 CC de knobs (deux pages physiques), 128 pads répartis dans A–H, les huit touches Soft, les groupes, les modes, le transport, les commandes latérales, les raccourcis, les directions, la rotation 4D et Retour/Escape. La page de pads suit le groupe A–H actif. Un clic droit efface une affectation ou change le mode d'un encodeur. La 0.6.1 reconnecte automatiquement le dernier port MIDI et conserve le profil dans `%LOCALAPPDATA%\KICKLab`, avec une copie portable. Elle recherche aussi le profil d'un ancien dossier voisin ; **SETTINGS → Importer un ancien profil MIDI** permet une récupération manuelle.
+- Un CC appris commande le même Q-Link que la souris. Les deux pages physiques de knobs peuvent viser les huit paramètres visibles. Les commandes apprises passent par la même couche que le clavier et la souris. Le profil `KICKMIDI 4` possède une copie portable dans `profiles/MaschinePlus.kickmidi`; les versions 1–3 restent lisibles. Une nouvelle rotation 4D est apprise en relatif `1/127`, ce qui gère les deux sens ; `ABS` et relatif `63/65` restent disponibles.
 - REC n'est volontairement pas exposé : le portage ne possède pas encore de véritable enregistreur KICK. La vélocité expressive, le retour LED et l'horloge MIDI ne sont pas encore gérés.
 
 ## WAV et projets
