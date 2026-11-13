@@ -30,6 +30,8 @@ constexpr COLORREF bg=RGB(14,17,23),panel=RGB(23,28,37),muted=RGB(144,158,178),i
 COLORREF padColor(int i){constexpr COLORREF colors[]={RGB(255,133,103),RGB(241,184,88),RGB(76,217,184),RGB(132,161,250)};return colors[i/4];}
 std::wstring number(int n){return std::to_wstring(n);}
 std::wstring padName(int p){return (p<9?L"0":L"")+number(p+1);}
+std::wstring noteName(int note){static const std::array<const wchar_t*,12> names={L"C",L"C#",L"D",L"D#",L"E",L"F",L"F#",L"G",L"G#",L"A",L"A#",L"B"};note=std::clamp(note,0,127);return std::wstring(names[note%12])+number(note/12-1);}
+std::wstring performanceModeName(lab::PerformanceMode mode){switch(mode){case lab::PerformanceMode::Chromatic:return L"Chromatique";case lab::PerformanceMode::Major:return L"Gamme majeure";case lab::PerformanceMode::Minor:return L"Gamme mineure";default:return L"Drum";}}
 const std::array<int,16> keys={'A','Z','E','R','Q','S','D','F','W','X','C','V','1','2','3','4'};
 const std::array<std::wstring,16> labels={L"A",L"Z",L"E",L"R",L"Q",L"S",L"D",L"F",L"W",L"X",L"C",L"V",L"1",L"2",L"3",L"4"};
 const std::array<std::wstring,9> libraryCategories={L"Kicks",L"Snares",L"Hats",L"Percussions",L"Basses",L"Pads",L"Leads",L"FX",L"Autres"};
@@ -109,6 +111,7 @@ public:
     lab::Engine engine;lab::SurfaceState surface;AudioOutput audio{engine};HWND window{};std::filesystem::path base,library,midiProfile;
     std::array<BrowserState,lab::SurfaceDisplays> browsers{};
     int selected=0,tab=0;bool smoke=false;UINT audioId=WAVE_MAPPER;HMIDIIN midi{};int midiId=-1;
+    int songChoice=0,songRepeats=1,songSelected=0;
     std::array<lab::MidiCcBinding,8> midiQlinks{};std::array<lab::MidiCommandBinding,lab::MidiCommandCount> midiCommands{};int midiLearnTarget=-1,midiLearnCommand=-1;unsigned midiLastPacked=0;unsigned midiMessageCount=0;bool midiProfileLoaded=false;
     std::wstring status=L"Clique sur un pad pour jouer. Clic droit pour charger un WAV.";
     std::array<ULONGLONG,16> flashed{};int mouseX=-1,mouseY=-1;int width=1200,height=800;
@@ -176,11 +179,19 @@ public:
     void savePadToLibrary(){auto s=engine.snapshot();if(s.paths[selected].empty()){MessageBoxW(window,L"Charge d'abord un WAV sur ce pad.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}int category=libraryCategory();if(category<0)return;auto source=std::filesystem::u8path(s.paths[selected]);auto folder=library/libraryCategories[category];std::error_code ec;std::filesystem::create_directories(folder,ec);if(ec){MessageBoxW(window,L"Impossible de créer le dossier de cette catégorie.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}auto destinationText=choose(true,false,folder,source.filename().wstring());if(destinationText.empty())return;auto destination=std::filesystem::path(destinationText);if(std::filesystem::exists(destination,ec)&&std::filesystem::equivalent(source,destination,ec)){status=L"Ce WAV est déjà dans la bibliothèque : "+destination.filename().wstring();return;}ec.clear();std::filesystem::copy_file(source,destination,std::filesystem::copy_options::overwrite_existing,ec);if(ec){MessageBoxW(window,(L"Copie impossible : "+wide(ec.message())).c_str(),L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}std::string loadError;if(engine.load(selected,destination.u8string(),loadError,true))status=L"WAV ajouté à "+libraryCategories[category]+L" : "+destination.filename().wstring();else status=L"WAV copié, mais impossible de rattacher le pad : "+wide(loadError);}
     void project(bool save){auto p=choose(save,true);if(p.empty())return;std::string error;bool ok=save?engine.save(utf8(p),error):engine.open(utf8(p),error);if(!ok)MessageBoxW(window,wide(error).c_str(),L"Projet KICK Lab",MB_OK|MB_ICONINFORMATION);else{auto name=std::filesystem::path(p).filename().wstring();status=(save?L"Projet enregistré : ":L"Projet chargé : ")+name;}}
     void selectPad(int p){surface.selectPad(p);selected=surface.selectedPad;}
-    void play(int p){selectPad(p);engine.trigger(selected);flashed[selected]=GetTickCount64()+130;}
+    void play(int p){
+        p=std::clamp(p,0,lab::Pads-1);const auto module=surface.displays[surface.focusedDisplay].module;auto snapshot=engine.snapshot();
+        if(module==lab::DisplayModule::NextSequence){engine.queueSequence(p);status=snapshot.playing?L"Next Sequence en attente : "+number(p+1):L"Séquence sélectionnée : "+number(p+1);flashed[p]=GetTickCount64()+180;return;}
+        if(module==lab::DisplayModule::Song){songChoice=p;status=L"Song : séquence "+number(p+1)+L" prête à être ajoutée.";flashed[p]=GetTickCount64()+180;return;}
+        const auto& sequence=snapshot.sequences[snapshot.sequence];
+        if(sequence.mode!=lab::PerformanceMode::Drum){engine.triggerPitch(sequence.sourcePad,engine.performanceNote(p)-sequence.rootNote);flashed[p]=GetTickCount64()+180;return;}
+        selectPad(p);engine.trigger(selected);flashed[selected]=GetTickCount64()+130;
+    }
+    void releasePad(int p){const auto module=surface.displays[surface.focusedDisplay].module;if(module==lab::DisplayModule::NextSequence||module==lab::DisplayModule::Song)return;auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode!=lab::PerformanceMode::Drum)engine.releasePerformancePad(p);else engine.release(p);}
     void dispatch(const lab::SurfaceEvent& event){
         switch(event.action){
-        case lab::SurfaceAction::PadPress:if(event.index>=0&&event.index<lab::SurfacePads){if(event.pressed)play(event.index);else engine.release(event.index);}break;
-        case lab::SurfaceAction::StepToggle:if(event.index>=0&&event.index<lab::SurfacePads&&event.value>=0&&event.value<lab::SurfaceSteps){selectPad(event.index);engine.toggle(event.index,event.value);}break;
+        case lab::SurfaceAction::PadPress:if(event.index>=0&&event.index<lab::SurfacePads){if(event.pressed)play(event.index);else releasePad(event.index);}break;
+        case lab::SurfaceAction::StepToggle:if(event.index>=0&&event.index<lab::SurfacePads&&event.value>=0&&event.value<lab::SurfaceSteps){auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)selectPad(event.index);engine.toggle(event.index,event.value);}break;
         case lab::SurfaceAction::PlayPause:{auto s=engine.snapshot();engine.setPlaying(!s.playing);break;}
         case lab::SurfaceAction::Stop:engine.stop();break;
         case lab::SurfaceAction::TempoDelta:engine.setTempo(engine.snapshot().tempo+event.value);break;
@@ -224,10 +235,16 @@ public:
         else if(Box{42,680,112,34}.contains(x,y))midiMenu();
         else if(Box{166,680,112,34}.contains(x,y))audioMenu();
         else if(Box{208,708,80,60}.contains(x,y)){auto s=engine.snapshot();engine.setVolume(std::clamp(s.volume+(x<248?-.05:.05),0.,1.));}
+        else if(Box{770,406,70,28}.contains(x,y)){auto s=engine.snapshot();auto mode=s.sequences[s.sequence].mode;if(mode==lab::PerformanceMode::Drum){engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);status=L"Pad Notes chromatique — le pad "+padName(selected)+L" est la source mélodique.";}else{engine.setPerformanceMode(lab::PerformanceMode::Drum);status=L"Vue Drum — les 16 pads retrouvent leurs samples.";}}
+        else if(Box{844,406,26,28}.contains(x,y)){auto s=engine.snapshot();engine.selectSequence(std::max(0,s.sequence-1));}
+        else if(Box{930,406,26,28}.contains(x,y)){auto s=engine.snapshot();engine.selectSequence(std::min(lab::Sequences-1,s.sequence+1));}
+        else if(Box{960,406,26,28}.contains(x,y)){auto s=engine.snapshot();engine.setViewBar(s.viewBar-1);}
+        else if(Box{1048,406,26,28}.contains(x,y)){auto s=engine.snapshot();engine.setViewBar(s.viewBar+1);}
+        else if(Box{1078,406,80,28}.contains(x,y)){auto s=engine.snapshot();const int bars=s.sequences[s.sequence].bars;engine.setSequenceBars(bars%lab::MaxBars+1);status=L"Longueur de la séquence : "+number(bars%lab::MaxBars+1)+L" mesure(s).";}
         else {
-            for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){selectPad(p);if(right)sampleMenu();else dispatch({lab::SurfaceAction::PadPress,p});return;}
-            if(x>=692&&x<1140&&y>=450&&y<754){int p=(y-450)/19,k=(x-692)/28;if(p<16&&k<16)dispatch({lab::SurfaceAction::StepToggle,p,k});}
-            else if(x>=622&&x<686&&y>=450&&y<754)selectPad((y-450)/19);
+            for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){if(right){selectPad(p);sampleMenu();}else dispatch({lab::SurfaceAction::PadPress,p});return;}
+            if(x>=692&&x<1140&&y>=450&&y<754){int row=(y-450)/19,k=(x-692)/28;auto s=engine.snapshot();int p=s.sequences[s.sequence].mode==lab::PerformanceMode::Drum?row:15-row;if(p<16&&k<16)dispatch({lab::SurfaceAction::StepToggle,p,k});}
+            else if(x>=622&&x<686&&y>=450&&y<754){int row=(y-450)/19;auto s=engine.snapshot();if(s.sequences[s.sequence].mode==lab::PerformanceMode::Drum)selectPad(row);else dispatch({lab::SurfaceAction::PadPress,15-row});}
         }
     }
     void fill(HDC dc,Box b,COLORREF c){auto r=b.rect();HBRUSH brush=CreateSolidBrush(c);FillRect(dc,&r,brush);DeleteObject(brush);}
@@ -254,11 +271,12 @@ public:
         button(dc,{42,636,112,34},L"Ouvrir projet");button(dc,{166,636,112,34},L"Enregistrer");
         button(dc,{42,680,112,34},midiId<0?L"MIDI : off":L"MIDI : on");button(dc,{166,680,112,34},audio.running?L"Audio : Windows":L"Choisir audio");
         text(dc,{42,720,154,17},L"AZERTY · MIDI 36–51",9,muted);text(dc,{42,742,154,17},L"Clic droit : charger WAV",9,muted);paintMasterKnob(dc,s.volume);
-        round(dc,{308,398,272,374},panel);text(dc,{322,408,244,25},L"16 PADS / ONE-SHOTS",12,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        ULONGLONG now=GetTickCount64();for(int p=0;p<16;++p){auto b=padBox(p);bool hot=now<flashed[p]||s.active[p];COLORREF c=padColor(p);round(dc,b,hot?c:RGB(32,39,51),p==selected?c:line);fill(dc,{b.x+7,b.y+8,5,5},c);text(dc,{b.x+15,b.y+2,b.w-20,20},number(p+1),11,hot?bg:muted,FW_SEMIBOLD);text(dc,{b.x+5,b.y+22,b.w-10,22},wide(s.names[p]),9,hot?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);text(dc,{b.x+5,b.y+46,b.w-10,15},labels[p],9,hot?bg:muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-        round(dc,{608,398,564,374},panel);text(dc,{622,408,150,25},L"SÉQUENCEUR 16 × 16",12,ink,FW_SEMIBOLD);
-        for(int k=0;k<16;++k)text(dc,{692+k*28,426,24,18},number(k+1),9,k==s.step?accent:muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);
-        for(int p=0;p<16;++p){if(p==selected)fill(dc,{618,450+p*19,538,17},RGB(32,41,52));text(dc,{622,450+p*19,26,17},number(p+1),9,padColor(p),FW_SEMIBOLD);text(dc,{650,450+p*19,36,17},labels[p],8,p==selected?ink:muted);for(int k=0;k<16;++k){COLORREF c=s.pattern[p][k]?padColor(p):(k/4%2?RGB(38,46,59):RGB(31,38,49));if(s.playing&&s.step==k&&!s.pattern[p][k])c=RGB(58,76,84);round(dc,{692+k*28,451+p*19,23,14},c,s.playing&&s.step==k?ink:c);}}
+        const auto module=surface.displays[surface.focusedDisplay].module;const auto& sequence=s.sequences[s.sequence];const bool notes=sequence.mode!=lab::PerformanceMode::Drum,nextMode=module==lab::DisplayModule::NextSequence,songMode=module==lab::DisplayModule::Song;
+        round(dc,{308,398,272,374},panel);text(dc,{322,408,244,25},nextMode?L"16 PADS / NEXT SEQUENCE":songMode?L"16 PADS / SONG SELECT":notes?L"16 PADS / PAD NOTES":L"16 PADS / ONE-SHOTS",12,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ULONGLONG now=GetTickCount64();for(int p=0;p<16;++p){auto b=padBox(p);bool hot=now<flashed[p]||(!notes&&!nextMode&&!songMode&&s.active[p]);COLORREF c=padColor(p);const bool chosen=(nextMode&&(p==s.sequence||p==s.queuedSequence))||(songMode&&p==songChoice)||(!notes&&!nextMode&&!songMode&&p==selected);round(dc,b,hot?c:RGB(32,39,51),chosen?c:line);fill(dc,{b.x+7,b.y+8,5,5},c);text(dc,{b.x+15,b.y+2,b.w-20,20},number(p+1),11,hot?bg:muted,FW_SEMIBOLD);std::wstring middle=nextMode||songMode?L"SEQ "+number(p+1):notes?noteName(engine.performanceNote(p)):wide(s.names[p]);std::wstring bottom=notes?labels[p]+L" · "+wide(s.names[sequence.sourcePad]):labels[p];text(dc,{b.x+5,b.y+22,b.w-10,22},middle,9,hot?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);text(dc,{b.x+5,b.y+46,b.w-10,15},bottom,8,hot?bg:muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}
+        round(dc,{608,398,564,374},panel);text(dc,{622,408,146,25},notes?L"SÉQUENCEUR NOTES":L"SÉQUENCEUR DRUM",12,ink,FW_SEMIBOLD);button(dc,{770,406,70,28},notes?L"NOTES":L"DRUM",notes);button(dc,{844,406,26,28},L"<");text(dc,{873,406,54,28},L"SEQ "+number(s.sequence+1),9,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);button(dc,{930,406,26,28},L">");button(dc,{960,406,26,28},L"<");text(dc,{989,406,56,28},L"BAR "+number(s.viewBar+1),9,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);button(dc,{1048,406,26,28},L">");button(dc,{1078,406,80,28},L"LEN "+number(sequence.bars)+L" BAR");
+        const bool playVisible=s.playing&&s.playBar==s.viewBar;for(int k=0;k<16;++k)text(dc,{692+k*28,426,24,18},number(k+1),9,playVisible&&k==s.step?accent:muted,FW_NORMAL,DT_CENTER|DT_SINGLELINE);
+        for(int row=0;row<16;++row){const int p=notes?15-row:row;const int mapped=notes?engine.performanceNote(p):-1;if(!notes&&p==selected)fill(dc,{618,450+row*19,538,17},RGB(32,41,52));text(dc,{622,450+row*19,62,17},notes?noteName(mapped):number(p+1)+L"   "+labels[p],8,notes?accent:padColor(p),FW_SEMIBOLD,DT_LEFT|DT_VCENTER|DT_SINGLELINE);for(int k=0;k<16;++k){const bool active=notes?s.melody[k]==mapped:s.pattern[p][k];COLORREF c=active?(notes?accent:padColor(p)):(k/4%2?RGB(38,46,59):RGB(31,38,49));if(playVisible&&s.step==k&&!active)c=RGB(58,76,84);round(dc,{692+k*28,451+row*19,23,14},c,playVisible&&s.step==k?ink:c);}}
         unsigned error=audio.error.load();std::wstring message=status;if(error){wchar_t buf[256]{};waveOutGetErrorTextW(error,buf,256);message=L"Audio indisponible : "+std::wstring(buf)+L" — choisir une autre sortie.";}
         if(error){fill(dc,{470,17,702,28},bg);text(dc,{470,17,702,28},L"Audio indisponible — clique sur Choisir audio.",9,RGB(255,133,103),FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}
     }
@@ -338,7 +356,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,1200,800};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.3.0 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.4.0 — AudIO / Prototype Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }

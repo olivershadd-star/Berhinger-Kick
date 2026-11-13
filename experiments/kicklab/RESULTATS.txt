@@ -1,11 +1,13 @@
-KICK Lab 0.3.0 — Program Edit, ADSR et banque de 26 effets
+KICK Lab 0.4.0 — Pad Perform, 16 séquences et Song Editor
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; découpe et octave ; gain individuel ; enveloppe ADSR et Note Off ; construction et rendu fini des 26 effets ; ordre des quatre inserts ; bypass ; identités, paramètres et enveloppes sauvegardés/rechargés en KICKLAB 4 ; migration des projets KICKLAB 1, 2 et 3 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; enveloppe ADSR et Note Off ; construction et rendu fini des 26 effets ; ordre des quatre inserts ; bypass ; changement Next Sequence à la frontière de boucle ; répétitions et fin du Song ; séquences, notes, arrangement, paramètres et enveloppes sauvegardés/rechargés en KICKLAB 5 ; migration des projets KICKLAB 1 à 4 ; remise en file des buffers ; continuité sous activité graphique.
+
+0.4.0 porte une première tranche cohérente de Pad Perform/Keygroup, Next Sequence et Song Editor. Chaque projet possède seize séquences de une à quatre mesures, une grille Drum et une grille Notes par séquence. Un sample source peut être joué chromatiquement ou dans une gamme majeure/mineure et séquencé note par note. Les pads sélectionnent ou mettent en attente les séquences ; Song enchaîne jusqu'à 32 étapes avec répétitions. Les trois pages utilisent les deux écrans, les Q-Links et les mêmes commandes clavier/souris/MIDI que la surface Windows.
 
 0.3.0 porte la première page Program Edit exploitable dans les deux écrans : volume, accordage, début/fin et enveloppe Attack, Decay, Sustain, Release. Douze nouveaux processeurs Airwindows issus de 0700-AAM complètent le rack : Baxandall2, Biquad2, Pressure5, Pop2, AutoPan, ChorusEnsemble, PurestEcho, TapeDelay2, Chamber2, Galactic, DeRez2 et BitGlitter. Les effets de cinq ou six paramètres utilisent plusieurs pages et les deux écrans peuvent afficher deux pages du même effet en parallèle.
 

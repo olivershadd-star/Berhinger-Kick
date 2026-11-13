@@ -49,7 +49,30 @@ int main(int argc,char**argv){try{
     for(int p=0;p<Pads;++p)check(e.load(p,path("long.wav"),error),error.c_str());for(int p=0;p<Pads;++p)e.trigger(p);e.render(block);for(float v:block)check(std::isfinite(v)&&std::abs(v)<=.98f,"mixing overflow");
     e.stop();e.demoPattern();e.setTempo(120);e.setPlaying(true);e.render(block);e.setPlaying(false);int paused=e.snapshot().step;for(int b=0;b<30;++b)e.render(block);check(e.snapshot().step==paused,"pause advances sequencer");e.stop();e.setPlaying(true);std::ofstream raw(std::filesystem::u8path(path("demo.f32")),std::ios::binary);
     int transitions=0,last=-1;double sum=0;for(int b=0;b<375;++b){e.render(block);raw.write(reinterpret_cast<const char*>(block),sizeof(block));for(float v:block)sum+=v*v;int s=e.snapshot().step;if(s!=last){++transitions;last=s;}}check(transitions==16,"sequencer timing failed");check(sum>1,"sequencer is silent");e.stop();
-    check(e.save(path("pattern.kicklab"),error),error.c_str());e.clearPattern();check(e.open(path("pattern.kicklab"),error),error.c_str());check(e.snapshot().pattern[0][0]&&e.snapshot().pattern[1][4],"pattern roundtrip failed");
+    // KICK Pad Perform / Keygroup: one sample can be played and sequenced chromatically.
+    e.selectSequence(0);e.setSequenceBars(2);e.setViewBar(1);e.setPerformanceMode(PerformanceMode::Chromatic);e.setMelodicSourcePad(12);e.setRootNote(48);e.toggle(7,3);
+    auto arrangement=e.snapshot();
+    check(arrangement.sequences[0].bars==2&&arrangement.sequences[0].mode==PerformanceMode::Chromatic,"Pad Perform mode was not stored");
+    check(arrangement.sequences[0].melody[19]==55&&arrangement.melody[3]==55,"melodic step did not retain its note");
+    check(e.performanceNote(7)==55,"chromatic pad mapping is incorrect");
+    e.setPerformanceMode(PerformanceMode::Major);check(e.performanceNote(7)==60,"major scale pad mapping is incorrect");e.setPerformanceMode(PerformanceMode::Chromatic);
+    // Next Sequence waits for the complete sequence boundary.
+    e.selectSequence(1);e.clearPattern();e.setSequenceBars(1);e.setPerformanceMode(PerformanceMode::Drum);e.toggle(0,0);
+    e.selectSequence(2);e.clearPattern();e.setSequenceBars(1);e.setPerformanceMode(PerformanceMode::Drum);e.toggle(1,0);
+    e.selectSequence(1);e.setPlaying(true);e.queueSequence(2);for(int b=0;b<400;++b)e.render(block);
+    arrangement=e.snapshot();check(arrangement.sequence==2&&arrangement.queuedSequence==-1,"queued sequence did not switch at the boundary");e.stop();
+    // Song chains complete sequences and honours repetitions.
+    e.clearSong();e.addSongStep(1,1);e.addSongStep(2,2);e.playSong();for(int b=0;b<400;++b)e.render(block);
+    arrangement=e.snapshot();check(arrangement.songPlaying&&arrangement.songPosition==1&&arrangement.sequence==2,"Song did not advance to its second step");
+    for(int b=0;b<400;++b)e.render(block);arrangement=e.snapshot();check(arrangement.songPosition==1&&arrangement.songRepeat==1,"Song repetition counter is incorrect");
+    for(int b=0;b<400;++b)e.render(block);arrangement=e.snapshot();check(!arrangement.playing&&!arrangement.songPlaying&&arrangement.songPosition==-1,"Song did not stop after its arrangement");
+    // KICKLAB 5 keeps all sequences, melodic notes and Song data.
+    e.selectSequence(0);e.setViewBar(1);
+    check(e.save(path("pattern.kicklab"),error),error.c_str());e.clearPattern();check(e.open(path("pattern.kicklab"),error),error.c_str());e.setViewBar(0);check(e.snapshot().pattern[0][0]&&e.snapshot().pattern[1][4],"pattern roundtrip failed");
+    arrangement=e.snapshot();
+    check(arrangement.sequences[0].bars==2&&arrangement.sequences[0].mode==PerformanceMode::Chromatic&&arrangement.sequences[0].sourcePad==12&&arrangement.sequences[0].rootNote==48,"sequence settings roundtrip failed");
+    check(arrangement.sequences[0].melody[19]==55&&arrangement.sequences[1].drum[0][0]&&arrangement.sequences[2].drum[1][0],"multi-sequence roundtrip failed");
+    check(arrangement.songLength==2&&arrangement.song[0].sequence==1&&arrangement.song[0].repeats==1&&arrangement.song[1].sequence==2&&arrangement.song[1].repeats==2,"Song roundtrip failed");
     {std::ofstream f(std::filesystem::u8path(path("broken.wav")),std::ios::binary);f<<"RIFF";}check(!e.load(0,path("broken.wav"),error),"truncated WAV accepted");
     {std::ofstream f(std::filesystem::u8path(path("bad.kicklab")));f<<"INVALID";}check(!e.open(path("bad.kicklab"),error),"invalid project accepted");
     {std::ofstream f(std::filesystem::u8path(path("sparse.kicklab")));f<<"KICKLAB 1\n120 0.65\n";for(int p=0;p<Pads;++p)f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<'\n';}
@@ -63,6 +86,9 @@ int main(int argc,char**argv){try{
     int crossings=0;float previous=0;
     for(int b=0;b<100;++b){e.render(block);for(int n=0;n<Block;++n){float v=block[n*2];if(previous<=0&&v>1e-5)++crossings;previous=v;if(b*Block+n>=24000)check(v==0,"pitch octave duration incorrect");}}
     check(crossings>=438&&crossings<=442,"octave pitch does not double frequency");
+    edit.semitones=0;e.setEdit(0,edit);e.stop();e.triggerPitch(0,12);crossings=0;previous=0;
+    for(int b=0;b<100;++b){e.render(block);for(int n=0;n<Block;++n){float v=block[n*2];if(previous<=0&&v>1e-5)++crossings;previous=v;}}
+    check(crossings>=438&&crossings<=442,"per-note Pad Perform pitch is incorrect");
     wav(path("high.wav"),48000,2,48000,8000,26000);
     auto measure=[&](const PadEdit& settings){
         check(e.load(0,path("high.wav"),error),error.c_str());e.setEdit(0,settings);e.stop();e.trigger(0);
@@ -111,11 +137,14 @@ int main(int argc,char**argv){try{
     check(restored.insertsBypass&&restored.inserts[0].effect==InsertEffect::Lowpass&&!restored.inserts[0].bypass&&restored.inserts[0].parameters[0]==.4&&restored.inserts[1].effect==InsertEffect::PurestDrive&&!restored.inserts[1].bypass&&restored.inserts[1].parameters[0]==.8,"v2 effect migration failed");
     {std::ofstream f(std::filesystem::u8path(path("legacy-v3.kicklab")));f<<"KICKLAB 3\n120 0.65\n";for(int p=0;p<Pads;++p){f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<" 0 1 1 0 2 0";for(int slot=0;slot<InsertSlots;++slot)f<<" 0 0 0";f<<'\n';}}
     check(e.open(path("legacy-v3.kicklab"),error),error.c_str());restored=e.snapshot().edits[0];check(restored.attack==0&&restored.decay==0&&restored.sustain==1&&restored.release==0,"v3 project did not receive the default envelope");
+    {std::ofstream f(std::filesystem::u8path(path("legacy-v4.kicklab")));f<<"KICKLAB 4\n120 0.65\n";for(int p=0;p<Pads;++p){f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<" 0 1 1 0 2 .1 .2 .7 .3 0";for(int slot=0;slot<InsertSlots;++slot)f<<" 0 0 0";f<<'\n';}}
+    check(e.open(path("legacy-v4.kicklab"),error),error.c_str());restored=e.snapshot().edits[0];check(restored.attack==.1&&restored.decay==.2&&restored.sustain==.7&&restored.release==.3,"v4 envelope migration failed");
     PadEdit envelope;envelope.fadeMs=0;e.setEdit(0,envelope);e.stop();e.trigger(0);e.render(block);double immediateEnergy=0;for(float value:block)immediateEnergy+=value*value;
     envelope.attack=.5;e.setEdit(0,envelope);e.stop();e.trigger(0);e.render(block);double attackEnergy=0;for(float value:block)attackEnergy+=value*value;check(attackEnergy<immediateEnergy*.01,"amplitude envelope attack is ineffective");
     envelope.attack=0;envelope.release=.1;e.setEdit(0,envelope);e.stop();e.trigger(0);e.render(block);e.release(0);for(int b=0;b<12;++b)e.render(block);check(!e.snapshot().active[0],"amplitude envelope release did not stop the voice");
     e.setInsertEffect(0,2,InsertEffect::PurestDrive);e.setInsertParameter(0,2,0,.42);e.setInsertBypass(0,2,true);restored=e.snapshot().edits[0];check(restored.inserts[2].effect==InsertEffect::PurestDrive&&restored.inserts[2].parameters[0]==.42&&restored.inserts[2].bypass,"insert control API failed");
-    std::cout<<"PASS: trim, pitch, ADSR, 26 Airwindows effects, four AudIO inserts, project v4 and v1/v2/v3 compatibility\n";
+    std::cout<<"PASS: trim, Pad Perform pitch, ADSR, 26 Airwindows effects and four AudIO inserts\n";
+    std::cout<<"PASS: 16 sequences, Next Sequence, Song arrangement, project v5 and v1/v2/v3/v4 compatibility\n";
     // Batched driver completions across the ring boundary must preserve time order.
     AudioQueue<4> queue;std::array<bool,4> ready={true,true,true,false};std::vector<int> submitted;
     auto submit=[&](size_t b){submitted.push_back(int(b));ready[b]=false;return true;};

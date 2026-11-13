@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle intègre vingt-six processeurs Airwindows repris du dépôt KICK, une enveloppe ADSR par pad, la surface à deux écrans et la première adaptation MIDI Learn pour Maschine+.
+Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et le rack de quatre inserts validés. Elle ajoute une première tranche cohérente du flux musical KICK : Pad Perform/Keygroup mélodique, seize séquences de une à quatre mesures, Next Sequence et arrangement Song. Les vingt-six processeurs Airwindows, l'enveloppe ADSR, la surface à deux écrans et le MIDI Learn pour Maschine+ restent disponibles.
 
 ![Éditeur de sample et effets par pad](APERCU-SAMPLE.png)
 
@@ -15,6 +15,8 @@ Cette préversion conserve le moteur, la bibliothèque, les potentiomètres et l
 3. Dans **Jouer**, cliquer sur les pads, ou charger **Démo** avant de lancer le pattern. Le pattern démarre volontairement vide.
 4. Cliquer dans l'écran A ou B, puis sur **Sample & FX**, charge les quatre inserts du pad sélectionné dans cet écran. Choisir un slot, cliquer sur son effet ou son bypass, puis régler ses paramètres avec P1–P4 ou P5–P8. Les flèches `<` et `>` changent de page lorsqu'un effet possède plus de quatre paramètres.
 5. Dans **Main**, l'élément **12 Program Edit** ouvre le volume, l'accordage, la découpe et l'enveloppe ADSR du pad. Les deux pages sont pilotées par P5–P8 dans l'écran B. L'éditeur détaillé transitoire reste accessible depuis **Sample Editor** dans le menu KICK.
+6. Ouvrir **13 Pad Notes**, choisir le sample source et la note racine, puis passer la grille sur **NOTES**. Les pads et les lignes de la grille deviennent des hauteurs chromatiques, majeures ou mineures.
+7. Ouvrir **4 Sequences** pour sélectionner ou mettre en attente une des seize séquences. Ouvrir **8 Songs**, choisir les séquences avec les pads, régler les répétitions avec P2 et les ajouter à l'arrangement.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
@@ -53,9 +55,14 @@ La découpe, l'accordage, les fondus et l'enveloppe sont appliqués au prochain 
 
 Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la voix de ce pad ; les autres pads continuent. Un nouveau déclenchement relance le sample : cette version n'a qu'une voix par pad.
 
-## Séquenceur, clavier et MIDI
+## Pad Perform, séquences et Song
 
-- 16 pads et 16 pas sur une mesure, doubles croches. Le pattern démarre vide afin qu'un WAV importé ne soit jamais redéclenché à l'insu de l'utilisateur ; **Démo** charge le pattern d'exemple. Cliquer dans la grille pour activer/désactiver un pas.
+- Chaque projet contient seize séquences de une à quatre mesures, en doubles croches. Les flèches `SEQ`, `BAR` et `LEN` au-dessus de la grille changent la séquence, la mesure visible et la longueur.
+- Chaque séquence conserve simultanément ses pistes de batterie et une piste mélodique. **DRUM** affiche les seize pistes de samples ; **NOTES** affiche les hauteurs du sample source. **Démo** charge un rythme et une courte ligne de basse.
+- **Pad Notes / Keygroup** reprend la logique Pad Perform publiée dans KICK : modes chromatique, gamme majeure et gamme mineure, sample source et note racine. Un clic de pad, une touche AZERTY ou une note MIDI joue le même sample à une hauteur différente. La transposition change aussi la durée, sans time-stretch.
+- **Next Sequence** affecte les séquences 1–16 aux pads. À l'arrêt, le choix est immédiat ; pendant la lecture, la nouvelle séquence est mise en attente jusqu'à la fin complète de la séquence courante.
+- **Song Editor** enchaîne jusqu'à 32 étapes, chacune composée d'une séquence et de 1 à 128 répétitions. `Lire` lance l'arrangement et s'arrête à sa fin.
+- L'écran qui possède le focus détermine le rôle contextuel des pads : samples/notes, sélection de séquence ou sélection pour Song. Le clic droit d'un pad continue à charger un WAV.
 - Espace : lecture/pause du séquenceur. Échap : arrêt et coupure des voix.
 - Pads au clavier, par rangée : **A Z E R / Q S D F / W X C V / 1 2 3 4**. Le clic est toujours disponible.
 - Tempo : boutons − / + ou molette. Volume général : barre Master.
@@ -73,16 +80,16 @@ WAV PCM 16/24/32 bits ou flottant 32 bits, mono/stéréo, de 8 à 192 kHz, jusqu
 
 L'élément **Browser** du menu KICK ouvre maintenant la première page réellement portée du navigateur d'origine. Gauche/droite change de catégorie, haut/bas ou la rotation 4D parcourt les WAV, **Enter** ou **Charger** affecte le choix au pad et **Échap** revient au menu. La préécoute possède les modes `AUD OFF`, `AUD AUTO` et `AUD MAN` du Browser KICK ; elle utilise une voix AudIO séparée, joue le WAV une seule fois et ne remplace pas le sample du pad. Un chargement confirmé conserve le volume, l'accordage, la découpe, les fondus et les quatre inserts du pad. Le remplacement temporaire au sein du pattern, la recherche et les opérations de fichiers viendront dans une étape ultérieure.
 
-**Enregistrer projet / Ouvrir projet** sauvegarde le pattern, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Le nom du fichier enregistré ou chargé est confirmé dans la barre d'état. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement. Un chargement échoué conserve le projet courant.
+**Enregistrer projet / Ouvrir projet** sauvegarde les seize séquences, leurs pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo, le volume et les réglages de chaque pad dans un fichier `.kicklab`. Le nom du fichier enregistré ou chargé est confirmé dans la barre d'état. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement. Un chargement échoué conserve le projet courant.
 
-Les projets **KICKLAB 1**, **KICKLAB 2** et **KICKLAB 3** restent lisibles. Les nouveaux projets utilisent **KICKLAB 4** pour conserver en plus l'enveloppe ADSR de chaque pad ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
+Les projets **KICKLAB 1**, **KICKLAB 2**, **KICKLAB 3** et **KICKLAB 4** restent lisibles. Les nouveaux projets utilisent **KICKLAB 5** pour conserver les séquences, notes et Songs ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au prototype, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 
 - **AudIO** : graphe `Design`, lecteur `AudioPlayback`, bus, mixage et modèle original `DawInserts` à quatre slots.
 - **AudioFile** : décodeur WAV livré dans le dépôt, après validation et normalisation de l'en-tête.
 - **Airwindows** : les vingt-six processeurs utilisent les sources originales et l'adaptation `AudioEffectX` fournies dans 0700-AAM. Chaque instance est créée par l'`ObjectFactory` d'AudIO dans le slot choisi.
-- **Ajouts du prototype** : interface Win32, éditeur, extension du lecteur (découpe, interpolation pour la hauteur, fondus), séquenceur simple, MIDI, sortie WinMM, persistance et tests.
+- **Ajouts du prototype** : interface Win32, éditeur, extension du lecteur (découpe, interpolation pour la hauteur, fondus), projection Windows des pages Pad Perform/Next Sequence/Song, MIDI, sortie WinMM, persistance et tests.
 
 L'éditeur JUCE complet et les classes de voix KICK dépendent encore des couches manquantes. Cette version étend le lecteur AudIO qui fonctionne déjà sur Windows ; elle ne prétend pas porter l'éditeur ou le séquenceur KICK complet. Voir `source/vendor/AudIO/DESKTOP-CHANGES.patch`.
 
@@ -94,7 +101,7 @@ Les corrections de 0.1.1 et 0.1.2 sont conservées : ordre des buffers, attente 
 
 Sortie fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames (environ 85 ms de réserve, plus le pilote). Pas d'ASIO ni de VST3 pour l'instant. Le séquenceur est quantifié au bloc de 256 trames (environ 5,33 ms), sans dérive cumulative du compteur. Le volume général et une saturation de sécurité protègent la sortie ; une accumulation de pads très forts peut néanmoins être écrêtée.
 
-Pas encore de kits avec médias intégrés, de séquenceur KICK avancé, de keygroups, d'enregistrement, de synthétiseurs KICK ni de banque complète d'effets. L'enveloppe est commune au programme de sample actuel : les modes de lecture One Shot/Note On du firmware ne sont pas encore exposés séparément. Une seule instance du moteur est utilisée par processus ; les pools globaux d'AudIO ne sont pas encore adaptés à un plugin multi-instance.
+Le premier Keygroup est monophonique : une seule voix existe par sample source, donc une nouvelle note remplace la précédente et les accords/progressions du Pad Perform KICK ne sont pas encore portés. Song enchaîne les séquences mais n'intègre pas encore les automations Track Mute ni un Track Mixer complet. Pas encore de kits avec médias intégrés, d'enregistrement, de synthétiseurs KICK ni de banque complète d'effets. L'enveloppe est commune au programme de sample actuel : les modes de lecture One Shot/Note On du firmware ne sont pas encore exposés séparément. Une seule instance du moteur est utilisée par processus ; les pools globaux d'AudIO ne sont pas encore adaptés à un plugin multi-instance.
 
 ## Développer
 
@@ -115,7 +122,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, les bornes de découpe, la durée et la fréquence à l'octave, les fades, l'enveloppe ADSR et sa libération, les vingt-six effets, les quatre inserts, les bypass, la persistance v4, la migration des projets v1/v2/v3, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, les bornes de découpe, la hauteur Pad Perform, les fades, l'enveloppe ADSR et sa libération, les vingt-six effets, les quatre inserts, Next Sequence, les répétitions Song, la persistance v5, la migration des projets v1/v2/v3/v4, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 

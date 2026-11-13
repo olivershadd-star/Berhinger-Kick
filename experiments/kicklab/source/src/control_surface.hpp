@@ -93,6 +93,9 @@ enum class DisplayModule {
     Browser,
     Mixer,
     Sequencer,
+    PadPerform,
+    NextSequence,
+    Song,
     MidiControl
 };
 

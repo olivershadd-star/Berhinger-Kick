@@ -9,6 +9,7 @@
 
 namespace lab {
 constexpr int Pads=16, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
+constexpr int Sequences=16, MaxBars=4, MaxSequenceSteps=Steps*MaxBars, MaxSongSteps=32;
 // Values 1 and 2 are kept stable for KICKLAB 3 projects written by 0.2.3.
 enum class InsertEffect {
     None=0, Lowpass=1, PurestDrive=2, Highpass=3, Isolator=4,
@@ -41,19 +42,39 @@ struct PadEdit {
     std::array<InsertState,InsertSlots> inserts{};
     PadEdit(){inserts[0]=defaultInsertState(InsertEffect::Lowpass);inserts[0].bypass=true;inserts[1]=defaultInsertState(InsertEffect::PurestDrive);inserts[1].bypass=true;}
 };
+enum class PerformanceMode { Drum=0, Chromatic=1, Major=2, Minor=3 };
+struct SequenceData {
+    std::string name;
+    int bars=1;
+    PerformanceMode mode=PerformanceMode::Drum;
+    int sourcePad=12;
+    int rootNote=48;
+    std::array<std::array<bool,MaxSequenceSteps>,Pads> drum{};
+    std::array<int,MaxSequenceSteps> melody{};
+    SequenceData(){melody.fill(-1);}
+};
+struct SongStep {
+    int sequence=0;
+    int repeats=1;
+};
 const char* insertEffectName(InsertEffect effect);
 int insertParameterCount(InsertEffect effect);
 const char* insertParameterName(InsertEffect effect,int parameter);
 struct Snapshot {
     std::array<std::string,Pads> names{},paths{};
+    // Projection of the selected sequence and visible bar for the Windows grid.
     std::array<std::array<bool,Steps>,Pads> pattern{};
+    std::array<int,Steps> melody{};
+    std::array<SequenceData,Sequences> sequences{};
+    std::array<SongStep,MaxSongSteps> song{};
     std::array<std::vector<float>,Pads> waveforms{};
     std::array<bool,Pads> active{};
     std::array<PadEdit,Pads> edits{};
     std::array<double,Pads> durations{}, progress{};
     double tempo=120,volume=.65;
-    bool playing=false;
-    int step=-1;
+    bool playing=false,songPlaying=false;
+    int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1;
+    int songLength=0,songPosition=-1,songRepeat=0;
     float peak=0;
 };
 class Engine {
@@ -65,7 +86,9 @@ public:
     bool preview(const std::string& path,std::string& error);
     void stopPreview();
     void trigger(int pad);
+    void triggerPitch(int pad,int semitones);
     void release(int pad);
+    void releasePerformancePad(int performancePad);
     void setEdit(int pad, const PadEdit& edit);
     void setInsertEffect(int pad,int slot,InsertEffect effect);
     void setInsertBypass(int pad,int slot,bool bypass);
@@ -73,6 +96,19 @@ public:
     void setInsertParameter(int pad,int slot,int parameter,double value);
     void toggle(int pad,int step);
     void clearPattern(); void demoPattern();
+    void selectSequence(int sequence);
+    void queueSequence(int sequence);
+    void setSequenceBars(int bars);
+    void setViewBar(int bar);
+    void setPerformanceMode(PerformanceMode mode);
+    void setMelodicSourcePad(int pad);
+    void setRootNote(int note);
+    int performanceNote(int performancePad)const;
+    void addSongStep(int sequence,int repeats);
+    void editSongStep(int position,int sequence,int repeats);
+    void deleteSongStep(int position);
+    void clearSong();
+    void playSong();
     void setPlaying(bool); void stop();
     void setTempo(double); void setVolume(double);
     Snapshot snapshot();
