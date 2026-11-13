@@ -1,0 +1,66 @@
+name: KICK Lab Windows portable release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build and publish
+        required: true
+        default: 0.4.0
+
+permissions:
+  contents: write
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: experiments/kicklab
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure x64
+        run: cmake -S ../.. -B build -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 2
+
+      - name: Test audio engine
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Smoke-test Windows interface
+        shell: pwsh
+        run: |
+          $app = "build/incremental-port/Release/KickLab.exe"
+          $process = Start-Process $app -ArgumentList "--smoke-test" -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw "KickLab UI exited with $($process.ExitCode)" }
+
+      - name: Assemble portable ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ inputs.version }}"
+          $folder = "dist/KickLab-Windows-x64-$version-preview"
+          New-Item -ItemType Directory -Force "$folder/demo-kit" | Out-Null
+          Copy-Item build/incremental-port/Release/KickLab.exe "$folder/"
+          Copy-Item demo-kit/*.wav "$folder/demo-kit/"
+          Copy-Item README.md,LIRE-MOI.html,NOTICES.txt,RESULTATS.txt "$folder/"
+          Copy-Item source/LICENSE "$folder/LICENSE"
+          Compress-Archive -Path $folder -DestinationPath "dist/KickLab-Windows-x64-$version-preview.zip" -Force
+
+      - name: Publish public preview
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}-preview
+          name: KICK Lab ${{ inputs.version }} — Windows portable preview
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          body: |
+            Windows x64 portable preview built and tested by GitHub Actions.
+
+            This preview adds Pad Perform/Keygroup sequencing, 16 sequences,
+            Next Sequence and the Song Editor while retaining the AudIO engine,
+            Program Edit, ADSR, four insert slots and 26 Airwindows effects.
+
+            Extract the complete ZIP before launching KickLab.exe.
+          files: experiments/kicklab/dist/KickLab-Windows-x64-${{ inputs.version }}-preview.zip
