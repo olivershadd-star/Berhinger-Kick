@@ -416,8 +416,8 @@ bool maschineClick(int x,int y,bool right){
         case 5: tab=1;status=L"Sampler / Sample Editor KICK.";break;
         case 6: dispatch({lab::SurfaceAction::PagePrevious});break;
         case 7: dispatch({lab::SurfaceAction::PageNext});break;
-        case 8: project(true);break;
-        case 9: if(right)midiMenu();else audioMenu();break;
+        case 8: if(right||surface.shift)project(true);else fileMenu();break;
+        case 9: settingsMenu();break;
         case 10: status=L"Automation / List Edit — présent dans KICK, pas encore porté.";break;
         case 11: status=L"Macro / Q-Links — utilise les huit knobs contextuels des écrans.";break;
         }
@@ -437,7 +437,7 @@ bool maschineClick(int x,int y,bool right){
     }
     for(int command=0;command<9;++command)if(sideCommandBox(command).contains(x,y)){
         if(command==2){showSurfaceNextSequence(surface.focusedDisplay);status=L"Pattern / Clip — sélection des séquences KICK.";}
-        else if(command==6){stepTrack=selected;status=L"Select — piste "+number(stepTrack+1)+L" sélectionnée pour Step.";}
+        else if(command==6){selectLatch=!selectLatch;if(selectLatch)status=L"Select actif — choisis maintenant la piste avec un pad.";else status=L"Select relâché — piste "+number(stepTrack+1)+L".";}
         else status=std::array<std::wstring,9>{L"Fixed Velocity / 16 Vel",L"Scene / Section",L"Pattern / Clip",L"Events",L"Variation",L"Duplicate / Double",L"Select",L"Solo",L"Mute / Choke"}[command]+L" — commande visible, portage KICK à venir.";
         return true;
     }
@@ -460,12 +460,13 @@ bool maschineClick(int x,int y,bool right){
         return true;
     }
     for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){
+        if(padMode==3&&(selectLatch||surface.shift)){stepTrack=p;selectPad(p);if(selectLatch)selectLatch=false;status=L"Step — piste "+number(stepTrack+1)+L" sélectionnée.";return true;}
         if(padMode==3){dispatch({lab::SurfaceAction::StepToggle,stepTrack,p});return true;}
         if(right&&padMode==0){selectPad(p);sampleMenu();return true;}
         dispatch({lab::SurfaceAction::PadPress,p});return true;
     }
     if(Box{1276,105,296,148}.contains(x,y)){
-        if(y<190){if(right)midiMenu();else audioMenu();}
+        if(y<190)settingsMenu();
         else {auto snapshot=engine.snapshot();engine.setVolume(std::clamp((x-1292)/264.,0.,1.));}
         return true;
     }
@@ -632,7 +633,7 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
         {L"EVENTS",L""},{L"VARIATION",L""},{L"DUPLICATE",L"Double"},
         {L"SELECT",L""},{L"SOLO",L""},{L"MUTE",L"Choke"}
     }};
-    for(int i=0;i<9;++i){const bool available=i==2||i==6;hardwareButton(dc,sideCommandBox(i),commands[i].first,commands[i].second,i==6,available);}
+    for(int i=0;i<9;++i){const bool available=i==2||i==6;hardwareButton(dc,sideCommandBox(i),commands[i].first,commands[i].second,i==6&&selectLatch,available);}
 
     static const std::array<const wchar_t*,4> modes={L"PAD MODE",L"KEYBOARD",L"CHORDS",L"STEP"};
     for(int mode=0;mode<4;++mode)hardwareButton(dc,modeBox(mode),modes[mode],L"",mode==padMode,mode!=2);

@@ -2,6 +2,7 @@
 // App member functions; coordinates share the same scalable canvas as the pads.
 enum EditorParameter {EditorVolume=1,EditorTune,EditorFade};
 static constexpr int InsertKnobBase=10;
+static constexpr int EditorOffsetX=200;
 int editorDrag=0,editorDragStartY=0,selectedInsert=0,editorInsertPage=0;
 double editorDragStartRatio=0;
 Box editorKnob(int id)const {
@@ -42,6 +43,7 @@ void insertMenu(){
     POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice>800&&choice<800+int(lab::InsertEffect::Count))engine.setInsertEffect(selected,selectedInsert,lab::InsertEffect(choice-800));else if(choice==800)engine.setInsertEffect(selected,selectedInsert,lab::InsertEffect::None);
 }
 void editorPointer(int x,int y){
+    x-=EditorOffsetX;
     auto s=engine.snapshot();auto edit=s.edits[selected];
     if(editorDrag==6||editorDrag==7){double p=std::clamp((x-52)/1096.,0.,1.);if(editorDrag==6)edit.start=std::min(p,edit.end-.001);else edit.end=std::max(p,edit.start+.001);engine.setEdit(selected,edit);}
     else if(editorDrag>=EditorVolume&&editorDrag<=EditorFade){setEditorRatio(edit,editorDrag,editorDragStartRatio+(editorDragStartY-y)/140.);engine.setEdit(selected,edit);}
@@ -49,6 +51,7 @@ void editorPointer(int x,int y){
 }
 bool editorWheel(int x,int y,int delta){
     if(tab!=1)return false;
+    x-=EditorOffsetX;
     auto s=engine.snapshot();auto edit=s.edits[selected];
     for(int id=EditorVolume;id<=EditorFade;++id)if(editorKnob(id).contains(x,y)){double step=id==EditorTune?1./48.:.01;setEditorRatio(edit,id,editorRatio(edit,id)+(delta>0?step:-step));engine.setEdit(selected,edit);return true;}
     auto effect=edit.inserts[selectedInsert].effect;int count=lab::insertParameterCount(effect),first=editorInsertPage*3;
@@ -56,6 +59,7 @@ bool editorWheel(int x,int y,int delta){
     return false;
 }
 void editorClick(int x,int y,bool right){
+    x-=EditorOffsetX;
     for(int p=0;p<16;++p)if(Box{28+p*71,110,65,42}.contains(x,y)){selectPad(p);if(right)sampleMenu();else dispatch({lab::SurfaceAction::PadPress,p});return;}
     auto edit=engine.snapshot().edits[selected];
     for(int slot=0;slot<lab::InsertSlots;++slot)if(insertSlotBox(slot).contains(x,y)){selectedInsert=slot;editorInsertPage=0;return;}
@@ -68,7 +72,7 @@ void editorClick(int x,int y,bool right){
     if(editorInsertPreviousBox().contains(x,y)){editorInsertPage=std::max(0,editorInsertPage-1);return;}
     if(editorInsertNextBox().contains(x,y)){editorInsertPage=std::min(effectPages-1,editorInsertPage+1);return;}
     if(!editorDrag){int count=lab::insertParameterCount(edit.inserts[selectedInsert].effect),first=editorInsertPage*3;for(int parameter=first;parameter<std::min(count,first+3);++parameter)if(editorKnob(InsertKnobBase+parameter).contains(x,y)){editorDrag=InsertKnobBase+parameter;editorDragStartY=y;editorDragStartRatio=edit.inserts[selectedInsert].parameters[parameter];break;}}
-    if(editorDrag){SetCapture(window);if(editorDrag==6||editorDrag==7)editorPointer(x,y);return;}
+    if(editorDrag){SetCapture(window);if(editorDrag==6||editorDrag==7)editorPointer(x+EditorOffsetX,y);return;}
     if(Box{28,690,200,42}.contains(x,y))engine.setEdit(selected,{});
     else if(Box{244,690,180,42}.contains(x,y))sampleMenu();
     else if(Box{440,690,200,42}.contains(x,y))project(true);

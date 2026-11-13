@@ -1,11 +1,17 @@
-KICK Lab 0.4.1 — intégration MIDI Maschine+ corrigée
+KICK Lab 0.6.0 — surface Windows organisée pour Maschine+
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; enveloppe ADSR et Note Off ; construction et rendu fini des 26 effets ; ordre des quatre inserts ; bypass ; changement Next Sequence à la frontière de boucle ; répétitions et fin du Song ; séquences, notes, arrangement, paramètres et enveloppes sauvegardés/rechargés en KICKLAB 5 ; migration des projets KICKLAB 1 à 4 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 26 effets ; quatre inserts ; groupes A–H indépendants ; Pad/Keyboard/Step ; Next Sequence ; Song ; sauvegarde KICKLAB 6 ; migration KICKLAB 1 à 5 ; remise en file des buffers ; continuité sous activité graphique.
+
+0.6.0 remplace la disposition provisoire par la façade Maschine+ validée : raccourcis à gauche, deux écrans KICK et huit knobs, groupes A–H en 4×2, colonne Fixed Velocity à Mute, modes Pad/Keyboard/Chords/Step, seize pads et transport. La grille 16×16 permanente est supprimée : Step transforme les pads en pas 1–16 et Select/Shift + pad choisit la piste. L'éditeur détaillé reste disponible via Sampling.
+
+Les huit groupes possèdent chacun seize samples et réglages indépendants, mais seuls les seize lecteurs AudIO du groupe actif sont raccordés, afin de conserver la stabilité Windows. KICKLAB 6 sauvegarde les 128 emplacements et reste compatible avec les projets 1 à 5.
+
+KICKMIDI 4 mémorise 16 knobs, 128 pads A–H et toutes les commandes physiques. L'encodeur 4D est appris en relatif 1/127 pour les deux sens ; ABS et 63/65 restent sélectionnables. File et Settings regroupent maintenant projet, bibliothèque, audio et MIDI.
 
 0.4.1 ajoute le MIDI Learn individuel des seize pads, une commande Retour/Escape assignable et le format de profil KICKMIDI 3. L'encodeur 4D de Maschine+ est maintenant interprété comme une valeur absolue afin que les deux sens fonctionnent. Dans Sample & FX, sa rotation parcourt les quatre slots et son appui ouvre le choix d'effet. La rotation du menu traverse désormais les éléments 8 et 9 entre les deux écrans. Un bouton Menu ramène les deux écrans à l'accueil et le potentiomètre Master surdimensionné est remplacé par un vumètre avec niveau, maintien visuel et indication CLIP.
 

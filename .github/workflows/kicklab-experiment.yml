@@ -43,7 +43,7 @@ jobs:
           New-Item -ItemType Directory -Force dist/KickLab | Out-Null
           Copy-Item build/incremental-port/Release/KickLab.exe,build/incremental-port/Release/KickLab-Test.exe dist/KickLab/
           Copy-Item demo-kit,source dist/KickLab/ -Recurse
-          Copy-Item README.md,LIRE-MOI.html,NOTICES.txt,RESULTATS.txt,APERCU.png,APERCU-SAMPLE.png,DEMO.wav dist/KickLab/
+          Copy-Item README.md,LIRE-MOI.html,NOTICES.txt,RESULTATS.txt,APERCU.png,APERCU-SAMPLE.png,APERCU-MASCHINE-PLUS.png,DEMO.wav dist/KickLab/
           Copy-Item source/LICENSE dist/KickLab/LICENSE
       - uses: actions/upload-artifact@v4
         with:
