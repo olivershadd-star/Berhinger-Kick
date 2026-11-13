@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.6.1
+        default: 0.6.2
 
 permissions:
   contents: write
@@ -62,11 +62,14 @@ jobs:
             while retaining the stable AudIO engine, dual KICK screens, Program
             Edit, ADSR, four insert slots and 26 Airwindows effects.
 
-            Version 0.6.1 adds eight persistent A-H pad groups, Pad/Keyboard/Step
+            Version 0.6.2 adds eight persistent A-H pad groups, Pad/Keyboard/Step
             modes, KICKLAB 6 projects and Maschine+ MIDI Learn for 16 knobs,
             128 group pads, the bidirectional 4D encoder and physical commands.
             It also restores MIDI assignments across portable ZIP updates,
             reconnects the selected input and can import an older MIDI profile.
+            Step now follows the last selected drum pad, accepts physical MIDI
+            pads and supports melodic Keyboard-to-Step entry. The top banner
+            was removed and the dual-screen layout was rebalanced.
 
             Extract the complete ZIP before launching KickLab.exe.
           files: experiments/kicklab/dist/KickLab-Windows-x64-${{ inputs.version }}-preview.zip

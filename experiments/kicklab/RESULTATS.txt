@@ -1,4 +1,4 @@
-KICK Lab 0.6.1 — surface Windows organisée pour Maschine+
+KICK Lab 0.6.2 — surface Windows organisée pour Maschine+
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
@@ -10,6 +10,8 @@ Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain ind
 0.6.0 remplace la disposition provisoire par la façade Maschine+ validée : raccourcis à gauche, deux écrans KICK et huit knobs, groupes A–H en 4×2, colonne Fixed Velocity à Mute, modes Pad/Keyboard/Chords/Step, seize pads et transport. La grille 16×16 permanente est supprimée : Step transforme les pads en pas 1–16 et Select/Shift + pad choisit la piste. L'éditeur détaillé reste disponible via Sampling.
 
 0.6.1 corrige la persistance MIDI du paquet portable : profil conservé dans le dossier utilisateur et en copie portable, migration automatique d'un ancien dossier voisin, import manuel d'un fichier .kickmidi et reconnexion du dernier port MIDI choisi.
+
+0.6.2 relie le changement Pad Mode → Step à la piste du dernier pad sélectionné, route aussi les pads MIDI physiques vers les steps et permet le passage Keyboard → Step pour éditer une hauteur mélodique. Le bandeau supérieur est supprimé ; les deux écrans ne se chevauchent plus et le logo KICK @ NKS LABS rejoint la colonne latérale avec le Master.
 
 Les huit groupes possèdent chacun seize samples et réglages indépendants, mais seuls les seize lecteurs AudIO du groupe actif sont raccordés, afin de conserver la stabilité Windows. KICKLAB 6 sauvegarde les 128 emplacements et reste compatible avec les projets 1 à 5.
 

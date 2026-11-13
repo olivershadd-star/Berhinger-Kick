@@ -179,9 +179,9 @@ public:
         case T::Soft1:case T::Soft2:case T::Soft3:case T::Soft4:case T::Soft5:case T::Soft6:case T::Soft7:case T::Soft8:if(pressed){const int soft=target-int(T::Soft1);surface.focusDisplay(soft/4);status=L"MIDI — Soft "+number(soft+1)+L" reçu sur l'écran "+std::wstring(soft<4?L"A":L"B")+L".";}break;
         case T::GroupA:case T::GroupB:case T::GroupC:case T::GroupD:case T::GroupE:case T::GroupF:case T::GroupG:case T::GroupH:if(pressed){const int group=target-int(T::GroupA);engine.setGroup(group);padGroup=engine.snapshot().group;selectPad(0);stepTrack=0;status=L"MIDI — groupe "+std::wstring(1,wchar_t(L'A'+group))+L".";}break;
         case T::PadMode:if(pressed){padMode=0;engine.setPerformanceMode(lab::PerformanceMode::Drum);status=L"MIDI — Pad Mode.";}break;
-        case T::Keyboard:if(pressed){padMode=1;engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);status=L"MIDI — Keyboard.";}break;
+        case T::Keyboard:if(pressed){padMode=1;stepTrack=0;engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);status=L"MIDI — Keyboard : joue une hauteur puis passe sur Step pour la séquencer.";}break;
         case T::Chords:if(pressed)status=L"MIDI — Chords reçu ; moteur d'accords pas encore porté.";break;
-        case T::Step:if(pressed){padMode=3;engine.setPerformanceMode(lab::PerformanceMode::Drum);status=L"MIDI — Step : les pads éditent la piste "+number(stepTrack+1)+L".";}break;
+        case T::Step:if(pressed)enterStepMode();break;
         case T::Pattern:if(pressed)showSurfaceNextSequence(surface.focusedDisplay);break;
         case T::Select:selectLatch=pressed;if(pressed){stepTrack=selected;status=L"MIDI — Select maintenu ; frappe un pad pour choisir la piste Step.";}break;
         case T::Perform:if(pressed)showSurfaceInserts(surface.focusedDisplay);break;
@@ -239,13 +239,13 @@ public:
         if(module==lab::DisplayModule::NextSequence){engine.queueSequence(p);status=snapshot.playing?L"Next Sequence en attente : "+number(p+1):L"Séquence sélectionnée : "+number(p+1);flashed[p]=GetTickCount64()+180;return;}
         if(module==lab::DisplayModule::Song){songChoice=p;status=L"Song : séquence "+number(p+1)+L" prête à être ajoutée.";flashed[p]=GetTickCount64()+180;return;}
         const auto& sequence=snapshot.sequences[snapshot.sequence];
-        if(sequence.mode!=lab::PerformanceMode::Drum){engine.triggerPitch(sequence.sourcePad,engine.performanceNote(p)-sequence.rootNote);flashed[p]=GetTickCount64()+180;return;}
+        if(padMode==1&&sequence.mode!=lab::PerformanceMode::Drum){stepTrack=p;engine.triggerPitch(sequence.sourcePad,engine.performanceNote(p)-sequence.rootNote);flashed[p]=GetTickCount64()+180;return;}
         selectPad(p);engine.trigger(selected);flashed[selected]=GetTickCount64()+130;
     }
     void releasePad(int p){const auto module=surface.displays[surface.focusedDisplay].module;if(module==lab::DisplayModule::NextSequence||module==lab::DisplayModule::Song)return;auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode!=lab::PerformanceMode::Drum)engine.releasePerformancePad(p);else engine.release(p);}
     void dispatch(const lab::SurfaceEvent& event){
         switch(event.action){
-        case lab::SurfaceAction::PadPress:if(event.index>=0&&event.index<lab::SurfacePads){if(event.pressed)play(event.index);else releasePad(event.index);}break;
+        case lab::SurfaceAction::PadPress:{if(event.index>=0&&event.index<lab::SurfacePads){if(padMode==3){if(event.pressed&&(selectLatch||surface.shift)){stepTrack=event.index;const auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)selectPad(event.index);if(selectLatch)selectLatch=false;status=L"Step — piste "+number(stepTrack+1)+L" sélectionnée.";}else if(event.pressed)dispatch({lab::SurfaceAction::StepToggle,stepTrack,event.index});}else if(event.pressed)play(event.index);else releasePad(event.index);}}break;
         case lab::SurfaceAction::StepToggle:if(event.index>=0&&event.index<lab::SurfacePads&&event.value>=0&&event.value<lab::SurfaceSteps){auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)selectPad(event.index);engine.toggle(event.index,event.value);}break;
         case lab::SurfaceAction::PlayPause:{auto s=engine.snapshot();engine.setPlaying(!s.playing);break;}
         case lab::SurfaceAction::Stop:engine.stop();break;
@@ -267,11 +267,11 @@ public:
         }
     }
     void key(WPARAM key,LPARAM flags){if(flags&(1u<<30))return;if(tab==0){if(key==VK_UP)dispatch({lab::SurfaceAction::CenterUp});else if(key==VK_DOWN)dispatch({lab::SurfaceAction::CenterDown});else if(key==VK_LEFT)dispatch({lab::SurfaceAction::CenterLeft});else if(key==VK_RIGHT)dispatch({lab::SurfaceAction::CenterRight});else if(key==VK_RETURN)dispatch({lab::SurfaceAction::CenterPush});else if(key==VK_TAB)dispatch({lab::SurfaceAction::FocusNext});else if(key==VK_PRIOR)dispatch({lab::SurfaceAction::PagePrevious});else if(key==VK_NEXT)dispatch({lab::SurfaceAction::PageNext});else if(key==VK_ESCAPE)dispatch({lab::SurfaceAction::Back});else if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}else{if(key==VK_SPACE)dispatch({lab::SurfaceAction::PlayPause});else if(key==VK_ESCAPE){tab=0;status=L"Retour à la surface principale KICK.";}else for(int p=0;p<16;++p)if(key==WPARAM(keys[p])){dispatch({lab::SurfaceAction::PadPress,p});break;}}InvalidateRect(window,nullptr,FALSE);}
-    Box padBox(int p)const{return {700+(p%4)*132,506+(3-p/4)*92,122,84};}
+    Box padBox(int p)const{return {700+(p%4)*132,466+(3-p/4)*92,122,84};}
     #include "editor_ui.inc"
     #include "surface_ui.inc"
     void click(int x,int y,bool right){
-        if(Box{28,12,150,42}.contains(x,y)){tab=0;showSurfaceHome();return;}
+        if(Box{1278,26,294,94}.contains(x,y)){tab=0;showSurfaceHome();return;}
         if(tab==1&&Box{1414,16,158,34}.contains(x,y)){tab=0;status=L"Retour à la surface principale KICK.";return;}
         if(tab==1){editorClick(x,y,right);return;}
         if(maschineClick(x,y,right))return;
@@ -283,16 +283,13 @@ public:
     void button(HDC dc,Box b,const std::wstring& name,bool on=false){round(dc,b,on?accent:RGB(31,38,50),on?accent:line);text(dc,b,name,14,on?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     void paint(HDC dc){
         SetMapMode(dc,MM_ANISOTROPIC);SetWindowExtEx(dc,DesignWidth,DesignHeight,nullptr);SetViewportExtEx(dc,width,height,nullptr);
-        fill(dc,{0,0,DesignWidth,DesignHeight},bg);fill(dc,{28,16,7,34},accent);text(dc,{48,12,150,42},L"KICK",29,ink,FW_BOLD);
-        text(dc,{174,17,280,28},L"WINDOWS PORT · SURFACE KICK",11,muted,FW_SEMIBOLD);
-        text(dc,{470,17,1102,28},status,9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        fill(dc,{28,62,1544,1},line);
+        fill(dc,{0,0,DesignWidth,DesignHeight},bg);
         if(tab==1){button(dc,{1414,16,158,34},L"Retour KICK",true);const int editorDc=SaveDC(dc);SetWindowOrgEx(dc,-EditorOffsetX,0,nullptr);paintEditor(dc);RestoreDC(dc,editorDc);return;}
         auto s=engine.snapshot();
         paintSurface(dc,s);
         paintMaschineControls(dc,s);
-        unsigned error=audio.error.load();std::wstring message=status;if(error){wchar_t buf[256]{};waveOutGetErrorTextW(error,buf,256);message=L"Audio indisponible : "+std::wstring(buf)+L" — choisir une autre sortie.";}
-        if(error){fill(dc,{470,17,702,28},bg);text(dc,{470,17,702,28},L"Audio indisponible — clique sur Choisir audio.",9,RGB(255,133,103),FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}
+        unsigned error=audio.error.load();
+        if(error){fill(dc,{1292,298,266,86},panel);text(dc,{1292,298,266,86},L"Audio indisponible — ouvre MASTER / WINDOWS et choisis une autre sortie.",9,RGB(255,133,103),FW_SEMIBOLD,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);}
     }
     void paintInfo(HDC dc){
         round(dc,{28,108,1144,594},panel);text(dc,{52,129,1080,40},L"Un premier accès au code. Pas encore la groovebox complète.",25,ink,FW_SEMIBOLD);
@@ -370,7 +367,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,DesignWidth,DesignHeight};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.6.1 — AudIO / Portage Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.6.2 — AudIO / Portage Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }

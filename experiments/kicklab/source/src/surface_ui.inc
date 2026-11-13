@@ -19,13 +19,13 @@ const std::array<std::wstring,lab::MidiCommandCount> midiCommandLabels={
     L"Channel / MIDI",L"Plug-in / Instance",L"Ideas / Song",L"Mixer",L"Browser",L"Sampling",L"File / Save",L"Settings",L"Auto",L"Macro / Set"
 };
 
-static constexpr int SurfaceFirstX=330,SurfaceGap=470,SurfaceY=105;
+static constexpr int SurfaceFirstX=320,SurfaceGap=482,SurfaceY=38;
 int surfaceX(int display)const{return SurfaceFirstX+display*SurfaceGap;}
-Box surfaceModuleBox(int display)const{return {surfaceX(display)-12,93,480,374};}
+Box surfaceModuleBox(int display)const{return {surfaceX(display)-12,SurfaceY-12,480,374};}
 Box surfaceDisplayBox(int display)const{return {surfaceX(display),SurfaceY,456,294};}
 Box surfaceDisplayItemBox(int display,int local)const{return {surfaceX(display)+14+(local%2)*211,SurfaceY+46+(local/2)*56,199,46};}
-Box surfaceKnobBox(int display,int knob)const{return {surfaceX(display)+18+knob*108,405,96,54};}
-Box surfaceSoftButtonBox(int display,int buttonIndex)const{return {surfaceX(display)+buttonIndex*114,69,104,27};}
+Box surfaceKnobBox(int display,int knob)const{return {surfaceX(display)+18+knob*108,SurfaceY+300,96,54};}
+Box surfaceSoftButtonBox(int display,int buttonIndex)const{return {surfaceX(display)+buttonIndex*114,4,104,27};}
 Box surfaceInsertSlotBox(int display,int slot)const{return {surfaceX(display)+14+slot*104,SurfaceY+47,96,34};}
 Box surfaceInsertEffectBox(int display)const{return {surfaceX(display)+14,SurfaceY+94,250,36};}
 Box surfaceInsertBypassBox(int display)const{return {surfaceX(display)+274,SurfaceY+94,136,36};}
@@ -47,13 +47,13 @@ Box surfaceBrowserRefreshBox(int display)const{return {surfaceX(display)+296,Sur
 Box surfaceSongActionBox(int display,int action)const{return {surfaceX(display)+14+action*99,SurfaceY+46,93,32};}
 Box surfaceSongRowBox(int display,int row)const{return {surfaceX(display)+14,SurfaceY+94+row*43,396,36};}
 
-Box shortcutBox(int index)const{return {30+(index%2)*132,105+(index/2)*48,120,38};}
-Box groupBox(int group)const{return {30+(group%4)*116,682+(group/4)*54,106,46};}
-Box modeBox(int mode)const{return {700+mode*132,466,122,32};}
-Box sideCommandBox(int command)const{return {536,486+command*43,142,36};}
-Box smallControlBox(int column,int row)const{return {30+column*154,486+row*48,142,38};}
-Box performanceButtonBox(int column)const{return {30+column*116,630,106,38};}
-Box transportBox(int index)const{return {30+(index%4)*116,796+(index/4)*44,106,36};}
+Box shortcutBox(int index)const{return {30+(index%2)*132,38+(index/2)*48,120,38};}
+Box groupBox(int group)const{return {30+(group%4)*116,624+(group/4)*54,106,46};}
+Box modeBox(int mode)const{return {700+mode*132,420,122,32};}
+Box sideCommandBox(int command)const{return {536,462+command*43,142,36};}
+Box smallControlBox(int column,int row)const{return {30+column*154,420+row*48,142,38};}
+Box performanceButtonBox(int column)const{return {30+column*116,570,106,38};}
+Box transportBox(int index)const{return {30+(index%4)*116,768+(index/4)*44,106,36};}
 
 int surfaceDragDisplay=-1,surfaceDragKnob=-1,surfaceDragStartY=0,surfaceDragLastStep=0;
 
@@ -89,6 +89,13 @@ void showSurfaceProgram(int display){
 
 void showSurfacePadPerform(int display){
     display=std::clamp(display,0,1);padMode=1;auto snapshot=engine.snapshot();engine.setMelodicSourcePad(selected);if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)engine.setPerformanceMode(lab::PerformanceMode::Chromatic);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::PadPerform;binding.page=0;surface.focusDisplay(display);status=L"Pad Notes — les 16 pads jouent le sample source à des hauteurs différentes.";
+}
+
+void enterStepMode(){
+    const auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[snapshot.sequence];const bool fromKeyboard=padMode==1&&sequence.mode!=lab::PerformanceMode::Drum;
+    if(!fromKeyboard&&padMode!=3){engine.setPerformanceMode(lab::PerformanceMode::Drum);stepTrack=selected;}
+    padMode=3;const auto current=engine.snapshot();const auto mode=current.sequences[current.sequence].mode;
+    status=mode==lab::PerformanceMode::Drum?L"Step — les 16 pads éditent la piste du pad "+padName(stepTrack)+L".":L"Step mélodique — les 16 pads éditent la note "+noteName(engine.performanceNote(stepTrack))+L".";
 }
 
 void showSurfaceNextSequence(int display){
@@ -428,11 +435,10 @@ bool maschineClick(int x,int y,bool right){
     }
     for(int mode=0;mode<4;++mode)if(modeBox(mode).contains(x,y)){
         if(mode==2){status=L"Chords — commande KICK réservée ; moteur d'accords pas encore porté.";return true;}
-        padMode=mode;
+        if(mode==3){enterStepMode();return true;}padMode=mode;
         if(mode==0)engine.setPerformanceMode(lab::PerformanceMode::Drum);
-        else if(mode==1){engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);}
-        else if(mode==3)engine.setPerformanceMode(lab::PerformanceMode::Drum);
-        status=mode==0?L"Pad Mode — les 16 pads jouent les samples du groupe.":mode==1?L"Keyboard — le sample sélectionné est réparti chromatiquement.":L"Step — les 16 pads éditent les 16 pas de la piste sélectionnée.";
+        else if(mode==1){engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);stepTrack=0;}
+        status=mode==0?L"Pad Mode — les 16 pads jouent les samples du groupe.":L"Keyboard — joue une hauteur puis passe sur Step pour la séquencer.";
         return true;
     }
     for(int command=0;command<9;++command)if(sideCommandBox(command).contains(x,y)){
@@ -465,8 +471,8 @@ bool maschineClick(int x,int y,bool right){
         if(right&&padMode==0){selectPad(p);sampleMenu();return true;}
         dispatch({lab::SurfaceAction::PadPress,p});return true;
     }
-    if(Box{1276,105,296,148}.contains(x,y)){
-        if(y<190)settingsMenu();
+    if(Box{1278,132,294,140}.contains(x,y)){
+        if(y<210)settingsMenu();
         else {auto snapshot=engine.snapshot();engine.setVolume(std::clamp((x-1292)/264.,0.,1.));}
         return true;
     }
@@ -638,14 +644,14 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     static const std::array<const wchar_t*,4> modes={L"PAD MODE",L"KEYBOARD",L"CHORDS",L"STEP"};
     for(int mode=0;mode<4;++mode)hardwareButton(dc,modeBox(mode),modes[mode],L"",mode==padMode,mode!=2);
 
-    const auto& sequence=snapshot.sequences[snapshot.sequence];const bool notes=padMode==1;const bool steps=padMode==3;
+    const auto& sequence=snapshot.sequences[snapshot.sequence];const bool notes=padMode==1;const bool steps=padMode==3;const bool melodicSteps=steps&&sequence.mode!=lab::PerformanceMode::Drum;
     const bool playVisible=snapshot.playing&&snapshot.playBar==snapshot.viewBar;ULONGLONG now=GetTickCount64();
     for(int p=0;p<16;++p){
-        const auto box=padBox(p);const bool active=steps?snapshot.pattern[stepTrack][p]:notes?false:snapshot.active[p];
+        const auto box=padBox(p);const bool active=steps?(melodicSteps?snapshot.melody[p]==engine.performanceNote(stepTrack):snapshot.pattern[stepTrack][p]):notes?false:snapshot.active[p];
         const bool hot=now<flashed[p]||active||(steps&&playVisible&&snapshot.step==p);const COLORREF color=steps?RGB(241,184,88):padColor(p);
         round(dc,box,hot?color:RGB(36,42,53),padMode==0&&p==selected?color:line);
         std::wstring title=steps?L"STEP "+number(p+1):notes?noteName(engine.performanceNote(p)):wide(snapshot.names[p]);
-        std::wstring sub=steps?L"TRACK "+number(stepTrack+1):notes?L"PAD "+padName(sequence.sourcePad):L"PAD "+padName(p);
+        std::wstring sub=steps?(melodicSteps?noteName(engine.performanceNote(stepTrack)):L"TRACK "+padName(stepTrack)):notes?L"PAD "+padName(sequence.sourcePad):L"PAD "+padName(p);
         text(dc,{box.x+8,box.y+7,box.w-16,25},title,12,hot?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         text(dc,{box.x+8,box.y+52,box.w-16,18},sub,9,hot?RGB(40,46,50):muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
@@ -659,17 +665,19 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     hardwareButton(dc,transportBox(6),L"STOP");
     hardwareButton(dc,transportBox(7),L"SHIFT",L"",surface.shift);
 
-    round(dc,{1276,105,296,148},panel);text(dc,{1292,116,264,22},L"MASTER / WINDOWS",11,ink,FW_SEMIBOLD);
-    text(dc,{1292,145,264,18},audio.running?L"AUDIO WINDOWS · ACTIF":L"AUDIO WINDOWS · ARRÊT",9,audio.running?accent:RGB(255,133,103),FW_SEMIBOLD);
-    text(dc,{1292,167,264,18},midiId>=0?L"MIDI · CONNECTÉ":L"MIDI · DÉCONNECTÉ",9,midiId>=0?accent:muted,FW_SEMIBOLD);
+    round(dc,{1278,26,294,94},panel);text(dc,{1294,34,260,46},L"KICK",36,ink,FW_BOLD);text(dc,{1296,82,258,24},L"@ NKS LABS",11,accent,FW_SEMIBOLD);
+    round(dc,{1278,132,294,140},panel);text(dc,{1292,141,264,22},L"MASTER / WINDOWS",11,ink,FW_SEMIBOLD);
+    text(dc,{1292,166,264,18},audio.running?L"AUDIO WINDOWS · ACTIF":L"AUDIO WINDOWS · ARRÊT",9,audio.running?accent:RGB(255,133,103),FW_SEMIBOLD);
+    text(dc,{1292,187,264,18},midiId>=0?L"MIDI · CONNECTÉ":L"MIDI · DÉCONNECTÉ",9,midiId>=0?accent:muted,FW_SEMIBOLD);
     meterPeak=std::max(double(snapshot.peak),meterPeak*.9);paintMasterMeter(dc,snapshot.volume,meterPeak);
+    round(dc,{1278,286,294,110},panel);text(dc,{1292,298,266,86},status,9,muted,FW_NORMAL,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
 }
 
 void paintMasterMeter(HDC dc,double value,double peak){
-    value=std::clamp(value,0.,1.);peak=std::max(0.,peak);const Box meter{1292,220,264,16};
+    value=std::clamp(value,0.,1.);peak=std::max(0.,peak);const Box meter{1292,239,264,16};
     const double db=peak>0?20.*std::log10(peak):-60.;const double ratio=std::clamp((db+60.)/60.,0.,1.);const int lit=int((meter.w-4)*ratio);
-    text(dc,{1292,197,132,18},L"MASTER "+number(int(value*100))+L" %",9,muted,FW_SEMIBOLD);
-    const std::wstring level=peak>=1?L"CLIP":(db<=-59.9?L"−∞ dB":number(int(std::round(db)))+L" dB");text(dc,{1424,197,132,18},level,9,peak>=1?RGB(255,95,90):muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{1292,215,132,18},L"MASTER "+number(int(value*100))+L" %",9,muted,FW_SEMIBOLD);
+    const std::wstring level=peak>=1?L"CLIP":(db<=-59.9?L"−∞ dB":number(int(std::round(db)))+L" dB");text(dc,{1424,215,132,18},level,9,peak>=1?RGB(255,95,90):muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     round(dc,meter,RGB(20,26,34),line);if(lit>0){const int green=std::min(lit,int((meter.w-4)*.8)),amber=std::min(lit-green,int((meter.w-4)*.15)),red=lit-green-amber;if(green>0)fill(dc,{meter.x+2,meter.y+3,green,meter.h-6},accent);if(amber>0)fill(dc,{meter.x+2+green,meter.y+3,amber,meter.h-6},RGB(241,184,88));if(red>0)fill(dc,{meter.x+2+green+amber,meter.y+3,red,meter.h-6},RGB(255,95,90));}
     const int marker=meter.x+2+int((meter.w-4)*value);fill(dc,{marker-1,meter.y-2,2,meter.h+4},ink);
 }
