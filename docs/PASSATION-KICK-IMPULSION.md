@@ -104,4 +104,4 @@ Sources officielles consultées :
 
 ## Point de reprise conseillé
 
-Les deux écrans et leurs huit encodeurs sont désormais reliés aux slots et paramètres d'effets existants, avec un focus, une sélection et un `DisplayBinding` indépendants. La prochaine étape doit construire le moniteur MIDI puis le MIDI Learn au-dessus de la même couche `SurfaceAction`, avant le profil Maschine+. Le navigateur de bibliothèque viendra ensuite sans remplacer ces contrôles.
+Les deux écrans et leurs huit encodeurs sont désormais reliés aux slots et paramètres d'effets existants, avec un focus, une sélection et un `DisplayBinding` indépendants. La page MIDI Control surveille les messages WinMM et apprend le canal, le CC et le mode absolu/relatif de P1–P8 au-dessus de la même couche `SurfaceAction`. La prochaine étape doit enregistrer ces affectations dans un profil Maschine+, puis apprendre transport, navigation 4D et Shift. Le navigateur de bibliothèque viendra ensuite sans remplacer ces contrôles.

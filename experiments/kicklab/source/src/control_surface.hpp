@@ -11,6 +11,23 @@ constexpr int SurfaceSteps = 16;
 constexpr int SurfaceDisplays = 2;
 constexpr int SurfaceQLinks = 4;
 
+enum class MidiCcMode { Absolute, Relative1, Relative65 };
+
+struct MidiCcBinding {
+    int channel = -1;
+    int cc = -1;
+    MidiCcMode mode = MidiCcMode::Absolute;
+};
+
+inline int midiCcDelta(MidiCcMode mode, int value) {
+    value = std::clamp(value, 0, 127);
+    if (mode == MidiCcMode::Absolute) return 0;
+    int delta = mode == MidiCcMode::Relative1
+        ? (value == 0 || value == 64 ? 0 : (value < 64 ? value : value - 128))
+        : value - 64;
+    return std::clamp(delta, -16, 16);
+}
+
 // Logical KICK commands. Windows mouse, keyboard and MIDI adapters all emit
 // these events instead of talking directly to the audio engine.
 enum class SurfaceAction {
@@ -26,6 +43,7 @@ enum class SurfaceAction {
     CenterLeft,
     CenterRight,
     QLinkTurn,
+    QLinkSet,
     FocusNext,
     PagePrevious,
     PageNext,
@@ -47,7 +65,8 @@ enum class DisplayModule {
     Inserts,
     Browser,
     Mixer,
-    Sequencer
+    Sequencer,
+    MidiControl
 };
 
 // A display is only a view onto the shared engine state. Two bindings can show

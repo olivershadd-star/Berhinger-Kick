@@ -54,7 +54,9 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Pads au clavier, par rangée : **A Z E R / Q S D F / W X C V / 1 2 3 4**. Le clic est toujours disponible.
 - Tempo : boutons − / + ou molette. Volume général : barre Master.
 - Clic droit sur un pad : charger un WAV. Glisser-déposer un WAV sur un pad ou sur l'éditeur est également possible.
-- MIDI : sélectionner une entrée avec le bouton MIDI de Jouer ; notes 36 à 51, tous canaux. Vélocité fixe, Note Off, CC et horloge MIDI non gérés.
+- MIDI : sélectionner une entrée avec le bouton MIDI ou depuis la page **MIDI Control** ; les notes 36 à 51 déclenchent les pads, tous canaux.
+- **MIDI Control** : ouvrir l'élément 16 du menu KICK. Les deux pages affichent P1–P4 puis P5–P8. Cliquer sur une ligne arme le MIDI Learn ; le prochain CC reçu mémorise son numéro et son canal. Un clic droit alterne `ABS`, relatif `1/127` et relatif `63/65`.
+- Un CC appris commande le même Q-Link que la souris dès que l'écran correspondant affiche une page d'inserts. Les affectations restent en mémoire pendant cette première étape et ne sont pas encore enregistrées dans un profil. Vélocité, Note Off, transport, retour LED et horloge MIDI ne sont pas encore gérés.
 
 ## WAV et projets
 

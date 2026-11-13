@@ -14,6 +14,10 @@ Box surfaceKnobBox(int display,int knob)const{return {514+display*580,88+knob*67
 Box surfaceInsertSlotBox(int display,int slot)const{return {54+display*580+slot*104,127,96,34};}
 Box surfaceInsertEffectBox(int display)const{return {54+display*580,174,250,36};}
 Box surfaceInsertBypassBox(int display)const{return {314+display*580,174,136,36};}
+Box surfaceMidiDeviceBox(int display)const{return {54+display*580,126,240,34};}
+Box surfaceMidiPreviousBox(int display)const{return {354+display*580,126,44,34};}
+Box surfaceMidiNextBox(int display)const{return {406+display*580,126,44,34};}
+Box surfaceMidiBindingBox(int display,int row)const{return {54+display*580,226+row*34,396,28};}
 
 int surfaceDragDisplay=-1,surfaceDragKnob=-1,surfaceDragStartY=0,surfaceDragLastStep=0;
 
@@ -37,6 +41,20 @@ void showSurfaceInserts(int display){
     status=L"Écran "+std::wstring(display?L"B":L"A")+L" — paramètres réels du slot d'effet sélectionné.";
 }
 
+void showSurfaceMidiControl(int display){
+    display=std::clamp(display,0,1);auto& binding=surface.displays[display];
+    binding.module=lab::DisplayModule::MidiControl;binding.page=0;surface.focusDisplay(display);
+    status=L"MIDI Control — choisis une cible P1–P8 puis tourne le contrôle physique à apprendre.";
+}
+
+void setSurfaceQLink(int display,int knob,double ratio){
+    if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks)return;
+    auto& binding=surface.displays[display];if(binding.module!=lab::DisplayModule::Inserts)return;
+    auto s=engine.snapshot();const int pad=std::clamp(binding.pad,0,lab::Pads-1),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
+    const int parameter=binding.parameterForKnob(knob);const auto effect=s.edits[pad].inserts[slot].effect;
+    if(parameter>=0&&parameter<lab::insertParameterCount(effect))engine.setInsertParameter(pad,slot,parameter,ratio);
+}
+
 void turnSurfaceQLink(int display,int knob,int delta){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks||!delta)return;
     auto& binding=surface.displays[display];
@@ -47,6 +65,24 @@ void turnSurfaceQLink(int display,int knob,int delta){
     const int parameter=binding.parameterForKnob(knob);
     if(parameter<0||parameter>=lab::insertParameterCount(insert.effect))return;
     engine.setInsertParameter(pad,slot,parameter,insert.parameters[parameter]+delta*.01);
+}
+
+std::wstring midiModeName(lab::MidiCcMode mode)const{
+    if(mode==lab::MidiCcMode::Relative1)return L"REL 1/127";
+    if(mode==lab::MidiCcMode::Relative65)return L"REL 63/65";
+    return L"ABS";
+}
+
+std::wstring midiInputName()const{
+    if(midiId<0)return L"Choisir une entrée MIDI";
+    MIDIINCAPSW caps{};return midiInGetDevCapsW(UINT(midiId),&caps,sizeof(caps))==MMSYSERR_NOERROR?caps.szPname:L"Entrée MIDI active";
+}
+
+std::wstring midiLastMessage()const{
+    if(!midiMessageCount)return L"Aucun message MIDI reçu";
+    const int midiStatus=midiLastPacked&255,type=midiStatus&0xf0,channel=midiStatus&15,data1=(midiLastPacked>>8)&127,data2=(midiLastPacked>>16)&127;
+    std::wstring kind=type==0x90?L"NOTE ON":type==0x80?L"NOTE OFF":type==0xb0?L"CC":L"MIDI";
+    return kind+L"  canal "+number(channel+1)+L"  donnée "+number(data1)+L"  valeur "+number(data2)+L"  ·  #"+number(int(midiMessageCount));
 }
 
 void surfacePointer(int y){
@@ -86,6 +122,7 @@ void activateSurfaceMenu(){
     const int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
     if(item==0){status=L"KICK / Browser — choix d'un sample pour le pad sélectionné.";sampleMenu();return;}
     if(item==11){showSurfaceInserts(surface.focusedDisplay);return;}
+    if(item==15){showSurfaceMidiControl(surface.focusedDisplay);return;}
     if(item==9||item==10){tab=1;status=L"KICK / "+surfaceMenuLabels[item]+L" — éditeur transitoire, avant intégration complète dans les deux écrans.";return;}
     status=L"KICK / "+surfaceMenuLabels[item]+L" sélectionné — module original pas encore relié à cette base Windows.";
 }
@@ -127,6 +164,18 @@ bool surfaceClick(int x,int y,bool right){
             }
             return true;
         }
+        if(binding.module==lab::DisplayModule::MidiControl){
+            if(surfaceMidiDeviceBox(display).contains(x,y)){midiMenu();return true;}
+            if(surfaceMidiPreviousBox(display).contains(x,y)){binding.page=std::max(0,binding.page-1);return true;}
+            if(surfaceMidiNextBox(display).contains(x,y)){binding.page=std::min(1,binding.page+1);return true;}
+            for(int row=0;row<4;++row)if(surfaceMidiBindingBox(display,row).contains(x,y)){
+                const int target=binding.page*4+row;auto& learned=midiQlinks[target];
+                if(right){learned.mode=learned.mode==lab::MidiCcMode::Absolute?lab::MidiCcMode::Relative1:learned.mode==lab::MidiCcMode::Relative1?lab::MidiCcMode::Relative65:lab::MidiCcMode::Absolute;status=L"P"+number(target+1)+L" : mode "+midiModeName(learned.mode)+L".";}
+                else {midiLearnTarget=target;status=L"MIDI Learn armé pour P"+number(target+1)+L" — tourne maintenant le contrôle physique.";}
+                return true;
+            }
+            return true;
+        }
         for(int local=0;local<8;++local)if(surfaceDisplayItemBox(display,local).contains(x,y)){
             selectSurfaceMenu(display*8+local);activateSurfaceMenu();return true;
         }
@@ -156,6 +205,21 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     round(dc,module,panel,focused?accent:line);
     round(dc,box,RGB(9,18,22),focused?accent:RGB(34,48,57));
     const auto& binding=surface.displays[display];
+    if(binding.module==lab::DisplayModule::MidiControl){
+        text(dc,{box.x+14,box.y+9,270,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MIDI CONTROL",12,focused?accent:muted,FW_SEMIBOLD);
+        text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / 2",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
+        button(dc,surfaceMidiDeviceBox(display),midiInputName(),midiId>=0);button(dc,surfaceMidiPreviousBox(display),L"<");button(dc,surfaceMidiNextBox(display),L">");
+        text(dc,{box.x+14,170,box.w-28,22},midiLastMessage(),9,midiMessageCount?accent:muted,FW_NORMAL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        text(dc,{box.x+14,194,box.w-28,22},midiLearnTarget>=0?L"LEARN : bouge le contrôle pour P"+number(midiLearnTarget+1):L"Clic : Learn · clic droit : ABS / relatif",9,midiLearnTarget>=0?RGB(241,184,88):muted,FW_SEMIBOLD);
+        for(int row=0;row<4;++row){const int target=binding.page*4+row;const auto& learned=midiQlinks[target];auto b=surfaceMidiBindingBox(display,row);const bool learning=midiLearnTarget==target;
+            if(learning)round(dc,b,RGB(64,49,25),RGB(241,184,88));else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
+            text(dc,{b.x+10,b.y,52,b.h},L"P"+number(target+1),10,learning?RGB(241,184,88):accent,FW_SEMIBOLD);
+            text(dc,{b.x+62,b.y,190,b.h},learned.cc<0?L"Non assigné":L"CC "+number(learned.cc)+L" · canal "+number(learned.channel+1),10,learned.cc<0?muted:ink);
+            text(dc,{b.x+262,b.y,122,b.h},midiModeName(learned.mode),9,muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        }
+        return;
+    }
     if(binding.module==lab::DisplayModule::Inserts){
         const int pad=std::clamp(binding.pad,0,lab::Pads-1),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
         const auto& edit=snapshot.edits[pad];const auto& insert=edit.inserts[slot];const int count=lab::insertParameterCount(insert.effect);
