@@ -146,6 +146,9 @@ public:
     // Exactly Block stereo frames; UI waveform copies do not hold render locks.
     void render(float* interleaved);
     bool save(const std::string&,std::string& error);
+    // Renders exactly one cycle of the currently active sequence through the
+    // real mixer and insert chain, as stereo 48 kHz / 24-bit PCM.
+    bool exportCurrentPatternWav(const std::string&,std::string& error);
     bool open(const std::string&,std::string& error);
 private:
     struct Impl; std::unique_ptr<Impl> impl;

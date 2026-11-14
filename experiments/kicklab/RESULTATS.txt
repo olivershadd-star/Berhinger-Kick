@@ -1,11 +1,13 @@
-KICK Lab 0.10.0 — blocs A–H autonomes et enchaînés
+KICK Lab 0.10.1 — blocs A–H et export WAV
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 31 effets ; quatre inserts ; groupes A–H indépendants ; Pad/Keyboard/Step ; REC quantifié ; Next Sequence ; Song ; niveau/pan/mute/solo de piste ; sauvegarde KICKLAB 8 ; migration KICKLAB 1 à 7 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 31 effets ; quatre inserts ; groupes A–H indépendants ; export WAV stéréo 24 bits à durée musicale exacte ; Pad/Keyboard/Step ; REC quantifié ; Next Sequence ; Song ; niveau/pan/mute/solo de piste ; sauvegarde KICKLAB 8 ; migration KICKLAB 1 à 7 ; remise en file des buffers ; continuité sous activité graphique.
+
+0.10.1 ajoute FILE → Exporter le bloc actif en WAV. Le moteur rend hors ligne une boucle complète du bloc A–H courant, à son tempo et sur sa longueur de une à quatre mesures. Le fichier stéréo PCM 24 bits / 48 kHz inclut le mixage des pistes, le Master, le pitch, l'ADSR et les quatre inserts de chaque pad.
 
 0.9.0 ajoute Nouveau/Ouvrir/Enregistrer/Enregistrer sous avec avertissement de projet modifié, une page Track Mutes reliée aux seize pistes, et l'affichage automatique sur les deux écrans pour tout effet de plus de quatre paramètres. PurestGain, EveryTrim, GlitchShifter, TremoSquare et Fracture proviennent du catalogue Airwindows original. L'interface compacte les commandes gauches, aligne les pads sous l'écran B, réserve neuf commandes vierges à droite et rassemble KICK, ANKS Labs et le Master dans un panneau unique.
 

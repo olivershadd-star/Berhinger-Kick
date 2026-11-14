@@ -346,6 +346,38 @@ bool Engine::save(const std::string& path,std::string& error){
     f<<"SONG "<<s.songLength<<'\n';for(int index=0;index<s.songLength;++index)f<<"STEP "<<s.song[index].sequence<<' '<<s.song[index].repeats<<'\n';
     if(!f){error="Erreur d'ecriture.";return false;}return true;
 }
+bool Engine::exportCurrentPatternWav(const std::string& path,std::string& error){
+    const auto before=snapshot();
+    const auto& sequence=before.sequences[before.sequence];
+    const uint32_t frames=uint32_t(std::max(1ll,std::llround(sequence.bars*4.*Rate*60./before.tempo)));
+    const uint32_t dataBytes=frames*2*3;
+    std::ofstream file(std::filesystem::u8path(path),std::ios::binary|std::ios::trunc);
+    if(!file){error="Impossible de creer le fichier WAV.";return false;}
+    auto write16=[&](uint32_t value){const char data[2]={char(value&255),char((value>>8)&255)};file.write(data,2);};
+    auto write32=[&](uint32_t value){const char data[4]={char(value&255),char((value>>8)&255),char((value>>16)&255),char((value>>24)&255)};file.write(data,4);};
+    file.write("RIFF",4);write32(36+dataBytes);file.write("WAVEfmt ",8);write32(16);
+    write16(1);write16(2);write32(Rate);write32(Rate*6);write16(6);write16(24);
+    file.write("data",4);write32(dataBytes);
+
+    stop();setPlaying(true);
+    std::array<float,Block*2> rendered{};
+    uint32_t written=0;
+    while(written<frames&&file){
+        render(rendered.data());
+        const int count=int(std::min<uint32_t>(Block,frames-written));
+        for(int frame=0;frame<count;++frame)for(int channel=0;channel<2;++channel){
+            const double sample=std::clamp(double(rendered[frame*2+channel]),-1.,1.);
+            const int32_t value=int32_t(std::llround(sample*8388607.));
+            const uint32_t word=static_cast<uint32_t>(value);
+            const char data[3]={char(word&255),char((word>>8)&255),char((word>>16)&255)};
+            file.write(data,3);
+        }
+        written+=count;
+    }
+    stop();file.flush();const bool success=bool(file)&&written==frames;file.close();
+    if(!success){std::error_code ignored;std::filesystem::remove(std::filesystem::u8path(path),ignored);error="Erreur pendant l'export WAV.";return false;}
+    return true;
+}
 bool Engine::open(const std::string& path,std::string& error){
     std::ifstream f(std::filesystem::u8path(path),std::ios::ate);if(!f||f.tellg()>1024*1024){error="Projet introuvable ou trop volumineux.";return false;}f.seekg(0);
     std::string tag;int version;Snapshot s;

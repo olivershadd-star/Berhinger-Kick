@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.10.0 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont maintenant huit blocs kit/pattern autonomes : samples, steps, longueur et réglages de séquence restent indépendants, et leur enchaînement attend la frontière du pattern sans arrêter le transport. `Duplicate`, puis A–H, copie le pattern courant pour créer une variation. La gestion sûre des projets, Track Mutes, le double écran FX, les cinq effets Airwindows supplémentaires et la correction de la molette 4D restent intégrés.
+La version 0.10.1 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont maintenant huit blocs kit/pattern autonomes : samples, steps, longueur et réglages de séquence restent indépendants, et leur enchaînement attend la frontière du pattern sans arrêter le transport. `Duplicate`, puis A–H, copie le pattern courant pour créer une variation. Le bloc actif peut être exporté en WAV à sa durée musicale exacte, avec son mixage et ses effets. La gestion sûre des projets, Track Mutes, le double écran FX, les cinq effets Airwindows supplémentaires et la correction de la molette 4D restent intégrés.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -89,6 +89,8 @@ WAV PCM 16/24/32 bits, flottant 32 bits et WAV Extensible PCM/flottant, mono/st�
 L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la rotation 4D parcourt les éléments, droite ou Enter ouvre un dossier, gauche remonte au parent et Enter charge un WAV. Les dossiers sont affichés avant les fichiers. La préécoute `AUD OFF/AUTO/MAN` ignore les dossiers, joue le WAV une fois et ne remplace pas le sample du pad.
 
 **FILE → Enregistrer/Ouvrir** sauvegarde les huit groupes A–H, leurs 128 références de samples et réglages, les seize séquences, leurs pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo et le volume dans un fichier `.kicklab`. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement.
+
+**FILE → Exporter le bloc actif en WAV** rend exactement une boucle du bloc A–H sélectionné à son tempo et sa longueur de une à quatre mesures. L'export est stéréo PCM 24 bits à 48 kHz et passe par le véritable moteur : pitch, enveloppes, niveaux, panoramiques, mutes/solos, Master et quatre inserts par pad sont inclus. Le transport est arrêté à la fin de l'export.
 
 Les projets **KICKLAB 1** à **KICKLAB 7** restent lisibles. Les nouveaux projets utilisent **KICKLAB 8** pour conserver les groupes A–H, les seize pistes et les nouveaux identifiants d'effets. Ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
 

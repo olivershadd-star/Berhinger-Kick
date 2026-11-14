@@ -260,7 +260,7 @@ public:
     void load(const std::wstring& path){if(path.empty())return;std::string error;if(engine.load(selected,utf8(path),error)){markProjectDirty();status=L"WAV chargé sur le pad "+padName(selected)+L". Conversion à 48 kHz si nécessaire.";play(selected);}else MessageBoxW(window,wide(error).c_str(),L"Chargement WAV",MB_OK|MB_ICONINFORMATION);}
     void sampleMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,700,L"Factory Sample Library");AppendMenuW(menu,MF_STRING,701,L"Importer depuis l'ordinateur");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,702,L"Ouvrir le dossier de la bibliothèque");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice==700)load(choose(false,false,library));else if(choice==701)load(choose(false,false));else if(choice==702)ShellExecuteW(window,L"open",library.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
     void savePadToLibrary(){auto s=engine.snapshot();if(s.paths[selected].empty()){MessageBoxW(window,L"Charge d'abord un WAV sur ce pad.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}auto source=std::filesystem::u8path(s.paths[selected]);auto folder=browsers[surface.focusedDisplay].directory;if(folder.empty()||!std::filesystem::is_directory(folder))folder=library;auto destinationText=choose(true,false,folder,source.filename().wstring());if(destinationText.empty())return;auto destination=std::filesystem::path(destinationText);std::error_code ec;if(std::filesystem::exists(destination,ec)&&std::filesystem::equivalent(source,destination,ec)){status=L"Ce WAV est déjà dans la bibliothèque : "+destination.filename().wstring();return;}ec.clear();std::filesystem::copy_file(source,destination,std::filesystem::copy_options::overwrite_existing,ec);if(ec){MessageBoxW(window,(L"Copie impossible : "+wide(ec.message())).c_str(),L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}std::string loadError;if(engine.load(selected,destination.u8string(),loadError,true)){markProjectDirty();status=L"WAV ajouté à la bibliothèque : "+destination.filename().wstring();}else status=L"WAV copié, mais impossible de rattacher le pad : "+wide(loadError);}
-    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.10.0 — "+name+(projectDirty?L" *":L"")).c_str());}
+    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.10.1 — "+name+(projectDirty?L" *":L"")).c_str());}
     void markProjectDirty(){if(!projectDirty){projectDirty=true;updateProjectTitle();}}
     bool saveProjectAs(){
         const auto suggested=currentProject.empty()?L"Nouveau-projet.kicklab":currentProject.filename().wstring();auto p=choose(true,true,currentProject.parent_path(),suggested);if(p.empty())return false;
@@ -284,10 +284,21 @@ public:
         currentProject=p;projectDirty=false;auto snapshot=engine.snapshot();padGroup=snapshot.group;selectTrack(snapshot.selectedTrack);updateProjectTitle();status=L"Projet chargé : "+currentProject.filename().wstring();
     }
     void clearCurrentPattern(){if(MessageBoxW(window,L"Effacer toutes les notes du pattern actuellement sélectionné ?",L"Effacer le pattern",MB_YESNO|MB_ICONWARNING)!=IDYES)return;engine.clearPattern();markProjectDirty();status=L"Pattern courant effacé. Les autres patterns et les samples sont conservés.";}
+    void exportCurrentPattern(){
+        const auto snapshot=engine.snapshot();
+        const std::wstring suggested=L"KICK-Bloc-"+std::wstring(1,wchar_t(L'A'+snapshot.group))+L".wav";
+        const auto destination=choose(true,false,currentProject.parent_path(),suggested);if(destination.empty())return;
+        status=L"Export WAV du bloc "+std::wstring(1,wchar_t(L'A'+snapshot.group))+L" en cours...";InvalidateRect(window,nullptr,FALSE);UpdateWindow(window);
+        const auto previousCursor=SetCursor(LoadCursor(nullptr,IDC_WAIT));audio.stop();
+        std::string error;const bool exported=engine.exportCurrentPatternWav(utf8(destination),error);
+        audio.start(audioId);SetCursor(previousCursor);
+        if(!exported){MessageBoxW(window,wide(error).c_str(),L"Exporter le pattern en WAV",MB_OK|MB_ICONINFORMATION);status=L"Échec de l'export WAV.";return;}
+        status=L"WAV exporté : "+std::filesystem::path(destination).filename().wstring()+L" · "+number(snapshot.sequences[snapshot.sequence].bars)+L" mesure(s) · "+number(int(std::lround(snapshot.tempo)))+L" BPM · stéréo 24 bits.";
+    }
     void project(bool save){if(save)saveProject(false);else openProject();}
     void fileMenu(){
-        HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,909,L"Nouveau projet...");AppendMenuW(menu,MF_STRING,910,L"Ouvrir un projet KICK...");AppendMenuW(menu,MF_STRING,911,L"Enregistrer");AppendMenuW(menu,MF_STRING,913,L"Enregistrer sous...");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,914,L"Effacer le pattern courant...");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,912,L"Ouvrir la Factory Sample Library");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);
-        if(choice==909)newProject();else if(choice==910)openProject();else if(choice==911)saveProject(false);else if(choice==913)saveProject(true);else if(choice==914)clearCurrentPattern();else if(choice==912)ShellExecuteW(window,L"open",library.c_str(),nullptr,nullptr,SW_SHOWNORMAL);
+        HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,909,L"Nouveau projet...");AppendMenuW(menu,MF_STRING,910,L"Ouvrir un projet KICK...");AppendMenuW(menu,MF_STRING,911,L"Enregistrer");AppendMenuW(menu,MF_STRING,913,L"Enregistrer sous...");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,915,L"Exporter le bloc actif en WAV...");AppendMenuW(menu,MF_STRING,914,L"Effacer le pattern courant...");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,912,L"Ouvrir la Factory Sample Library");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);
+        if(choice==909)newProject();else if(choice==910)openProject();else if(choice==911)saveProject(false);else if(choice==913)saveProject(true);else if(choice==915)exportCurrentPattern();else if(choice==914)clearCurrentPattern();else if(choice==912)ShellExecuteW(window,L"open",library.c_str(),nullptr,nullptr,SW_SHOWNORMAL);
     }
     void selectPad(int p){surface.selectPad(p);selected=surface.selectedPad;stepTrack=selected;engine.selectTrack(selected);}
     std::wstring recordQuantizeName()const{return L"1/"+number(recordQuantize);}
@@ -427,7 +438,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,DesignWidth,DesignHeight};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.10.0 — Navigation Maschine+",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.10.1 — Navigation Maschine+",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }

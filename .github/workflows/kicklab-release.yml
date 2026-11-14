@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.10.0
+        default: 0.10.1
 
 permissions:
   contents: write
@@ -63,6 +63,9 @@ jobs:
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
 
+            Version 0.10.1 adds WAV export for the active A-H block. The offline
+            renderer writes its exact musical length as stereo 48 kHz / 24-bit
+            PCM through the actual track mixer, pad editing and insert effects.
             Version 0.10.0 adds safe New/Open/Save/Save As project commands, a
             functional Track Mutes page and automatic two-screen display for
             effects with more than four parameters. The original Airwindows

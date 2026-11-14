@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <vector>
 #include <cstdint>
+#include <cstring>
 #include <iomanip>
 using namespace lab;
 void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
@@ -57,6 +58,12 @@ int main(int argc,char**argv){try{
     for(int p=0;p<Pads;++p)check(e.load(p,path("long.wav"),error),error.c_str());for(int p=0;p<Pads;++p)e.trigger(p);e.render(block);for(float v:block)check(std::isfinite(v)&&std::abs(v)<=.98f,"mixing overflow");
     e.stop();e.demoPattern();e.setTempo(120);e.setPlaying(true);e.render(block);e.setPlaying(false);int paused=e.snapshot().step;for(int b=0;b<30;++b)e.render(block);check(e.snapshot().step==paused,"pause advances sequencer");e.stop();e.setPlaying(true);std::ofstream raw(std::filesystem::u8path(path("demo.f32")),std::ios::binary);
     int transitions=0,last=-1;double sum=0;for(int b=0;b<375;++b){e.render(block);raw.write(reinterpret_cast<const char*>(block),sizeof(block));for(float v:block)sum+=v*v;int s=e.snapshot().step;if(s!=last){++transitions;last=s;}}check(transitions==16,"sequencer timing failed");check(sum>1,"sequencer is silent");e.stop();
+    // Export renders the active pattern through the real engine at an exact
+    // musical length. One 4/4 bar at 120 BPM is 96,000 stereo frames.
+    const auto exportedPath=path("pattern-export.wav");check(e.exportCurrentPatternWav(exportedPath,error),error.c_str());
+    std::ifstream exported(std::filesystem::u8path(exportedPath),std::ios::binary|std::ios::ate);check(bool(exported),"exported WAV was not created");
+    check(uint64_t(exported.tellg())==44ull+96000ull*6ull,"exported WAV duration or 24-bit frame size is incorrect");exported.seekg(0);std::vector<char> exportedBytes(size_t(44+96000*6));exported.read(exportedBytes.data(),std::streamsize(exportedBytes.size()));
+    check(!std::memcmp(exportedBytes.data(),"RIFF",4)&&!std::memcmp(exportedBytes.data()+8,"WAVE",4)&&!std::memcmp(exportedBytes.data()+36,"data",4),"exported WAV header is invalid");bool exportedSignal=false;for(size_t byte=44;byte<exportedBytes.size();++byte)exportedSignal=exportedSignal||exportedBytes[byte]!=0;check(exportedSignal,"exported WAV is silent");check(!e.snapshot().playing,"WAV export left transport running");
     // KICK Pad Perform / Keygroup: one sample can be played and sequenced chromatically.
     e.selectSequence(0);e.setSequenceBars(2);e.setViewBar(1);e.setPerformanceMode(PerformanceMode::Chromatic);e.setMelodicSourcePad(12);e.setRootNote(48);e.toggle(7,3);
     auto arrangement=e.snapshot();
