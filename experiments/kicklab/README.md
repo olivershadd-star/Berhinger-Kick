@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.10.1 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont maintenant huit blocs kit/pattern autonomes : samples, steps, longueur et réglages de séquence restent indépendants, et leur enchaînement attend la frontière du pattern sans arrêter le transport. `Duplicate`, puis A–H, copie le pattern courant pour créer une variation. Le bloc actif peut être exporté en WAV à sa durée musicale exacte, avec son mixage et ses effets. La gestion sûre des projets, Track Mutes, le double écran FX, les cinq effets Airwindows supplémentaires et la correction de la molette 4D restent intégrés.
+La version 0.11.0 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont huit blocs kit/pattern autonomes dont l'enchaînement attend la fin du pattern. Les loops suivent maintenant le tempo du projet, Tempo possède un véritable écran bidirectionnel, Note Repeat est généré par l'horloge audio et Keyboard/Chords disposent d'un arpégiateur. `Duplicate`, puis A–H, copie le pattern courant. Le bloc actif peut être exporté en WAV avec son mixage et ses effets.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -15,7 +15,7 @@ La version 0.10.1 conserve les seize pistes, la sauvegarde MIDI portable et les 
 1. Extraire entièrement le ZIP dans un dossier accessible en écriture.
 2. Ouvrir **KickLab.exe**, en gardant le dossier **demo-kit** à côté. Le dossier **samples** de la bibliothèque est créé automatiquement.
 3. Les groupes **A–H** sont huit banques indépendantes de seize pads. A contient le kit de démonstration ; B–H commencent vides. Un clic droit sur un pad charge un WAV dans le groupe actif.
-4. **PAD MODE** joue les seize samples. Le dernier pad joué devient automatiquement la piste lorsque l'on passe sur **STEP**. **KEYBOARD** répartit le sample sélectionné sur seize hauteurs : jouer une hauteur puis passer sur **STEP** permet de placer cette note sur les pas 1–16. `Select + pad` ou `Shift + pad` reste disponible pour choisir explicitement une piste. **CHORDS** est réservé, mais son moteur polyphonique n'est pas encore porté.
+4. **PAD MODE** joue les seize samples. Le dernier pad joué devient automatiquement la piste lorsque l'on passe sur **STEP**. **KEYBOARD** répartit le sample sélectionné sur seize hauteurs. **CHORDS** produit des triades majeures ou mineures arpégées ; **NOTE REPEAT / Arp** active et coupe la répétition, et **FOLLOW / Grid** choisit 1/4, 1/8 ou 1/16. `Select + pad` ou `Shift + pad` choisit explicitement une piste Step.
 5. Cliquer sur l'écran A ou B, puis sur **PLUG-IN / Instance** ou **PERFORM / FX** affiche les inserts. Choisir un slot et régler ses paramètres avec P1–P4 ou P5–P8. Les flèches `<` et `>` changent de page.
 6. **SAMPLING** ouvre l'éditeur détaillé. **PITCH / PAD EDIT** ouvre directement volume, pitch, découpe et ADSR dans l'écran actif. **BROWSER** parcourt toute l'arborescence du dossier `samples`.
 7. Armer **REC**, lancer **PLAY**, puis jouer les pads. **FOLLOW / Grid** choisit la correction à l'enregistrement : 1/4, 1/8 ou 1/16. **4 Sequences** sélectionne une séquence ; **8 Songs** construit l'arrangement.
@@ -33,6 +33,7 @@ La surface principale expose maintenant le slot d'effet sélectionné directemen
 - **Volume** : réglage indépendant par pad, de 0 à 200 %, lissé pendant la lecture.
 - **Accordage** : de −24 à +24 demi-tons. Il s'agit d'une transposition par vitesse de lecture : la durée change aussi, sans time-stretch.
 - **Fondus** : de 0 à 20 ms au début et à la fin, limités à la moitié de la zone lue. Valeur initiale : 2 ms.
+- **Loop Sync** : la troisième page de Pad Edit active la synchronisation et règle le BPM source de 40 à 240. Les chemins ou noms contenant `loop` activent automatiquement Sync ; un nombre marqué `BPM` est repris, sinon le moteur déduit le nombre de mesures le plus plausible. Cette première synchronisation utilise la vitesse de lecture : elle suit exactement le tempo mais modifie aussi la hauteur, sans time-stretch spectral.
 - **Slots 1 à 4** : sélectionner un slot, puis choisir une catégorie et un effet. Les effets sont traités dans l'ordre 1 → 4.
 - **Encodeur 4D** : dans Sample & FX, tourner sélectionne les slots 1 à 4, appuyer ouvre le choix d'effet et gauche/droite change la page de paramètres.
 - La rotation 4D de Maschine est absolue : droite augmente la valeur et avance dans les slots, gauche la diminue et recule. Dans FX, haut/bas choisit également le slot précédent/suivant, gauche/droite change la page et Enter ouvre le choix de l'effet. La sélection boucle entre les slots 1 et 4.
@@ -65,6 +66,7 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Chaque projet contient seize séquences de une à quatre mesures, en doubles croches. L'écran **Sequences** choisit la séquence, la mesure visible et la longueur.
 - Chaque séquence conserve ses pistes de batterie et une piste mélodique. **PAD MODE** choisit une piste de sample, **KEYBOARD** travaille les hauteurs et **STEP** affiche les seize pas sur les pads.
 - **REC** arme l'enregistrement. Une fois PLAY actif, chaque pad joué est écrit sur la séquence courante. FOLLOW / Grid alterne entre 1/4, 1/8 et 1/16 ; l'enregistrement rythmique et mélodique utilise exactement la même grille que Step. STOP coupe le transport et désarme REC.
+- **NOTE REPEAT / Arp** répète le pad Drum tenu ou parcourt les notes MIDI maintenues en Keyboard. La répétition est calculée dans le moteur audio à 1/4, 1/8 ou 1/16 et ne dépend pas du rafraîchissement graphique. **CHORDS** construit une triade sur le pad choisi et la confie à ce même arpégiateur.
 - **Pad Notes / Keygroup** reprend la logique Pad Perform publiée dans KICK : modes chromatique, gamme majeure et gamme mineure, sample source et note racine. Un clic de pad, une touche AZERTY ou une note MIDI joue le même sample à une hauteur différente. La transposition change aussi la durée, sans time-stretch.
 - **Next Sequence** affecte les séquences 1–16 aux pads. À l'arrêt, le choix est immédiat ; pendant la lecture, la nouvelle séquence est mise en attente jusqu'à la fin complète de la séquence courante.
 - **Song Editor** enchaîne jusqu'à 32 étapes, chacune composée d'une séquence et de 1 à 128 répétitions. `Lire` lance l'arrangement et s'arrête à sa fin.
@@ -92,7 +94,7 @@ L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la r
 
 **FILE → Exporter le bloc actif en WAV** rend exactement une boucle du bloc A–H sélectionné à son tempo et sa longueur de une à quatre mesures. L'export est stéréo PCM 24 bits à 48 kHz et passe par le véritable moteur : pitch, enveloppes, niveaux, panoramiques, mutes/solos, Master et quatre inserts par pad sont inclus. Le transport est arrêté à la fin de l'export.
 
-Les projets **KICKLAB 1** à **KICKLAB 7** restent lisibles. Les nouveaux projets utilisent **KICKLAB 8** pour conserver les groupes A–H, les seize pistes et les nouveaux identifiants d'effets. Ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
+Les projets **KICKLAB 1** à **KICKLAB 8** restent lisibles. Les nouveaux projets utilisent **KICKLAB 9** pour conserver en plus Loop Sync et le BPM source de chaque pad. Ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 

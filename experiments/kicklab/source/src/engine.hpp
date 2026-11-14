@@ -51,6 +51,10 @@ InsertState defaultInsertState(InsertEffect effect);
 struct PadEdit {
     double start=0, end=1, gain=1, semitones=0, fadeMs=2;
     double attack=0, decay=0, sustain=1, release=0;
+    // Loop Sync changes playback speed so a loop recorded at sourceBpm follows
+    // the project tempo. It remains opt-in for ordinary one-shots.
+    bool loopSync=false;
+    double sourceBpm=120;
     bool insertsBypass=false;
     std::array<InsertState,InsertSlots> inserts{};
     PadEdit(){inserts[0]=defaultInsertState(InsertEffect::Lowpass);inserts[0].bypass=true;inserts[1]=defaultInsertState(InsertEffect::PurestDrive);inserts[1].bypass=true;}
@@ -89,7 +93,8 @@ struct Snapshot {
     std::array<PadEdit,Pads> edits{};
     std::array<double,Pads> durations{}, progress{};
     double tempo=120,volume=.65;
-    bool playing=false,songPlaying=false;
+    bool playing=false,songPlaying=false,noteRepeat=false,arpeggiator=false;
+    int repeatDivision=16;
     int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1,group=0,queuedGroup=-1;
     int selectedTrack=0;
     int songLength=0,songPosition=-1,songRepeat=0;
@@ -142,6 +147,10 @@ public:
     void playSong();
     void setPlaying(bool); void stop();
     void setTempo(double); void setVolume(double);
+    void setNoteRepeat(bool enabled,bool arpeggiator=false);
+    void setRepeatDivision(int division);
+    void setRepeatVoice(int pad,int semitones,bool held);
+    void holdArpeggioNote(int sourcePad,int note,bool held);
     Snapshot snapshot();
     // Exactly Block stereo frames; UI waveform copies do not hold render locks.
     void render(float* interleaved);

@@ -38,7 +38,7 @@ int main(int argc,char**argv){try{
     MidiPadBinding padBinding{0,12};check(padBinding.matches(0,12)&&!padBinding.matches(0,13)&&!padBinding.matches(1,12),"learned pad matching failed");
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
-    wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);std::filesystem::create_directories(dir/"packs"/"industrial"/"loops");auto nested=(dir/"packs"/"industrial"/"loops"/"extensible.wav").u8string();extensibleWav(nested,48000,2,4800);
+    wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);wav(path("Bass_Loop_130BPM.wav"),48000,2,int(std::llround(48000.*240./130.)));std::filesystem::create_directories(dir/"packs"/"industrial"/"loops");auto nested=(dir/"packs"/"industrial"/"loops"/"extensible.wav").u8string();extensibleWav(nested,48000,2,4800);
     Engine e;float block[Block*2];std::string error;
     e.render(block);for(float v:block)check(v==0,"empty engine is not silent");
     check(e.preview(path("mono.wav"),error),error.c_str());e.render(block);double previewEnergy=0;for(float value:block)previewEnergy+=value*value;
@@ -51,6 +51,12 @@ int main(int argc,char**argv){try{
     check(e.load(1,path("resample.wav"),error),error.c_str());e.trigger(1);int active=0;for(int b=0;b<24;++b){e.render(block);for(int n=0;n<Block;++n)if(std::abs(block[n*2])>.00001)++active;}check(active>4500&&active<4801,"44.1 kHz conversion duration incorrect");
     check(e.load(2,nested,error),error.c_str());check(e.snapshot().paths[2]==nested,"nested WAV Extensible path was not retained");e.trigger(2);e.render(block);double nestedEnergy=0;for(float value:block)nestedEnergy+=value*value;check(nestedEnergy>1e-5,"nested WAV Extensible file is silent");e.stop();
     check(e.load(0,path("long.wav"),error),error.c_str());e.stop();e.trigger(0);for(int b=0;b<200;++b)e.render(block);check(!e.snapshot().active[0],"manual pad audition looped after WAV end");
+    // A named loop keeps its source tempo and follows project BPM by playback
+    // speed. A 130 BPM one-bar loop must last one 120 BPM bar after sync.
+    Engine synced;check(synced.load(0,path("Bass_Loop_130BPM.wav"),error),error.c_str());auto loopEdit=synced.snapshot().edits[0];check(loopEdit.loopSync&&std::abs(loopEdit.sourceBpm-130)<.01,"loop BPM was not detected");synced.setTempo(120);synced.trigger(0);int syncBlocks=0;do{synced.render(block);++syncBlocks;}while(synced.snapshot().active[0]&&syncBlocks<500);check(syncBlocks>=374&&syncBlocks<=376,"loop did not stretch to the project tempo");
+    check(synced.save(path("loop-sync.kicklab"),error),error.c_str());loopEdit.loopSync=false;loopEdit.sourceBpm=90;synced.setEdit(0,loopEdit);check(synced.open(path("loop-sync.kicklab"),error),error.c_str());check(synced.snapshot().edits[0].loopSync&&std::abs(synced.snapshot().edits[0].sourceBpm-130)<.01,"KICKLAB 9 did not retain loop sync");
+    // Note Repeat is generated in the audio clock, not by the UI timer.
+    Engine repeated;check(repeated.load(0,path("mono.wav"),error),error.c_str());repeated.setTempo(120);repeated.setRepeatDivision(16);repeated.setNoteRepeat(true);repeated.setRepeatVoice(0,0,true);int energeticBlocks=0;for(int b=0;b<55;++b){repeated.render(block);double repeatedEnergy=0;for(float value:block)repeatedEnergy+=value*value;if(repeatedEnergy>1e-5)++energeticBlocks;}check(energeticBlocks>=3,"Note Repeat did not retrigger from the audio clock");repeated.stop();check(!repeated.snapshot().noteRepeat,"STOP did not clear Note Repeat");
     PadEdit preserved;preserved.gain=.37;preserved.semitones=-5;preserved.inserts[2]=defaultInsertState(InsertEffect::Chorus);e.setEdit(0,preserved);
     check(e.load(0,path("mono.wav"),error,true),error.c_str());auto preservedState=e.snapshot().edits[0];
     check(preservedState.gain==.37&&preservedState.semitones==-5&&preservedState.inserts[2].effect==InsertEffect::Chorus,"confirmed browser load reset pad editing");
@@ -180,7 +186,7 @@ int main(int argc,char**argv){try{
     e.setInsertEffect(0,2,InsertEffect::PurestDrive);e.setInsertParameter(0,2,0,.42);e.setInsertBypass(0,2,true);restored=e.snapshot().edits[0];check(restored.inserts[2].effect==InsertEffect::PurestDrive&&restored.inserts[2].parameters[0]==.42&&restored.inserts[2].bypass,"insert control API failed");
     e.resetProject();auto reset=e.snapshot();check(reset.paths[0].empty()&&!reset.pattern[0][0]&&reset.songLength==0&&reset.sequence==0,"new project reset retained musical data");
     std::cout<<"PASS: trim, Pad Perform pitch, ADSR, 31 Airwindows effects and four AudIO inserts\n";
-    std::cout<<"PASS: A-H pad groups, KICKLAB 8 tracks, mixer, 16 sequences, Song and legacy compatibility\n";
+    std::cout<<"PASS: A-H pad groups, KICKLAB 9 loop sync/tracks, mixer, 16 sequences, Song and legacy compatibility\n";
     // Batched driver completions across the ring boundary must preserve time order.
     AudioQueue<4> queue;std::array<bool,4> ready={true,true,true,false};std::vector<int> submitted;
     auto submit=[&](size_t b){submitted.push_back(int(b));ready[b]=false;return true;};

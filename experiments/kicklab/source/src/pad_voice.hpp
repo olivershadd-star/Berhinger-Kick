@@ -223,9 +223,11 @@ struct PadEffects : public AudIO::DawInserts {
 class PadPlayback : public AudIO::AudioPlayback {
 public:
     lab::PadEdit edit;
+    double projectTempo=120;
     std::unique_ptr<PadEffects> effects=std::make_unique<PadEffects>(edit);
     void trigger(double transpose=0){
-        setSlice(edit.start,edit.end,std::pow(2.,(edit.semitones+transpose)/12.),edit.fadeMs);
+        const double tempoRatio=edit.loopSync?projectTempo/std::clamp(edit.sourceBpm,40.,240.):1.;
+        setSlice(edit.start,edit.end,std::pow(2.,(edit.semitones+transpose)/12.)*tempoRatio,edit.fadeMs);
         // Pads are one-shots. Looping must only ever be enabled by a future,
         // explicit KICK loop mode, never by importing or auditioning a WAV.
         setLooping(false);

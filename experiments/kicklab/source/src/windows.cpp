@@ -196,7 +196,7 @@ public:
         case T::GroupA:case T::GroupB:case T::GroupC:case T::GroupD:case T::GroupE:case T::GroupF:case T::GroupG:case T::GroupH:if(pressed)selectGroupBlock(target-int(T::GroupA));break;
         case T::PadMode:if(pressed){padMode=0;engine.setTrackProgram(stepTrack,lab::ProgramType::Drum);engine.setPerformanceMode(lab::PerformanceMode::Drum);status=L"MIDI — Pad Mode.";}break;
         case T::Keyboard:if(pressed){padMode=1;selectTrack(selected);engine.setTrackProgram(stepTrack,lab::ProgramType::Keygroup);engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);status=L"MIDI — Keyboard : joue une hauteur puis passe sur Step pour la séquencer.";}break;
-        case T::Chords:if(pressed)status=L"MIDI — Chords reçu ; moteur d'accords pas encore porté.";break;
+        case T::Chords:if(pressed){padMode=2;auto s=engine.snapshot();if(s.sequences[s.sequence].mode==lab::PerformanceMode::Drum)engine.setPerformanceMode(lab::PerformanceMode::Major);engine.setNoteRepeat(true,true);engine.setRepeatDivision(recordQuantize);status=L"MIDI — Chords : les pads lancent des triades arpégées.";}break;
         case T::Step:if(pressed)enterStepMode();break;
         case T::Pattern:if(pressed)showSurfaceNextSequence(surface.focusedDisplay);break;
         case T::Duplicate:if(pressed){duplicateSourceSequence=engine.snapshot().sequence;status=L"MIDI — Duplicate armé ; choisis maintenant A–H.";}break;
@@ -205,10 +205,10 @@ public:
         case T::Mute:if(pressed){muteLatch=!muteLatch;soloLatch=selectLatch=false;status=muteLatch?L"MIDI — Mute actif ; frappe un pad pour couper une piste.":L"MIDI — Mute relâché.";}break;
         case T::Perform:if(pressed)showSurfaceInserts(surface.focusedDisplay);break;
         case T::Notes:if(pressed){padMode=1;showSurfacePadPerform(surface.focusedDisplay);}break;
-        case T::Channel:if(pressed){if(surface.shift)showSurfaceMidiControl(surface.focusedDisplay);else showSurfaceMixer(stepTrack/8);}break;
+        case T::Channel:if(pressed){if(surface.shift)showSurfaceMidiControl(surface.focusedDisplay);else showSurfaceMixer(0);}break;
         case T::Plugin:if(pressed)showSurfaceInserts(surface.focusedDisplay);break;
         case T::Ideas:if(pressed)showSurfaceSong(surface.focusedDisplay);break;
-        case T::Mixer:if(pressed)showSurfaceMixer(stepTrack/8);break;
+        case T::Mixer:if(pressed)showSurfaceMixer(0);break;
         case T::Browser:if(pressed)showSurfaceBrowser(surface.focusedDisplay);break;
         case T::Sampling:if(pressed){tab=1;status=L"Sampler / Sample Editor KICK.";}break;
         case T::FileSave:if(pressed){if(surface.shift)project(true);else fileMenu();}break;
@@ -216,9 +216,11 @@ public:
         case T::Follow:if(pressed)cycleRecordQuantize();break;
         case T::Record:if(pressed)toggleRecord();break;
         case T::Pitch:if(pressed)showSurfaceProgram(surface.focusedDisplay);break;
+        case T::Tempo:if(pressed)showSurfaceTempo(surface.focusedDisplay);break;
+        case T::NoteRepeat:if(pressed)toggleNoteRepeat();break;
         case T::Restart:case T::Erase:case T::Tap:
         case T::FixedVelocity:case T::Scene:case T::Events:case T::Variation:
-        case T::Volume:case T::Swing:case T::Tempo:case T::NoteRepeat:case T::Lock:case T::Mod:
+        case T::Volume:case T::Swing:case T::Lock:case T::Mod:
         case T::Auto:case T::Macro:if(pressed)status=L"MIDI — "+midiCommandLabels[target]+L" reçu ; module KICK pas encore porté.";break;
         default:break;
         }
@@ -233,7 +235,7 @@ public:
             const bool saved=saveMidiProfile();status=L"MIDI Learn : CC "+number(data1)+L" canal "+number(channel+1)+L" assigné à P"+number(midiLearnTarget+1)+(saved?L" · profil Maschine+ sauvegardé.":L" · impossible de sauvegarder le profil.");
             midiLearnTarget=-1;return;
         }
-        if(type==0x90||type==0x80){const bool pressed=type==0x90&&data2>0;bool matched=false;auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[snapshot.sequence];if(padMode==1&&sequence.mode!=lab::PerformanceMode::Drum){if(pressed){engine.triggerPitch(sequence.sourcePad,data1-sequence.rootNote);if(recordArmed&&engine.recordHit(sequence.sourcePad,data1,recordQuantize))markProjectDirty();}else engine.releasePerformancePad(0);matched=true;}else for(int target=0;target<int(midiPads.size());++target)if(midiPads[target].matches(channel,data1)){dispatch({lab::SurfaceAction::PadPress,target%lab::SurfacePads,0,0,pressed});matched=true;break;}const int fallback=data1-36;if(!matched&&fallback>=0&&fallback<lab::SurfacePads&&midiPads[padGroup*lab::SurfacePads+fallback].note<0)dispatch({lab::SurfaceAction::PadPress,fallback,0,0,pressed});}
+        if(type==0x90||type==0x80){const bool pressed=type==0x90&&data2>0;bool matched=false;auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[snapshot.sequence];if((padMode==1||padMode==2)&&sequence.mode!=lab::PerformanceMode::Drum){if(snapshot.noteRepeat){engine.holdArpeggioNote(sequence.sourcePad,data1,pressed);}else if(pressed){engine.triggerPitch(sequence.sourcePad,data1-sequence.rootNote);if(recordArmed&&engine.recordHit(sequence.sourcePad,data1,recordQuantize))markProjectDirty();}else engine.releasePerformancePad(0);matched=true;}else for(int target=0;target<int(midiPads.size());++target)if(midiPads[target].matches(channel,data1)){dispatch({lab::SurfaceAction::PadPress,target%lab::SurfacePads,0,0,pressed});matched=true;break;}const int fallback=data1-36;if(!matched&&fallback>=0&&fallback<lab::SurfacePads&&midiPads[padGroup*lab::SurfacePads+fallback].note<0)dispatch({lab::SurfaceAction::PadPress,fallback,0,0,pressed});}
         if(type==0x90||type==0x80){for(int target=0;target<lab::MidiCommandCount;++target){auto& binding=midiCommands[target];if(binding.kind!=lab::MidiMessageKind::Note||binding.channel!=channel||binding.number!=data1)continue;const bool pressed=type==0x90&&data2>0;if(pressed||binding.lastValue>0)dispatchMidiCommand(target,pressed);binding.lastValue=pressed?data2:0;}}
         if(type==0xb0){
             auto& turn=midiCommands[int(lab::MidiCommandTarget::Turn)];const bool turnMatched=turn.kind==lab::MidiMessageKind::ControlChange&&turn.channel==channel&&turn.number==data1;
@@ -260,7 +262,7 @@ public:
     void load(const std::wstring& path){if(path.empty())return;std::string error;if(engine.load(selected,utf8(path),error)){markProjectDirty();status=L"WAV chargé sur le pad "+padName(selected)+L". Conversion à 48 kHz si nécessaire.";play(selected);}else MessageBoxW(window,wide(error).c_str(),L"Chargement WAV",MB_OK|MB_ICONINFORMATION);}
     void sampleMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,700,L"Factory Sample Library");AppendMenuW(menu,MF_STRING,701,L"Importer depuis l'ordinateur");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,702,L"Ouvrir le dossier de la bibliothèque");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice==700)load(choose(false,false,library));else if(choice==701)load(choose(false,false));else if(choice==702)ShellExecuteW(window,L"open",library.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
     void savePadToLibrary(){auto s=engine.snapshot();if(s.paths[selected].empty()){MessageBoxW(window,L"Charge d'abord un WAV sur ce pad.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}auto source=std::filesystem::u8path(s.paths[selected]);auto folder=browsers[surface.focusedDisplay].directory;if(folder.empty()||!std::filesystem::is_directory(folder))folder=library;auto destinationText=choose(true,false,folder,source.filename().wstring());if(destinationText.empty())return;auto destination=std::filesystem::path(destinationText);std::error_code ec;if(std::filesystem::exists(destination,ec)&&std::filesystem::equivalent(source,destination,ec)){status=L"Ce WAV est déjà dans la bibliothèque : "+destination.filename().wstring();return;}ec.clear();std::filesystem::copy_file(source,destination,std::filesystem::copy_options::overwrite_existing,ec);if(ec){MessageBoxW(window,(L"Copie impossible : "+wide(ec.message())).c_str(),L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}std::string loadError;if(engine.load(selected,destination.u8string(),loadError,true)){markProjectDirty();status=L"WAV ajouté à la bibliothèque : "+destination.filename().wstring();}else status=L"WAV copié, mais impossible de rattacher le pad : "+wide(loadError);}
-    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.10.1 — "+name+(projectDirty?L" *":L"")).c_str());}
+    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.11.0 — "+name+(projectDirty?L" *":L"")).c_str());}
     void markProjectDirty(){if(!projectDirty){projectDirty=true;updateProjectTitle();}}
     bool saveProjectAs(){
         const auto suggested=currentProject.empty()?L"Nouveau-projet.kicklab":currentProject.filename().wstring();auto p=choose(true,true,currentProject.parent_path(),suggested);if(p.empty())return false;
@@ -303,16 +305,18 @@ public:
     void selectPad(int p){surface.selectPad(p);selected=surface.selectedPad;stepTrack=selected;engine.selectTrack(selected);}
     std::wstring recordQuantizeName()const{return L"1/"+number(recordQuantize);}
     void toggleRecord(){recordArmed=!recordArmed;status=recordArmed?L"REC armé · quantification "+recordQuantizeName()+L" · lance PLAY puis joue les pads.":L"REC désarmé.";}
-    void cycleRecordQuantize(){recordQuantize=recordQuantize==16?8:recordQuantize==8?4:16;status=L"Grille d'enregistrement : "+recordQuantizeName()+L".";}
+    void cycleRecordQuantize(){recordQuantize=recordQuantize==16?8:recordQuantize==8?4:16;if(engine.snapshot().noteRepeat)engine.setRepeatDivision(recordQuantize);status=L"Grille d'enregistrement / Note Repeat : "+recordQuantizeName()+L".";}
+    void toggleNoteRepeat(){auto s=engine.snapshot();const bool enabled=!s.noteRepeat;const bool arp=padMode==1||padMode==2;engine.setRepeatDivision(recordQuantize);engine.setNoteRepeat(enabled,arp);status=enabled?(arp?L"Arp actif · grille ":L"Note Repeat actif · grille ")+recordQuantizeName()+L". Joue un pad.":L"Note Repeat / Arp désactivé.";}
     void play(int p){
         p=std::clamp(p,0,lab::Pads-1);const auto module=surface.displays[surface.focusedDisplay].module;auto snapshot=engine.snapshot();
         if(module==lab::DisplayModule::NextSequence){engine.queueSequence(p);status=snapshot.playing?L"Next Sequence en attente : "+number(p+1):L"Séquence sélectionnée : "+number(p+1);flashed[p]=GetTickCount64()+180;return;}
         if(module==lab::DisplayModule::Song){songChoice=p;status=L"Song : séquence "+number(p+1)+L" prête à être ajoutée.";flashed[p]=GetTickCount64()+180;return;}
         const auto& sequence=snapshot.sequences[snapshot.sequence];
-        if(padMode==1&&sequence.mode!=lab::PerformanceMode::Drum){stepTrack=p;const int note=engine.performanceNote(p);engine.triggerPitch(sequence.sourcePad,note-sequence.rootNote);if(recordArmed&&engine.recordHit(sequence.sourcePad,note,recordQuantize))markProjectDirty();flashed[p]=GetTickCount64()+180;return;}
+        if((padMode==1||padMode==2)&&sequence.mode!=lab::PerformanceMode::Drum){stepTrack=p;const int note=engine.performanceNote(p);if(padMode==2){engine.setNoteRepeat(false);engine.setRepeatDivision(recordQuantize);engine.setNoteRepeat(true,true);const int third=sequence.mode==lab::PerformanceMode::Minor?3:4;engine.holdArpeggioNote(sequence.sourcePad,note,true);engine.holdArpeggioNote(sequence.sourcePad,std::min(127,note+third),true);engine.holdArpeggioNote(sequence.sourcePad,std::min(127,note+7),true);}else if(snapshot.noteRepeat)engine.holdArpeggioNote(sequence.sourcePad,note,true);else engine.triggerPitch(sequence.sourcePad,note-sequence.rootNote);if(recordArmed&&engine.recordHit(sequence.sourcePad,note,recordQuantize))markProjectDirty();flashed[p]=GetTickCount64()+180;return;}
+        if(snapshot.noteRepeat){selectPad(p);engine.setRepeatVoice(p,0,true);flashed[p]=GetTickCount64()+180;return;}
         selectPad(p);engine.trigger(selected);if(recordArmed&&engine.recordHit(selected,-1,recordQuantize))markProjectDirty();flashed[selected]=GetTickCount64()+130;
     }
-    void releasePad(int p){const auto module=surface.displays[surface.focusedDisplay].module;if(module==lab::DisplayModule::NextSequence||module==lab::DisplayModule::Song)return;auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode!=lab::PerformanceMode::Drum)engine.releasePerformancePad(p);else engine.release(p);}
+    void releasePad(int p){const auto module=surface.displays[surface.focusedDisplay].module;if(module==lab::DisplayModule::NextSequence||module==lab::DisplayModule::Song)return;auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[snapshot.sequence];if(snapshot.noteRepeat&&snapshot.arpeggiator){const int note=engine.performanceNote(p);const int third=sequence.mode==lab::PerformanceMode::Minor?3:4;engine.holdArpeggioNote(sequence.sourcePad,note,false);if(padMode==2){engine.holdArpeggioNote(sequence.sourcePad,std::min(127,note+third),false);engine.holdArpeggioNote(sequence.sourcePad,std::min(127,note+7),false);}}else if(snapshot.noteRepeat)engine.setRepeatVoice(p,0,false);else if(sequence.mode!=lab::PerformanceMode::Drum)engine.releasePerformancePad(p);else engine.release(p);}
     void dispatch(const lab::SurfaceEvent& event){
         switch(event.action){
         case lab::SurfaceAction::PadPress:{if(event.index>=0&&event.index<lab::SurfacePads){const auto module=surface.displays[surface.focusedDisplay].module;if(event.pressed&&module==lab::DisplayModule::TrackMute){selectTrack(event.index);if(surface.shift)toggleTrackSolo(event.index);else toggleTrackMute(event.index);}else if(event.pressed&&soloLatch){selectTrack(event.index);toggleTrackSolo(event.index);status=L"Solo piste "+number(event.index+1)+L" basculé.";}else if(event.pressed&&muteLatch){selectTrack(event.index);toggleTrackMute(event.index);status=L"Mute piste "+number(event.index+1)+L" basculé.";}else if(padMode==3){if(event.pressed&&(selectLatch||surface.shift)){selectTrack(event.index);const auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)selectPad(event.index);if(selectLatch)selectLatch=false;status=L"Step — piste "+number(stepTrack+1)+L" sélectionnée.";}else if(event.pressed)dispatch({lab::SurfaceAction::StepToggle,stepTrack,event.index});}else if(event.pressed)play(event.index);else releasePad(event.index);}}break;
@@ -438,7 +442,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,DesignWidth,DesignHeight};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.10.1 — Navigation Maschine+",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.11.0 — Navigation Maschine+",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }
