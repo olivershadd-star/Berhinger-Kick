@@ -87,11 +87,10 @@ inline int midiAbsoluteDelta(int previous, int value) {
 // tick. Decode both conventions before falling back to the selected mode.
 inline int midiEncoderDelta(MidiCcMode mode, int previous, int value) {
     value = std::clamp(value, 0, 127);
+    if (mode == MidiCcMode::Absolute) return midiAbsoluteDelta(previous, value);
     if (value == 1 || value == 65) return 1;
     if (value == 127 || value == 63) return -1;
-    return mode == MidiCcMode::Absolute
-        ? midiAbsoluteDelta(previous, value)
-        : midiCcDelta(mode, value);
+    return midiCcDelta(mode, value);
 }
 
 // Logical KICK commands. Windows mouse, keyboard and MIDI adapters all emit

@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.8.2 conserve les seize pistes et la sauvegarde MIDI portable, corrige les deux sens de navigation et charge les WAV Extensible fréquemment présents dans les packs et sous-dossiers.
+La version 0.8.3 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués, puis corrige la rotation absolue `0–127` de l'encodeur 4D Maschine et complète la navigation FX au clavier.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -35,6 +35,7 @@ La surface principale expose maintenant le slot d'effet sélectionné directemen
 - **Fondus** : de 0 à 20 ms au début et à la fin, limités à la moitié de la zone lue. Valeur initiale : 2 ms.
 - **Slots 1 à 4** : sélectionner un slot, puis choisir une catégorie et un effet. Les effets sont traités dans l'ordre 1 → 4.
 - **Encodeur 4D** : dans Sample & FX, tourner sélectionne les slots 1 à 4, appuyer ouvre le choix d'effet et gauche/droite change la page de paramètres.
+- La rotation 4D de Maschine est absolue : droite augmente la valeur et avance dans les slots, gauche la diminue et recule. Dans FX, haut/bas choisit également le slot précédent/suivant, gauche/droite change la page et Enter ouvre le choix de l'effet. La sélection boucle entre les slots 1 et 4.
 - **Filter** : Lowpass, Highpass et Isolator.
 - **Saturation** : PurestDrive, Tube2 et Mojo.
 - **Dynamics** : DrumSlam, ButterComp2 et SoftGate.

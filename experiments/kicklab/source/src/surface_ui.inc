@@ -305,7 +305,7 @@ void moveSurfaceMenu(int dx,int dy){
     if(module==lab::DisplayModule::Song){if(dx)turnSurfaceQLink(surface.focusedDisplay,1,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,dy);return;}
     if(module==lab::DisplayModule::MidiControl&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,midiControlPages()-1);return;}
     if(module==lab::DisplayModule::Sample&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,1);return;}
-    if(module==lab::DisplayModule::Inserts&&dx){auto& binding=surface.displays[surface.focusedDisplay];auto snapshot=engine.snapshot();const auto effect=snapshot.edits[binding.pad].inserts[binding.slot].effect;const int pages=std::max(1,(lab::insertParameterCount(effect)+3)/4);binding.page=std::clamp(binding.page+(dx>0?1:-1),0,pages-1);return;}
+    if(module==lab::DisplayModule::Inserts){auto& binding=surface.displays[surface.focusedDisplay];if(dy){binding.slot=(binding.slot+(dy>0?1:-1)+lab::InsertSlots)%lab::InsertSlots;binding.page=0;selectedInsert=binding.slot;status=L"FX — slot "+number(binding.slot+1)+L" sélectionné.";}if(dx){auto snapshot=engine.snapshot();const auto effect=snapshot.edits[binding.pad].inserts[binding.slot].effect;const int pages=std::max(1,(lab::insertParameterCount(effect)+3)/4);binding.page=std::clamp(binding.page+(dx>0?1:-1),0,pages-1);}return;}
     if(module!=lab::DisplayModule::Menu)return;
     const int first=surface.focusedDisplay*8;
     int local=surface.menuSelections[surface.focusedDisplay];
@@ -321,7 +321,7 @@ void turnSurfaceMenu(int delta){
     if(module==lab::DisplayModule::NextSequence){turnSurfaceQLink(surface.focusedDisplay,0,delta);return;}
     if(module==lab::DisplayModule::PadPerform){turnSurfaceQLink(surface.focusedDisplay,2,delta);return;}
     if(module==lab::DisplayModule::Song){turnSurfaceQLink(surface.focusedDisplay,2,delta);return;}
-    if(module==lab::DisplayModule::Inserts){auto& binding=surface.displays[surface.focusedDisplay];binding.slot=std::clamp(binding.slot+(delta>0?1:-1),0,lab::InsertSlots-1);binding.page=0;selectedInsert=binding.slot;return;}
+    if(module==lab::DisplayModule::Inserts){auto& binding=surface.displays[surface.focusedDisplay];binding.slot=(binding.slot+(delta>0?1:-1)+lab::InsertSlots)%lab::InsertSlots;binding.page=0;selectedInsert=binding.slot;status=L"FX — rotation : slot "+number(binding.slot+1)+L" sélectionné.";return;}
     if(module!=lab::DisplayModule::Menu)return;
     int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
     selectSurfaceMenu(std::clamp(item+(delta>0?1:-1),0,15));
@@ -629,6 +629,7 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
             text(dc,{box.x+68,y,220,28},valid?wide(lab::insertParameterName(insert.effect,parameter)):L"—",10,valid?ink:muted);
             text(dc,{box.x+300,y,126,28},valid?insertValue(insert.effect,parameter,insert.parameters[parameter]):L"Non assigné",10,valid?accent:muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }
+        text(dc,{box.x+14,box.y+270,box.w-28,16},L"HAUT/BAS : SLOT · GAUCHE/DROITE : PAGE · ENTER : EFFET",8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         return;
     }
     if(binding.module==lab::DisplayModule::Sample){

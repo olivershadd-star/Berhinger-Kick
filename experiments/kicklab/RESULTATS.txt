@@ -1,4 +1,4 @@
-KICK Lab 0.8.2 — Browser hiérarchique et navigation Maschine+
+KICK Lab 0.8.3 — encodeur absolu et navigation FX
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
@@ -10,6 +10,8 @@ Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain ind
 0.8.1 ajoute seize états de piste par séquence et un Track Mixer audible. Les huit encodeurs règlent les pistes 1–8 sur la première page Maschine+ et 9–16 sur la seconde ; Level et Pan sont disponibles, ainsi que Mute, Solo et Arm. Les seize messages Soft des deux pages sont apprenables séparément. Le profil est sauvegardé en priorité dans le dossier visible profiles à côté de KickLab.exe ; Save MIDI et Settings permettent de forcer l'écriture et d'ouvrir ce dossier. KICKMIDI 5 et KICKLAB 7 relisent tous les formats précédents.
 
 0.8.2 distingue les pages de notes A–H internes au template Maschine des banques KICK : une note apprise ne change plus automatiquement la banque de samples, tandis que Keyboard reçoit directement toute la tessiture MIDI. Le Browser charge les WAV Extensible PCM/flottants au fond des packs imbriqués. La rotation 4D reconnaît les conventions relatives 1/127 et 65/63, et la molette souris suit désormais le sens naturel dans les listes.
+
+0.8.3 traite le flux réel de l'encodeur Maschine comme une position absolue de 0 à 127 et migre automatiquement la commande Rotation 4D des profils Maschine existants vers ABS. Dans FX, la rotation parcourt les quatre slots dans les deux sens avec bouclage ; haut/bas change de slot, gauche/droite change de page et Enter ouvre le choix d'effet.
 
 0.7.0 remplace les neuf catégories figées par un Browser hiérarchique qui suit directement le dossier samples externe, y compris les packs et sous-dossiers. PITCH / PAD EDIT ouvre l'édition du pad. REC enregistre les pads rythmiques et le Keyboard monophonique sur la séquence en cours, avec une grille 1/4, 1/8 ou 1/16 choisie par FOLLOW / Grid. Le Master affiche la charge DSP réelle et le nombre de blocs audio rendus en retard.
 
