@@ -90,7 +90,7 @@ struct Snapshot {
     std::array<double,Pads> durations{}, progress{};
     double tempo=120,volume=.65;
     bool playing=false,songPlaying=false;
-    int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1,group=0;
+    int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1,group=0,queuedGroup=-1;
     int selectedTrack=0;
     int songLength=0,songPosition=-1,songRepeat=0;
     float peak=0;
@@ -117,6 +117,7 @@ public:
     void resetProject();
     void selectSequence(int sequence);
     void queueSequence(int sequence);
+    void copySequence(int source,int destination);
     void setSequenceBars(int bars);
     void setViewBar(int bar);
     void setGroup(int group);

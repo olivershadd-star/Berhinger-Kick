@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.9.1
+        default: 0.10.0
 
 permissions:
   contents: write
@@ -63,7 +63,7 @@ jobs:
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
 
-            Version 0.9.1 adds safe New/Open/Save/Save As project commands, a
+            Version 0.10.0 adds safe New/Open/Save/Save As project commands, a
             functional Track Mutes page and automatic two-screen display for
             effects with more than four parameters. The original Airwindows
             catalog gains PurestGain, EveryTrim, GlitchShifter, TremoSquare and
@@ -74,6 +74,11 @@ jobs:
             The Maschine 4D encoder now owns its CC exclusively and continues
             navigating at absolute endpoints 0/127, preventing accidental
             Browser parent-folder actions from legacy duplicate mappings.
+            A-H are now eight linked kit/pattern blocks: each keeps independent
+            samples, steps, length and sequence settings. Changes requested
+            during playback occur at the current pattern boundary without
+            stopping transport. Duplicate followed by A-H copies a pattern for
+            variation editing.
 
             Extract the complete ZIP before launching KickLab.exe.
           files: experiments/kicklab/dist/KickLab-Windows-x64-${{ inputs.version }}-preview.zip

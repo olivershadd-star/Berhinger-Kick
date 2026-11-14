@@ -1,4 +1,4 @@
-KICK Lab 0.9.1 — correction de la molette 4D
+KICK Lab 0.10.0 — blocs A–H autonomes et enchaînés
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
@@ -10,6 +10,8 @@ Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain ind
 0.9.0 ajoute Nouveau/Ouvrir/Enregistrer/Enregistrer sous avec avertissement de projet modifié, une page Track Mutes reliée aux seize pistes, et l'affichage automatique sur les deux écrans pour tout effet de plus de quatre paramètres. PurestGain, EveryTrim, GlitchShifter, TremoSquare et Fracture proviennent du catalogue Airwindows original. L'interface compacte les commandes gauches, aligne les pads sous l'écran B, réserve neuf commandes vierges à droite et rassemble KICK, ANKS Labs et le Master dans un panneau unique.
 
 0.9.1 donne la priorité exclusive au CC de Rotation 4D : une ancienne double assignation ne peut plus être interprétée comme Gauche et faire sortir du dossier Browser. Les impulsions répétées à 0 et 127 restent actives, ce qui évite le blocage de la navigation aux extrémités de la plage absolue Maschine+.
+
+0.10.0 lie chacun des boutons A–H à son kit et à son pattern propres. Les steps, la longueur, le mode mélodique et le mixage ne sont plus partagés entre ces huit blocs. Pendant PLAY, le bloc suivant est mis en attente puis son kit et son pattern commutent ensemble à la fin de la boucle sans Play/Stop. Duplicate, suivi d'une destination A–H, copie le pattern courant pour créer une variation.
 
 0.8.1 ajoute seize états de piste par séquence et un Track Mixer audible. Les huit encodeurs règlent les pistes 1–8 sur la première page Maschine+ et 9–16 sur la seconde ; Level et Pan sont disponibles, ainsi que Mute, Solo et Arm. Les seize messages Soft des deux pages sont apprenables séparément. Le profil est sauvegardé en priorité dans le dossier visible profiles à côté de KickLab.exe ; Save MIDI et Settings permettent de forcer l'écriture et d'ouvrir ce dossier. KICKMIDI 5 et KICKLAB 7 relisent tous les formats précédents.
 

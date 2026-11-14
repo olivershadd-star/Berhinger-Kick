@@ -89,6 +89,14 @@ void selectTrack(int track){
     stepTrack=std::clamp(track,0,lab::Pads-1);selected=stepTrack;surface.selectPad(selected);engine.selectTrack(stepTrack);
 }
 
+void selectGroupBlock(int group){
+    group=std::clamp(group,0,lab::Groups-1);const auto before=engine.snapshot();std::wstring prefix;
+    if(duplicateSourceSequence>=0){engine.copySequence(duplicateSourceSequence,group);markProjectDirty();prefix=L"Pattern "+number(duplicateSourceSequence+1)+L" copié vers "+std::wstring(1,wchar_t(L'A'+group))+L". ";duplicateSourceSequence=-1;}
+    engine.setGroup(group);markProjectDirty();const auto after=engine.snapshot();padGroup=after.group;selectPad(0);stepTrack=0;
+    if(before.playing&&after.group!=group)status=prefix+L"Bloc "+std::wstring(1,wchar_t(L'A'+group))+L" en attente — changement à la fin du pattern courant.";
+    else status=prefix+L"Bloc "+std::wstring(1,wchar_t(L'A'+group))+L" actif — kit et pattern autonomes.";
+}
+
 void showSurfaceMixer(int bank=-1){
     if(bank>=0)mixerBank=std::clamp(bank,0,1);
     for(int display=0;display<lab::SurfaceDisplays;++display){auto& binding=surface.displays[display];binding.module=lab::DisplayModule::Mixer;binding.page=mixerBank;}
@@ -493,7 +501,7 @@ bool maschineClick(int x,int y,bool right){
         return true;
     }
     for(int group=0;group<8;++group)if(groupBox(group).contains(x,y)){
-        engine.setGroup(group);markProjectDirty();padGroup=engine.snapshot().group;selectPad(0);stepTrack=0;status=L"Groupe "+std::wstring(1,wchar_t(L'A'+group))+L" sélectionné — 16 pads et réglages propres à cette banque.";return true;
+        selectGroupBlock(group);return true;
     }
     for(int mode=0;mode<4;++mode)if(modeBox(mode).contains(x,y)){
         if(mode==2){status=L"Chords — commande KICK réservée ; moteur d'accords pas encore porté.";return true;}
@@ -505,6 +513,7 @@ bool maschineClick(int x,int y,bool right){
     }
     for(int command=0;command<9;++command)if(sideCommandBox(command).contains(x,y)){
         if(command==2){showSurfaceNextSequence(surface.focusedDisplay);status=L"Pattern / Clip — sélection des séquences KICK.";}
+        else if(command==5){duplicateSourceSequence=engine.snapshot().sequence;status=L"Duplicate armé — clique maintenant sur A–H pour choisir le bloc de destination.";}
         else if(command==6){selectLatch=!selectLatch;if(selectLatch)status=L"Select actif — choisis maintenant la piste avec un pad.";else status=L"Select relâché — piste "+number(stepTrack+1)+L".";}
         else if(command==7){soloLatch=!soloLatch;muteLatch=selectLatch=false;status=soloLatch?L"Solo actif — frappe un pad pour isoler sa piste.":L"Mode Solo relâché.";}
         else if(command==8){muteLatch=!muteLatch;soloLatch=selectLatch=false;status=muteLatch?L"Mute actif — frappe un pad pour couper sa piste.":L"Mode Mute relâché.";}
@@ -739,14 +748,14 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     static const std::array<const wchar_t*,4> performance={L"PITCH / PAD EDIT",L"MOD",L"PERFORM / FX",L"NOTES"};
     for(int i=0;i<4;++i)hardwareButton(dc,performanceButtonBox(i),performance[i],L"",false,i==0||i==2||i==3);
 
-    for(int group=0;group<8;++group)hardwareButton(dc,groupBox(group),std::wstring(1,wchar_t(L'A'+group)),L"",group==padGroup);
+    for(int group=0;group<8;++group)hardwareButton(dc,groupBox(group),std::wstring(1,wchar_t(L'A'+group)),group==snapshot.queuedGroup?L"NEXT":L"",group==snapshot.group||group==snapshot.queuedGroup);
 
     static const std::array<std::pair<const wchar_t*,const wchar_t*>,9> commands={{
         {L"FIXED VEL",L"16 Vel"},{L"SCENE",L"Section"},{L"PATTERN",L"Clip"},
         {L"EVENTS",L""},{L"VARIATION",L""},{L"DUPLICATE",L"Double"},
         {L"SELECT",L""},{L"SOLO",L""},{L"MUTE",L"Choke"}
     }};
-    for(int i=0;i<9;++i){const bool available=i==2||i>=6;const bool active=i==6?selectLatch:i==7?soloLatch:i==8?muteLatch:false;hardwareButton(dc,sideCommandBox(i),commands[i].first,commands[i].second,active,available);}
+    for(int i=0;i<9;++i){const bool available=i==2||i==5||i>=6;const bool active=i==5?duplicateSourceSequence>=0:i==6?selectLatch:i==7?soloLatch:i==8?muteLatch:false;hardwareButton(dc,sideCommandBox(i),commands[i].first,commands[i].second,active,available);}
 
     // Reserved symmetrically for the next KICK modules. They are deliberately
     // blank and have no hit handling yet.

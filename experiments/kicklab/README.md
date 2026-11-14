@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.9.1 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. Elle ajoute la gestion sûre des projets, une page Track Mutes fonctionnelle, l'affichage automatique des effets complexes sur les deux écrans et cinq effets Airwindows originaux. La surface est réalignée sur Maschine+ avec neuf emplacements futurs volontairement vides et un panneau unique KICK / ANKS Labs / Master. La rotation 4D est exclusive et continue aux extrémités 0/127 afin de ne plus déclencher accidentellement la sortie d'un dossier.
+La version 0.10.0 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont maintenant huit blocs kit/pattern autonomes : samples, steps, longueur et réglages de séquence restent indépendants, et leur enchaînement attend la frontière du pattern sans arrêter le transport. `Duplicate`, puis A–H, copie le pattern courant pour créer une variation. La gestion sûre des projets, Track Mutes, le double écran FX, les cinq effets Airwindows supplémentaires et la correction de la molette 4D restent intégrés.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
