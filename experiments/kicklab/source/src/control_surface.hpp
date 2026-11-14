@@ -80,6 +80,11 @@ inline int midiCcDelta(MidiCcMode mode, int value) {
 
 inline int midiAbsoluteDelta(int previous, int value) {
     if (previous < 0) return 0;
+    // Maschine's controller template exposes the 4D encoder as a bounded
+    // absolute value. It keeps sending 0 or 127 for further physical ticks at
+    // the end stops, so keep navigating instead of becoming unresponsive.
+    if (value == previous && value == 0) return -1;
+    if (value == previous && value == 127) return 1;
     return std::clamp(value - previous, -16, 16);
 }
 

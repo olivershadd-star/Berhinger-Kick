@@ -31,6 +31,7 @@ int main(int argc,char**argv){try{
     check(midiCcDelta(MidiCcMode::Relative65,65)==1&&midiCcDelta(MidiCcMode::Relative65,63)==-1,"relative 63/65 MIDI decoding failed");
     check(midiAbsoluteDelta(-1,64)==0&&midiAbsoluteDelta(64,65)==1&&midiAbsoluteDelta(65,63)==-2,"absolute 4D wheel decoding failed");
     check(midiEncoderDelta(MidiCcMode::Absolute,-1,0)==0&&midiEncoderDelta(MidiCcMode::Absolute,0,1)==1&&midiEncoderDelta(MidiCcMode::Absolute,9,8)==-1,"absolute encoder direction failed");
+    check(midiEncoderDelta(MidiCcMode::Absolute,127,127)==1&&midiEncoderDelta(MidiCcMode::Absolute,0,0)==-1,"absolute encoder stopped at an endpoint");
     check(midiEncoderDelta(MidiCcMode::Relative1,-1,1)==1&&midiEncoderDelta(MidiCcMode::Relative1,1,127)==-1,"1/127 encoder direction failed");
     check(midiEncoderDelta(MidiCcMode::Relative1,-1,65)==1&&midiEncoderDelta(MidiCcMode::Relative1,65,63)==-1,"65/63 encoder direction failed");
     MidiPadBinding padBinding{0,12};check(padBinding.matches(0,12)&&!padBinding.matches(0,13)&&!padBinding.matches(1,12),"learned pad matching failed");
