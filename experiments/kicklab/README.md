@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.8.0 introduit les seize états de piste issus de la logique KICK, un Track Mixer audible, niveau/panoramique/mute/solo/armement, et exploite séparément les deux pages de contrôles Maschine+. Elle conserve le moteur audio, le Browser hiérarchique, REC quantifié et Pad Edit de la version précédente.
+La version 0.8.1 introduit les seize états de piste issus de la logique KICK, un Track Mixer audible et les deux pages de contrôles Maschine+. Elle rend aussi la sauvegarde MIDI portable explicite dans `profiles/MaschinePlus.kickmidi`, à côté de l'exécutable.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -75,6 +75,7 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - MIDI : sélectionner Maschine+ depuis **SETTINGS** ou **MIDI Control**. Les notes 36 à 51 restent le secours initial du groupe actif. Note Off et Note On de vélocité nulle libèrent l'enveloppe.
 - **MIDI Control** apprend 16 CC de knobs, 128 pads A–H et désormais les seize messages Soft des deux pages Maschine+. La page de pads suit le groupe actif. Un clic droit efface une affectation ou change le mode d'un encodeur.
 - Dans le Mixer, la page physique 1 vise les pistes 1–8 et la page 2 les pistes 9–16 ; ailleurs, les Q-Links restent contextuels. Le profil `KICKMIDI 5` possède une copie portable dans `profiles/MaschinePlus.kickmidi` et relit les versions 1–4. La rotation 4D reste disponible en relatif `1/127`, `ABS` ou `63/65`.
+- Chaque apprentissage sauvegarde immédiatement le profil. `SETTINGS → Sauvegarder le profil MIDI maintenant` force l'écriture ; `SETTINGS → Ouvrir le dossier portable` montre le fichier. Dans MIDI Control, les touches contextuelles `SAVE MIDI` et `DOSSIER` fournissent les mêmes commandes. AppData n'est qu'une sauvegarde secondaire.
 - REC est actuellement un overdub monophonique pour Keyboard. La durée des notes, les accords polyphoniques, la vélocité expressive, le mode Replace, le compte à rebours, le retour LED et l'horloge MIDI restent à porter.
 
 ## WAV et projets

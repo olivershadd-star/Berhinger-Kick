@@ -1,4 +1,4 @@
-KICK Lab 0.8.0 — Tracks KICK et deux pages Maschine+
+KICK Lab 0.8.1 — Tracks KICK et profil MIDI portable
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
@@ -7,7 +7,7 @@ Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnost
 
 Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 26 effets ; quatre inserts ; groupes A–H indépendants ; Pad/Keyboard/Step ; REC quantifié ; Next Sequence ; Song ; niveau/pan/mute/solo de piste ; sauvegarde KICKLAB 7 ; migration KICKLAB 1 à 6 ; remise en file des buffers ; continuité sous activité graphique.
 
-0.8.0 ajoute seize états de piste par séquence et un Track Mixer audible. Les huit encodeurs règlent les pistes 1–8 sur la première page Maschine+ et 9–16 sur la seconde ; Level et Pan sont disponibles, ainsi que Mute, Solo et Arm. Les seize messages Soft des deux pages sont apprenables séparément. KICKMIDI 5 et KICKLAB 7 relisent tous les formats précédents.
+0.8.1 ajoute seize états de piste par séquence et un Track Mixer audible. Les huit encodeurs règlent les pistes 1–8 sur la première page Maschine+ et 9–16 sur la seconde ; Level et Pan sont disponibles, ainsi que Mute, Solo et Arm. Les seize messages Soft des deux pages sont apprenables séparément. Le profil est sauvegardé en priorité dans le dossier visible profiles à côté de KickLab.exe ; Save MIDI et Settings permettent de forcer l'écriture et d'ouvrir ce dossier. KICKMIDI 5 et KICKLAB 7 relisent tous les formats précédents.
 
 0.7.0 remplace les neuf catégories figées par un Browser hiérarchique qui suit directement le dossier samples externe, y compris les packs et sous-dossiers. PITCH / PAD EDIT ouvre l'édition du pad. REC enregistre les pads rythmiques et le Keyboard monophonique sur la séquence en cours, avec une grille 1/4, 1/8 ou 1/16 choisie par FOLLOW / Grid. Le Master affiche la charge DSP réelle et le nombre de blocs audio rendus en retard.
 

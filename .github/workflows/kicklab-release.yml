@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.8.0
+        default: 0.8.1
 
 permissions:
   contents: write
@@ -41,9 +41,10 @@ jobs:
         run: |
           $version = "${{ inputs.version }}"
           $folder = "dist/KickLab-Windows-x64-$version-preview"
-          New-Item -ItemType Directory -Force "$folder/demo-kit" | Out-Null
+          New-Item -ItemType Directory -Force "$folder/demo-kit","$folder/profiles" | Out-Null
           Copy-Item build/incremental-port/Release/KickLab.exe "$folder/"
           Copy-Item demo-kit/*.wav "$folder/demo-kit/"
+          Copy-Item profiles/README.txt "$folder/profiles/"
           Copy-Item README.md,LIRE-MOI.html,NOTICES.txt,RESULTATS.txt,APERCU-MASCHINE-PLUS.png "$folder/"
           Copy-Item source/LICENSE "$folder/LICENSE"
           Compress-Archive -Path $folder -DestinationPath "dist/KickLab-Windows-x64-$version-preview.zip" -Force
@@ -62,11 +63,13 @@ jobs:
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 26 Airwindows effects.
 
-            Version 0.8.0 adds sixteen persistent KICK track states and an audible
+            Version 0.8.1 adds sixteen persistent KICK track states and an audible
             Track Mixer with level, pan, mute, solo and record arm. Maschine+'s
             two physical control pages now address tracks 1-8 and 9-16 instead
             of duplicating the same eight parameters. Both pages of Soft buttons
             are independently learnable while older MIDI profiles remain readable.
+            MIDI mappings are saved first in the visible profiles folder beside
+            KickLab.exe, with explicit Save and Open Folder commands.
 
             Extract the complete ZIP before launching KickLab.exe.
           files: experiments/kicklab/dist/KickLab-Windows-x64-${{ inputs.version }}-preview.zip

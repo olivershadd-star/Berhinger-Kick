@@ -655,6 +655,7 @@ std::wstring surfaceSoftLabel(int display,int soft,const lab::Snapshot& snapshot
     if(module==lab::DisplayModule::Browser)return std::array<std::wstring,4>{L"RETOUR",L"ÉCOUTER",L"CHARGER",L"ACTUALISER"}[soft];
     if(module==lab::DisplayModule::Inserts)return L"SLOT "+number(soft+1);
     if(module==lab::DisplayModule::Sample)return std::array<std::wstring,4>{L"SAMPLE",L"ADSR",L"ÉCOUTER",L"FX"}[soft];
+    if(module==lab::DisplayModule::MidiControl)return std::array<std::wstring,4>{L"SAVE MIDI",L"DOSSIER",L"< PAGE",L"PAGE >"}[soft];
     if(module==lab::DisplayModule::Menu){static const std::array<int,8> items={0,1,2,3,5,11,12,15};return surfaceMenuLabels[items[display*4+soft]];}
     return L"SOFT "+number(mixerBank*8+display*4+soft+1);
 }
@@ -665,6 +666,7 @@ void activateSurfaceSoft(int display,int soft,int bank=-1){
     if(module==lab::DisplayModule::Browser){if(soft==0)moveSurfaceBrowserCategory(display,-1);else if(soft==1)auditionSurfaceBrowser(display);else if(soft==2)loadSurfaceBrowserSelection(display);else refreshSurfaceBrowser(display,true);return;}
     if(module==lab::DisplayModule::Inserts){surface.displays[display].slot=soft;surface.displays[display].page=0;selectedInsert=soft;return;}
     if(module==lab::DisplayModule::Sample){if(soft<2)surface.displays[display].page=soft;else if(soft==2)engine.trigger(surface.displays[display].pad);else showSurfaceInserts(display);return;}
+    if(module==lab::DisplayModule::MidiControl){auto& binding=surface.displays[display];if(soft==0){const bool saved=saveMidiProfile();status=saved?L"Profil MIDI sauvegardé : "+portableMidiProfile.wstring():L"Impossible de sauvegarder le profil MIDI.";}else if(soft==1)ShellExecuteW(window,L"open",portableMidiProfile.parent_path().c_str(),nullptr,nullptr,SW_SHOWNORMAL);else if(soft==2)binding.page=std::max(0,binding.page-1);else binding.page=std::min(midiControlPages()-1,binding.page+1);return;}
     if(module==lab::DisplayModule::Menu){static const std::array<int,8> items={0,1,2,3,5,11,12,15};selectSurfaceMenu(items[display*4+soft]);activateSurfaceMenu();return;}
     status=L"Soft contextuel "+number(mixerBank*8+display*4+soft+1)+L" reçu.";
 }
