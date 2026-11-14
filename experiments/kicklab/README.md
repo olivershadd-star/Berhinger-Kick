@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.6.2 conserve le moteur audio validé et réorganise la surface Windows selon le contrôleur Maschine+ : deux écrans KICK indépendants, huit knobs contextuels, groupes A–H, commandes physiques et seize pads commutables entre Pad, Keyboard et Step. Elle conserve aussi Pad Perform/Keygroup, seize séquences de une à quatre mesures, Next Sequence, Song, Program Edit et quatre inserts par pad.
+La version 0.7.0 conserve le moteur audio validé et la surface Maschine+, puis ajoute une bibliothèque externe hiérarchique, l'enregistrement quantifié des pads rythmiques et du Keyboard monophonique, un accès direct à Pad Edit et une mesure de la charge audio temps réel.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -17,8 +17,8 @@ La version 0.6.2 conserve le moteur audio validé et réorganise la surface Wind
 3. Les groupes **A–H** sont huit banques indépendantes de seize pads. A contient le kit de démonstration ; B–H commencent vides. Un clic droit sur un pad charge un WAV dans le groupe actif.
 4. **PAD MODE** joue les seize samples. Le dernier pad joué devient automatiquement la piste lorsque l'on passe sur **STEP**. **KEYBOARD** répartit le sample sélectionné sur seize hauteurs : jouer une hauteur puis passer sur **STEP** permet de placer cette note sur les pas 1–16. `Select + pad` ou `Shift + pad` reste disponible pour choisir explicitement une piste. **CHORDS** est réservé, mais son moteur polyphonique n'est pas encore porté.
 5. Cliquer sur l'écran A ou B, puis sur **PLUG-IN / Instance** ou **PERFORM / FX** affiche les inserts. Choisir un slot et régler ses paramètres avec P1–P4 ou P5–P8. Les flèches `<` et `>` changent de page.
-6. **SAMPLING** ouvre l'éditeur détaillé. **BROWSER** ouvre la bibliothèque KICK dans l'écran actif. **FILE** propose ouvrir/enregistrer ; **SETTINGS** regroupe les sorties audio et entrées MIDI Windows.
-7. L'élément **12 Program Edit** ouvre volume, accordage, découpe et ADSR. **4 Sequences** sélectionne ou met en attente une séquence ; **8 Songs** construit l'arrangement.
+6. **SAMPLING** ouvre l'éditeur détaillé. **PITCH / PAD EDIT** ouvre directement volume, pitch, découpe et ADSR dans l'écran actif. **BROWSER** parcourt toute l'arborescence du dossier `samples`.
+7. Armer **REC**, lancer **PLAY**, puis jouer les pads. **FOLLOW / Grid** choisit la correction à l'enregistrement : 1/4, 1/8 ou 1/16. **4 Sequences** sélectionne une séquence ; **8 Songs** construit l'arrangement.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
@@ -50,9 +50,9 @@ La surface principale expose maintenant le slot d'effet sélectionné directemen
 - **Potentiomètres** : glisser verticalement pour un réglage continu. La molette agit sur le potentiomètre survolé ; ailleurs, elle continue de régler le tempo.
 - **Réinitialiser ce pad** : remet les réglages à leur valeur initiale et conserve son sample.
 - Cliquer directement sur un pad déclenche son one-shot. **STOP** arrête le transport et les voix.
-- **Ajouter à la bibliothèque** : copie le WAV source du pad dans Kicks, Snares, Hats, Percussions, Basses, Pads, Leads, FX ou Autres, puis rattache le pad à cette copie en conservant ses réglages. Les effets ne sont pas rendus dans le WAV copié.
+- **Ajouter à la bibliothèque** : ouvre la sauvegarde dans le dossier actuellement parcouru afin de choisir librement la catégorie ou le sous-dossier. Le pad est rattaché à cette copie en conservant ses réglages. Les effets ne sont pas rendus dans le WAV copié.
 
-La page **Program Edit** 1/2 regroupe Volume, Accordage, Début et Fin. La page 2/2 regroupe Attack, Decay, Sustain et Release. Attack et Decay vont jusqu'à 2 secondes, Release jusqu'à 4 secondes, avec une courbe de réglage plus précise près de zéro. La touche relâchée ou le MIDI Note Off lance le Release ; les pas du séquenceur et les clics de pad restent des déclenchements one-shot.
+La page **Pad Edit** 1/2 regroupe Volume, Pitch, Début et Fin. La page 2/2 regroupe Attack, Decay, Sustain et Release. Elle est accessible par le menu 12 ou directement par **PITCH / PAD EDIT**. Attack et Decay vont jusqu'à 2 secondes, Release jusqu'à 4 secondes, avec une courbe de réglage plus précise près de zéro.
 
 La découpe, l'accordage, les fondus et l'enveloppe sont appliqués au prochain déclenchement. Le volume évolue pendant la lecture avec lissage. La chaîne est : lecteur AudIO étendu → ADSR → inserts 1 à 4 → volume du pad → bus AudIO → volume général.
 
@@ -62,6 +62,7 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 
 - Chaque projet contient seize séquences de une à quatre mesures, en doubles croches. L'écran **Sequences** choisit la séquence, la mesure visible et la longueur.
 - Chaque séquence conserve ses pistes de batterie et une piste mélodique. **PAD MODE** choisit une piste de sample, **KEYBOARD** travaille les hauteurs et **STEP** affiche les seize pas sur les pads.
+- **REC** arme l'enregistrement. Une fois PLAY actif, chaque pad joué est écrit sur la séquence courante. FOLLOW / Grid alterne entre 1/4, 1/8 et 1/16 ; l'enregistrement rythmique et mélodique utilise exactement la même grille que Step. STOP coupe le transport et désarme REC.
 - **Pad Notes / Keygroup** reprend la logique Pad Perform publiée dans KICK : modes chromatique, gamme majeure et gamme mineure, sample source et note racine. Un clic de pad, une touche AZERTY ou une note MIDI joue le même sample à une hauteur différente. La transposition change aussi la durée, sans time-stretch.
 - **Next Sequence** affecte les séquences 1–16 aux pads. À l'arrêt, le choix est immédiat ; pendant la lecture, la nouvelle séquence est mise en attente jusqu'à la fin complète de la séquence courante.
 - **Song Editor** enchaîne jusqu'à 32 étapes, chacune composée d'une séquence et de 1 à 128 répétitions. `Lire` lance l'arrangement et s'arrête à sa fin.
@@ -73,15 +74,15 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - MIDI : sélectionner Maschine+ depuis **SETTINGS** ou **MIDI Control**. Les notes 36 à 51 restent le secours initial du groupe actif. Note Off et Note On de vélocité nulle libèrent l'enveloppe.
 - **MIDI Control** apprend 16 CC de knobs (deux pages physiques), 128 pads répartis dans A–H, les huit touches Soft, les groupes, les modes, le transport, les commandes latérales, les raccourcis, les directions, la rotation 4D et Retour/Escape. La page de pads suit le groupe A–H actif. Un clic droit efface une affectation ou change le mode d'un encodeur. La 0.6.1 reconnecte automatiquement le dernier port MIDI et conserve le profil dans `%LOCALAPPDATA%\KICKLab`, avec une copie portable. La 0.6.2 route aussi les pads physiques vers les steps lorsque STEP est actif.
 - Un CC appris commande le même Q-Link que la souris. Les deux pages physiques de knobs peuvent viser les huit paramètres visibles. Les commandes apprises passent par la même couche que le clavier et la souris. Le profil `KICKMIDI 4` possède une copie portable dans `profiles/MaschinePlus.kickmidi`; les versions 1–3 restent lisibles. Une nouvelle rotation 4D est apprise en relatif `1/127`, ce qui gère les deux sens ; `ABS` et relatif `63/65` restent disponibles.
-- REC n'est volontairement pas exposé : le portage ne possède pas encore de véritable enregistreur KICK. La vélocité expressive, le retour LED et l'horloge MIDI ne sont pas encore gérés.
+- REC est actuellement un overdub monophonique pour Keyboard. La durée des notes, les accords polyphoniques, la vélocité expressive, le mode Replace, le compte à rebours, le retour LED et l'horloge MIDI restent à porter.
 
 ## WAV et projets
 
 WAV PCM 16/24/32 bits ou flottant 32 bits, mono/stéréo, de 8 à 192 kHz, jusqu'à 30 secondes et 32 Mo par fichier. Les WAV sont convertis à 48 kHz au chargement par interpolation linéaire. WAV extensible, MP3, FLAC et AIFF ne sont pas pris en charge dans cette interface.
 
-**Bibliothèque / WAV** propose trois chemins : parcourir la Factory Sample Library locale, importer un WAV depuis un autre emplacement du PC, ou ouvrir directement le dossier de la bibliothèque dans l'Explorateur. L'application crée les catégories au premier démarrage. Les samples d'usine Music Tribe ne font pas partie du dépôt public.
+**Bibliothèque / WAV** propose trois chemins : parcourir la bibliothèque locale, importer un WAV depuis un autre emplacement du PC, ou ouvrir directement le dossier dans l'Explorateur. Seul le dossier racine `samples` est créé ; ses catégories, packs et sous-dossiers appartiennent à l'utilisateur. Les samples d'usine Music Tribe ne font pas partie du dépôt public.
 
-L'élément **Browser** du menu KICK ouvre maintenant la première page réellement portée du navigateur d'origine. Gauche/droite change de catégorie, haut/bas ou la rotation 4D parcourt les WAV, **Enter** ou **Charger** affecte le choix au pad et **Échap** revient au menu. La préécoute possède les modes `AUD OFF`, `AUD AUTO` et `AUD MAN` du Browser KICK ; elle utilise une voix AudIO séparée, joue le WAV une seule fois et ne remplace pas le sample du pad. Un chargement confirmé conserve le volume, l'accordage, la découpe, les fondus et les quatre inserts du pad. Le remplacement temporaire au sein du pattern, la recherche et les opérations de fichiers viendront dans une étape ultérieure.
+L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la rotation 4D parcourt les éléments, droite ou Enter ouvre un dossier, gauche remonte au parent et Enter charge un WAV. Les dossiers sont affichés avant les fichiers. La préécoute `AUD OFF/AUTO/MAN` ignore les dossiers, joue le WAV une fois et ne remplace pas le sample du pad.
 
 **FILE → Enregistrer/Ouvrir** sauvegarde les huit groupes A–H, leurs 128 références de samples et réglages, les seize séquences, leurs pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo et le volume dans un fichier `.kicklab`. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement.
 
@@ -102,9 +103,9 @@ Le kit fourni a été synthétisé pour ce prototype. Aucun sample d'usine Behri
 
 Les corrections de 0.1.1 et 0.1.2 sont conservées : ordre des buffers, attente par événements du pilote, priorité MMCSS, séparation des copies graphiques et du rendu, interface redimensionnable.
 
-Sortie fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames (environ 85 ms de réserve, plus le pilote). Pas d'ASIO ni de VST3 pour l'instant. Le séquenceur est quantifié au bloc de 256 trames (environ 5,33 ms), sans dérive cumulative du compteur. Le volume général et une saturation de sécurité protègent la sortie ; une accumulation de pads très forts peut néanmoins être écrêtée.
+Sortie fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames (environ 85 ms de réserve, plus le pilote). Pas d'ASIO ni de VST3 pour l'instant. Le séquenceur est quantifié au bloc de 256 trames (environ 5,33 ms), sans dérive cumulative du compteur. Le Master affiche `DSP`, la part de ce budget consommée, et `RETARDS`, le nombre de blocs ayant dépassé leur délai.
 
-Le premier Keygroup est monophonique : une seule voix existe par sample source, donc une nouvelle note remplace la précédente et les accords/progressions du Pad Perform KICK ne sont pas encore portés. Song enchaîne les séquences mais n'intègre pas encore les automations Track Mute ni un Track Mixer complet. Pas encore de kits avec médias intégrés, d'enregistrement, de synthétiseurs KICK ni de banque complète d'effets. L'enveloppe est commune au programme de sample actuel : les modes de lecture One Shot/Note On du firmware ne sont pas encore exposés séparément. Une seule instance du moteur est utilisée par processus ; les pools globaux d'AudIO ne sont pas encore adaptés à un plugin multi-instance.
+Le premier Keygroup et son enregistrement sont monophoniques : une nouvelle note remplace la précédente et les accords/progressions du Pad Perform KICK ne sont pas encore portés. Song n'intègre pas encore les automations Track Mute ni un Track Mixer complet. Pas encore de kits avec médias intégrés, de synthétiseurs KICK ni de banque complète d'effets.
 
 ## Développer
 

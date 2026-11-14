@@ -1,11 +1,13 @@
-KICK Lab 0.6.2 — surface Windows organisée pour Maschine+
+KICK Lab 0.7.0 — bibliothèque et REC quantifié
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 26 effets ; quatre inserts ; groupes A–H indépendants ; Pad/Keyboard/Step ; Next Sequence ; Song ; sauvegarde KICKLAB 6 ; migration KICKLAB 1 à 5 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 26 effets ; quatre inserts ; groupes A–H indépendants ; Pad/Keyboard/Step ; REC quantifié ; Next Sequence ; Song ; sauvegarde KICKLAB 6 ; migration KICKLAB 1 à 5 ; remise en file des buffers ; continuité sous activité graphique.
+
+0.7.0 remplace les neuf catégories figées par un Browser hiérarchique qui suit directement le dossier samples externe, y compris les packs et sous-dossiers. PITCH / PAD EDIT ouvre l'édition du pad. REC enregistre les pads rythmiques et le Keyboard monophonique sur la séquence en cours, avec une grille 1/4, 1/8 ou 1/16 choisie par FOLLOW / Grid. Le Master affiche la charge DSP réelle et le nombre de blocs audio rendus en retard.
 
 0.6.0 remplace la disposition provisoire par la façade Maschine+ validée : raccourcis à gauche, deux écrans KICK et huit knobs, groupes A–H en 4×2, colonne Fixed Velocity à Mute, modes Pad/Keyboard/Chords/Step, seize pads et transport. La grille 16×16 permanente est supprimée : Step transforme les pads en pas 1–16 et Select/Shift + pad choisit la piste. L'éditeur détaillé reste disponible via Sampling.
 

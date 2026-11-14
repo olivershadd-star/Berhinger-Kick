@@ -3,7 +3,7 @@
 const std::array<std::wstring,16> surfaceMenuLabels={
     L"Browser",L"Track Mixer",L"Track Mutes",L"Sequences",
     L"List Edit",L"Pad Mixer",L"Pad Mutes",L"Songs",
-    L"Color Editor",L"Sampler",L"Sample Editor",L"Program Edit",
+    L"Color Editor",L"Sampler",L"Sample Editor",L"Pad Edit",
     L"Pad Notes",L"Looper",L"Q-Links",L"MIDI Control"
 };
 const std::array<std::wstring,lab::MidiCommandCount> midiCommandLabels={
@@ -84,7 +84,7 @@ void showSurfaceInserts(int display){
 
 void showSurfaceProgram(int display){
     display=std::clamp(display,0,1);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::Sample;binding.pad=selected;binding.page=0;surface.focusDisplay(display);
-    status=L"Program Edit — lecture et enveloppe d'amplitude du pad "+padName(selected)+L".";
+    status=L"Pad Edit — pitch, lecture et enveloppe d'amplitude du pad "+padName(selected)+L".";
 }
 
 void showSurfacePadPerform(int display){
@@ -121,7 +121,7 @@ void setSurfaceProgramRatio(int display,int knob,double ratio){
 }
 
 std::wstring surfaceProgramParameterName(int page,int knob)const{
-    static const std::array<std::wstring,8> names={L"Volume",L"Accordage",L"Début",L"Fin",L"Attack",L"Decay",L"Sustain",L"Release"};return names[std::clamp(page*4+knob,0,7)];
+    static const std::array<std::wstring,8> names={L"Volume",L"Pitch",L"Début",L"Fin",L"Attack",L"Decay",L"Sustain",L"Release"};return names[std::clamp(page*4+knob,0,7)];
 }
 
 std::wstring surfaceProgramParameterValue(const lab::PadEdit& edit,int page,int knob)const{
@@ -141,49 +141,57 @@ std::wstring surfaceBrowserModeName(int mode)const{
 
 void auditionSurfaceBrowser(int display){
     display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];
-    if(browser.selected<0||browser.selected>=int(browser.files.size())){engine.stopPreview();return;}
+    if(browser.selected<0||browser.selected>=int(browser.entries.size())||browser.entries[browser.selected].directory){engine.stopPreview();return;}
     std::string error;
-    if(engine.preview(browser.files[browser.selected].u8string(),error))status=L"Préécoute one-shot : "+browser.files[browser.selected].filename().wstring();
+    if(engine.preview(browser.entries[browser.selected].path.u8string(),error))status=L"Préécoute one-shot : "+browser.entries[browser.selected].path.filename().wstring();
     else status=L"Préécoute impossible : "+wide(error);
+}
+
+std::wstring surfaceBrowserPath(const BrowserState& browser)const{
+    std::error_code error;auto relative=std::filesystem::relative(browser.directory,library,error);
+    if(error||relative.empty()||relative==L".")return L"samples";
+    return L"samples / "+relative.wstring();
 }
 
 void refreshSurfaceBrowser(int display,bool audition=false){
     display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];
-    browser.category=std::clamp(browser.category,0,int(libraryCategories.size())-1);browser.files.clear();
-    std::error_code error;const auto folder=library/libraryCategories[browser.category];
-    for(std::filesystem::directory_iterator it(folder,error),end;!error&&it!=end;it.increment(error)){
-        if(!it->is_regular_file(error))continue;auto extension=it->path().extension().wstring();
-        std::transform(extension.begin(),extension.end(),extension.begin(),[](wchar_t c){return wchar_t(std::towlower(c));});
-        if(extension==L".wav")browser.files.push_back(it->path());
+    browser.entries.clear();std::error_code error;
+    if(browser.directory.empty()||!std::filesystem::is_directory(browser.directory,error))browser.directory=library;
+    for(std::filesystem::directory_iterator it(browser.directory,error),end;!error&&it!=end;it.increment(error)){
+        const bool directory=it->is_directory(error);if(error)break;
+        if(!directory){if(!it->is_regular_file(error))continue;auto extension=it->path().extension().wstring();std::transform(extension.begin(),extension.end(),extension.begin(),[](wchar_t c){return wchar_t(std::towlower(c));});if(extension!=L".wav")continue;}
+        browser.entries.push_back({it->path(),directory});
     }
-    std::sort(browser.files.begin(),browser.files.end(),[](const auto& a,const auto& b){return a.filename().wstring()<b.filename().wstring();});
-    if(browser.files.empty()){browser.selected=browser.scroll=0;engine.stopPreview();}
-    else{browser.selected=std::clamp(browser.selected,0,int(browser.files.size())-1);browser.scroll=std::clamp(browser.scroll,0,std::max(0,int(browser.files.size())-5));if(browser.selected<browser.scroll)browser.scroll=browser.selected;if(browser.selected>=browser.scroll+5)browser.scroll=browser.selected-4;if(audition&&browser.auditionMode==1)auditionSurfaceBrowser(display);}
+    std::sort(browser.entries.begin(),browser.entries.end(),[](const auto& a,const auto& b){if(a.directory!=b.directory)return a.directory>b.directory;auto an=a.path.filename().wstring(),bn=b.path.filename().wstring();std::transform(an.begin(),an.end(),an.begin(),[](wchar_t c){return wchar_t(std::towlower(c));});std::transform(bn.begin(),bn.end(),bn.begin(),[](wchar_t c){return wchar_t(std::towlower(c));});return an<bn;});
+    if(browser.entries.empty()){browser.selected=browser.scroll=0;engine.stopPreview();}
+    else{browser.selected=std::clamp(browser.selected,0,int(browser.entries.size())-1);browser.scroll=std::clamp(browser.scroll,0,std::max(0,int(browser.entries.size())-5));if(browser.selected<browser.scroll)browser.scroll=browser.selected;if(browser.selected>=browser.scroll+5)browser.scroll=browser.selected-4;if(audition&&browser.auditionMode==1)auditionSurfaceBrowser(display);}
 }
 
 void moveSurfaceBrowserSelection(int display,int delta){
-    auto& browser=browsers[std::clamp(display,0,lab::SurfaceDisplays-1)];if(browser.files.empty()||!delta)return;
-    const int previous=browser.selected;browser.selected=std::clamp(browser.selected+(delta>0?1:-1),0,int(browser.files.size())-1);
+    auto& browser=browsers[std::clamp(display,0,lab::SurfaceDisplays-1)];if(browser.entries.empty()||!delta)return;
+    const int previous=browser.selected;browser.selected=std::clamp(browser.selected+(delta>0?1:-1),0,int(browser.entries.size())-1);
     if(browser.selected<browser.scroll)browser.scroll=browser.selected;if(browser.selected>=browser.scroll+5)browser.scroll=browser.selected-4;
     if(browser.selected!=previous&&browser.auditionMode==1)auditionSurfaceBrowser(display);
 }
 
 void moveSurfaceBrowserCategory(int display,int delta){
-    auto& browser=browsers[std::clamp(display,0,lab::SurfaceDisplays-1)];if(!delta)return;
-    const int category=std::clamp(browser.category+(delta>0?1:-1),0,int(libraryCategories.size())-1);if(category==browser.category)return;
-    browser.category=category;browser.selected=browser.scroll=0;refreshSurfaceBrowser(display,true);
+    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];if(!delta)return;
+    if(delta<0){if(browser.directory==library)return;auto parent=browser.directory.parent_path();std::error_code error;auto relative=std::filesystem::relative(parent,library,error);if(error||(!relative.empty()&&*relative.begin()==std::filesystem::path("..")))parent=library;browser.directory=parent;}
+    else {if(browser.selected<0||browser.selected>=int(browser.entries.size())||!browser.entries[browser.selected].directory)return;browser.directory=browser.entries[browser.selected].path;}
+    browser.selected=browser.scroll=0;engine.stopPreview();refreshSurfaceBrowser(display,true);status=L"Browser KICK — "+surfaceBrowserPath(browser)+L".";
 }
 
 void loadSurfaceBrowserSelection(int display){
-    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];if(browser.files.empty()){status=L"Browser KICK — cette catégorie ne contient encore aucun WAV.";return;}
-    auto& binding=surface.displays[display];const int pad=std::clamp(binding.pad,0,lab::Pads-1);std::string error;engine.stopPreview();
-    if(engine.load(pad,browser.files[browser.selected].u8string(),error,true)){selectPad(pad);status=L"Sample chargé sur le pad "+padName(pad)+L" sans modifier ses réglages : "+browser.files[browser.selected].filename().wstring();}
+    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];if(browser.entries.empty()){status=L"Browser KICK — ce dossier est vide.";return;}
+    if(browser.selected<0||browser.selected>=int(browser.entries.size()))return;if(browser.entries[browser.selected].directory){moveSurfaceBrowserCategory(display,1);return;}
+    auto& binding=surface.displays[display];const int pad=std::clamp(binding.pad,0,lab::Pads-1);std::string error;engine.stopPreview();const auto file=browser.entries[browser.selected].path;
+    if(engine.load(pad,file.u8string(),error,true)){selectPad(pad);status=L"Sample chargé sur le pad "+padName(pad)+L" sans modifier ses réglages : "+file.filename().wstring();}
     else status=L"Chargement impossible : "+wide(error);
 }
 
 void showSurfaceBrowser(int display){
-    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::Browser;binding.pad=selected;binding.page=0;surface.focusDisplay(display);refreshSurfaceBrowser(display,true);
-    status=L"Browser KICK — flèches/encodeur : parcourir · Enter : charger · Échap : fermer.";
+    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::Browser;binding.pad=selected;binding.page=0;surface.focusDisplay(display);if(browsers[display].directory.empty())browsers[display].directory=library;refreshSurfaceBrowser(display,true);
+    status=L"Browser KICK — haut/bas : parcourir · droite/Enter : ouvrir ou charger · gauche : dossier parent.";
 }
 
 void closeSurfaceModule(){
@@ -342,11 +350,11 @@ bool surfaceClick(int x,int y,bool right){
             auto& browser=browsers[display];
             if(surfaceBrowserPreviousBox(display).contains(x,y)){moveSurfaceBrowserCategory(display,-1);return true;}
             if(surfaceBrowserNextBox(display).contains(x,y)){moveSurfaceBrowserCategory(display,1);return true;}
-            for(int row=0;row<5;++row)if(surfaceBrowserFileBox(display,row).contains(x,y)){const int index=browser.scroll+row;if(index<int(browser.files.size())){browser.selected=index;if(browser.auditionMode==1)auditionSurfaceBrowser(display);}return true;}
+            for(int row=0;row<5;++row)if(surfaceBrowserFileBox(display,row).contains(x,y)){const int index=browser.scroll+row;if(index<int(browser.entries.size())){browser.selected=index;if(browser.auditionMode==1)auditionSurfaceBrowser(display);}return true;}
             if(surfaceBrowserModeBox(display).contains(x,y)){browser.auditionMode=(browser.auditionMode+1)%3;if(browser.auditionMode==0)engine.stopPreview();else if(browser.auditionMode==1)auditionSurfaceBrowser(display);status=L"Browser KICK — mode de préécoute "+surfaceBrowserModeName(browser.auditionMode)+L".";return true;}
             if(surfaceBrowserAuditionBox(display).contains(x,y)){if(browser.auditionMode!=0)auditionSurfaceBrowser(display);return true;}
             if(surfaceBrowserLoadBox(display).contains(x,y)){loadSurfaceBrowserSelection(display);return true;}
-            if(surfaceBrowserRefreshBox(display).contains(x,y)){refreshSurfaceBrowser(display,true);status=L"Bibliothèque actualisée : "+number(int(browser.files.size()))+L" WAV dans "+libraryCategories[browser.category]+L".";return true;}
+            if(surfaceBrowserRefreshBox(display).contains(x,y)){refreshSurfaceBrowser(display,true);status=L"Bibliothèque actualisée : "+number(int(browser.entries.size()))+L" élément(s) dans "+surfaceBrowserPath(browser)+L".";return true;}
             return true;
         }
         if(binding.module==lab::DisplayModule::Inserts){
@@ -454,12 +462,14 @@ bool maschineClick(int x,int y,bool right){
         return true;
     }
     for(int column=0;column<4;++column)if(performanceButtonBox(column).contains(x,y)){
-        if(column==2)showSurfaceInserts(surface.focusedDisplay);else if(column==3){padMode=1;showSurfacePadPerform(surface.focusedDisplay);}
+        if(column==0)showSurfaceProgram(surface.focusedDisplay);else if(column==2)showSurfaceInserts(surface.focusedDisplay);else if(column==3){padMode=1;showSurfacePadPerform(surface.focusedDisplay);}
         else status=L"Contrôle performance visible ; routage KICK pas encore porté.";
         return true;
     }
     for(int index=0;index<8;++index)if(transportBox(index).contains(x,y)){
         if(index==4)dispatch({lab::SurfaceAction::PlayPause});
+        else if(index==3)cycleRecordQuantize();
+        else if(index==5)toggleRecord();
         else if(index==6)dispatch({lab::SurfaceAction::Stop});
         else if(index==7){surface.shift=!surface.shift;status=surface.shift?L"SHIFT actif.":L"SHIFT relâché.";}
         else status=L"Commande transport visible ; fonction KICK pas encore portée.";
@@ -507,15 +517,15 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     if(binding.module==lab::DisplayModule::Browser){
         const auto& browser=browsers[display];
         text(dc,{box.x+14,box.y+9,290,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  BROWSER  ·  PAD "+padName(binding.pad),12,focused?accent:muted,FW_SEMIBOLD);
-        text(dc,{box.x+310,box.y+9,130,24},number(int(browser.files.size()))+L" WAV",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        text(dc,{box.x+310,box.y+9,130,24},number(int(browser.entries.size()))+L" élément(s)",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
-        button(dc,surfaceBrowserPreviousBox(display),L"<");button(dc,surfaceBrowserCategoryBox(display),libraryCategories[browser.category],true);button(dc,surfaceBrowserNextBox(display),L">");
-        for(int row=0;row<5;++row){auto b=surfaceBrowserFileBox(display,row);const int index=browser.scroll+row;const bool selectedFile=index==browser.selected&&index<int(browser.files.size());
+        button(dc,surfaceBrowserPreviousBox(display),L"<");button(dc,surfaceBrowserCategoryBox(display),surfaceBrowserPath(browser),true);button(dc,surfaceBrowserNextBox(display),L">");
+        for(int row=0;row<5;++row){auto b=surfaceBrowserFileBox(display,row);const int index=browser.scroll+row;const bool selectedFile=index==browser.selected&&index<int(browser.entries.size());
             if(selectedFile)round(dc,b,accent,accent);else fill(dc,b,row%2?RGB(18,31,35):RGB(17,28,33));
-            const std::wstring name=index<int(browser.files.size())?browser.files[index].filename().wstring():(row==0&&browser.files.empty()?L"Bibliothèque vide — ajoute des WAV via Bibliothèque":L"");
-            text(dc,{b.x+10,b.y,b.w-20,b.h},name,10,selectedFile?bg:(browser.files.empty()?muted:ink),selectedFile?FW_SEMIBOLD:FW_NORMAL);
+            const bool directory=index<int(browser.entries.size())&&browser.entries[index].directory;const std::wstring name=index<int(browser.entries.size())?(directory?L"[DOSSIER]  ":L"")+browser.entries[index].path.filename().wstring():(row==0&&browser.entries.empty()?L"Dossier vide":L"");
+            text(dc,{b.x+10,b.y,b.w-20,b.h},name,10,selectedFile?bg:(browser.entries.empty()?muted:ink),selectedFile?FW_SEMIBOLD:FW_NORMAL);
         }
-        button(dc,surfaceBrowserModeBox(display),surfaceBrowserModeName(browser.auditionMode),browser.auditionMode>0);button(dc,surfaceBrowserAuditionBox(display),L"Écouter",browser.auditionMode>0);button(dc,surfaceBrowserLoadBox(display),L"Charger",!browser.files.empty());button(dc,surfaceBrowserRefreshBox(display),L"Actualiser");
+        const bool directory=browser.selected>=0&&browser.selected<int(browser.entries.size())&&browser.entries[browser.selected].directory;button(dc,surfaceBrowserModeBox(display),surfaceBrowserModeName(browser.auditionMode),browser.auditionMode>0);button(dc,surfaceBrowserAuditionBox(display),L"Écouter",browser.auditionMode>0&&!directory);button(dc,surfaceBrowserLoadBox(display),directory?L"Ouvrir":L"Charger",!browser.entries.empty());button(dc,surfaceBrowserRefreshBox(display),L"Actualiser");
         return;
     }
     if(binding.module==lab::DisplayModule::PadPerform){
@@ -629,8 +639,8 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     hardwareButton(dc,smallControlBox(0,2),small[4].first,small[4].second);
     text(dc,smallControlBox(1,2),number(int(snapshot.tempo))+L" BPM",15,accent,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    static const std::array<const wchar_t*,4> performance={L"PITCH",L"MOD",L"PERFORM / FX",L"NOTES"};
-    for(int i=0;i<4;++i)hardwareButton(dc,performanceButtonBox(i),performance[i],L"",false,i==2||i==3);
+    static const std::array<const wchar_t*,4> performance={L"PITCH / PAD EDIT",L"MOD",L"PERFORM / FX",L"NOTES"};
+    for(int i=0;i<4;++i)hardwareButton(dc,performanceButtonBox(i),performance[i],L"",false,i==0||i==2||i==3);
 
     for(int group=0;group<8;++group)hardwareButton(dc,groupBox(group),std::wstring(1,wchar_t(L'A'+group)),L"",group==padGroup);
 
@@ -659,9 +669,9 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     hardwareButton(dc,transportBox(0),L"RESTART",L"Loop",false,false);
     hardwareButton(dc,transportBox(1),L"ERASE",L"Replace",false,false);
     hardwareButton(dc,transportBox(2),L"TAP",L"Metro",false,false);
-    hardwareButton(dc,transportBox(3),L"FOLLOW",L"Grid",false,false);
+    hardwareButton(dc,transportBox(3),L"FOLLOW",L"Grid "+recordQuantizeName(),false,true);
     hardwareButton(dc,transportBox(4),snapshot.playing?L"PAUSE":L"PLAY",L"",snapshot.playing);
-    hardwareButton(dc,transportBox(5),L"REC",L"Count-in",false,false);
+    hardwareButton(dc,transportBox(5),L"REC",recordArmed?(snapshot.playing?L"Recording ":L"Armed ")+recordQuantizeName():L"Count-in",recordArmed,true);
     hardwareButton(dc,transportBox(6),L"STOP");
     hardwareButton(dc,transportBox(7),L"SHIFT",L"",surface.shift);
 
@@ -669,6 +679,7 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     round(dc,{1278,132,294,140},panel);text(dc,{1292,141,264,22},L"MASTER / WINDOWS",11,ink,FW_SEMIBOLD);
     text(dc,{1292,166,264,18},audio.running?L"AUDIO WINDOWS · ACTIF":L"AUDIO WINDOWS · ARRÊT",9,audio.running?accent:RGB(255,133,103),FW_SEMIBOLD);
     text(dc,{1292,187,264,18},midiId>=0?L"MIDI · CONNECTÉ":L"MIDI · DÉCONNECTÉ",9,midiId>=0?accent:muted,FW_SEMIBOLD);
+    text(dc,{1292,204,264,14},L"DSP "+decimal(audio.renderPermille.load()/10.,1)+L" % · RETARDS "+number(int(audio.lateBlocks.load())),8,audio.lateBlocks.load()?RGB(255,133,103):muted,FW_SEMIBOLD);
     meterPeak=std::max(double(snapshot.peak),meterPeak*.9);paintMasterMeter(dc,snapshot.volume,meterPeak);
     round(dc,{1278,286,294,110},panel);text(dc,{1292,298,266,86},status,9,muted,FW_NORMAL,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
 }
@@ -676,8 +687,8 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
 void paintMasterMeter(HDC dc,double value,double peak){
     value=std::clamp(value,0.,1.);peak=std::max(0.,peak);const Box meter{1292,239,264,16};
     const double db=peak>0?20.*std::log10(peak):-60.;const double ratio=std::clamp((db+60.)/60.,0.,1.);const int lit=int((meter.w-4)*ratio);
-    text(dc,{1292,215,132,18},L"MASTER "+number(int(value*100))+L" %",9,muted,FW_SEMIBOLD);
-    const std::wstring level=peak>=1?L"CLIP":(db<=-59.9?L"−∞ dB":number(int(std::round(db)))+L" dB");text(dc,{1424,215,132,18},level,9,peak>=1?RGB(255,95,90):muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{1292,219,132,16},L"MASTER "+number(int(value*100))+L" %",9,muted,FW_SEMIBOLD);
+    const std::wstring level=peak>=1?L"CLIP":(db<=-59.9?L"−∞ dB":number(int(std::round(db)))+L" dB");text(dc,{1424,219,132,16},level,9,peak>=1?RGB(255,95,90):muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     round(dc,meter,RGB(20,26,34),line);if(lit>0){const int green=std::min(lit,int((meter.w-4)*.8)),amber=std::min(lit-green,int((meter.w-4)*.15)),red=lit-green-amber;if(green>0)fill(dc,{meter.x+2,meter.y+3,green,meter.h-6},accent);if(amber>0)fill(dc,{meter.x+2+green,meter.y+3,amber,meter.h-6},RGB(241,184,88));if(red>0)fill(dc,{meter.x+2+green+amber,meter.y+3,red,meter.h-6},RGB(255,95,90));}
     const int marker=meter.x+2+int((meter.w-4)*value);fill(dc,{marker-1,meter.y-2,2,meter.h+4},ink);
 }

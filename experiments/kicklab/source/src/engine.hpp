@@ -105,6 +105,9 @@ public:
     void setMelodicSourcePad(int pad);
     void setRootNote(int note);
     int performanceNote(int performancePad)const;
+    // Records onto the running sequence, snapped to 1/4, 1/8 or 1/16.
+    // note < 0 records a drum hit on pad; otherwise it records the MIDI note.
+    bool recordHit(int pad,int note,int quantizeDivision);
     void addSongStep(int sequence,int repeats);
     void editSongStep(int position,int sequence,int repeats);
     void deleteSongStep(int position);

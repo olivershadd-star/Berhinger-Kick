@@ -246,6 +246,16 @@ void Engine::setPerformanceMode(PerformanceMode mode){if(int(mode)<0||int(mode)>
 void Engine::setMelodicSourcePad(int pad){if(pad<0||pad>=Pads)return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].sourcePad=pad;}
 void Engine::setRootNote(int note){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].rootNote=std::clamp(note,0,101);}
 int Engine::performanceNote(int pad)const{if(pad<0||pad>=Pads)return 0;std::lock_guard<std::mutex> lock(impl->mutex);const auto& sequence=impl->state.sequences[impl->state.sequence];return mappedPerformanceNote(sequence.mode,sequence.rootNote,pad);}
+bool Engine::recordHit(int pad,int note,int quantizeDivision){
+    if(pad<0||pad>=Pads||(note>=0&&(note>127)))return false;
+    std::lock_guard<std::mutex> lock(impl->mutex);auto& state=impl->state;if(!state.playing||state.step<0)return false;
+    auto& sequence=state.sequences[state.sequence];const int length=std::max(Steps,sequence.bars*Steps);
+    const int quantum=quantizeDivision<=4?4:quantizeDivision<=8?2:1;
+    const double stepSamples=Rate*60./state.tempo/4.;const double elapsed=std::clamp(1.-impl->untilStep/stepSamples,0.,1.);
+    const double position=state.playBar*Steps+state.step+elapsed;int target=int(std::floor((position+quantum*.5)/quantum))*quantum;target%=length;if(target<0)target+=length;
+    if(note<0)sequence.drum[pad][target]=true;else sequence.melody[target]=note;
+    return true;
+}
 void Engine::addSongStep(int sequence,int repeats){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;if(s.songLength>=MaxSongSteps)return;s.song[s.songLength++]={std::clamp(sequence,0,Sequences-1),std::clamp(repeats,1,128)};}
 void Engine::editSongStep(int position,int sequence,int repeats){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;if(position<0||position>=s.songLength)return;s.song[position]={std::clamp(sequence,0,Sequences-1),std::clamp(repeats,1,128)};}
 void Engine::deleteSongStep(int position){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;if(position<0||position>=s.songLength)return;for(int i=position;i+1<s.songLength;++i)s.song[i]=s.song[i+1];s.song[--s.songLength]={};if(s.songPosition>=s.songLength)s.songPosition=s.songLength-1;}

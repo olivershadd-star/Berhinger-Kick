@@ -58,6 +58,10 @@ int main(int argc,char**argv){try{
     check(arrangement.sequences[0].melody[19]==55&&arrangement.melody[3]==55,"melodic step did not retain its note");
     check(e.performanceNote(7)==55,"chromatic pad mapping is incorrect");
     e.setPerformanceMode(PerformanceMode::Major);check(e.performanceNote(7)==60,"major scale pad mapping is incorrect");e.setPerformanceMode(PerformanceMode::Chromatic);
+    // Live REC writes the running playhead to the selected quantized grid.
+    e.stop();e.selectSequence(15);e.clearPattern();e.setSequenceBars(1);e.setPerformanceMode(PerformanceMode::Drum);e.setPlaying(true);e.render(block);
+    check(e.recordHit(4,-1,16),"quantized drum recording was rejected");check(e.snapshot().sequences[15].drum[4][0],"quantized drum hit was not written");
+    e.setPerformanceMode(PerformanceMode::Chromatic);e.setMelodicSourcePad(12);e.setRootNote(48);check(e.recordHit(12,55,16),"quantized melodic recording was rejected");check(e.snapshot().sequences[15].melody[0]==55,"quantized melodic note was not written");e.stop();
     // Next Sequence waits for the complete sequence boundary.
     e.selectSequence(1);e.clearPattern();e.setSequenceBars(1);e.setPerformanceMode(PerformanceMode::Drum);e.toggle(0,0);
     e.selectSequence(2);e.clearPattern();e.setSequenceBars(1);e.setPerformanceMode(PerformanceMode::Drum);e.toggle(1,0);
