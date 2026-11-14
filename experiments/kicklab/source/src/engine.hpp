@@ -10,6 +10,17 @@
 namespace lab {
 constexpr int Pads=16, Groups=8, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
 constexpr int Sequences=16, MaxBars=4, MaxSequenceSteps=Steps*MaxBars, MaxSongSteps=32;
+enum class ProgramType { Drum=0, Keygroup=1 };
+struct TrackData {
+    std::string name;
+    ProgramType program=ProgramType::Drum;
+    int sourcePad=0;
+    double level=1;
+    double pan=0;
+    bool mute=false;
+    bool solo=false;
+    bool armed=false;
+};
 // Values 1 and 2 are kept stable for KICKLAB 3 projects written by 0.2.3.
 enum class InsertEffect {
     None=0, Lowpass=1, PurestDrive=2, Highpass=3, Isolator=4,
@@ -51,7 +62,11 @@ struct SequenceData {
     int rootNote=48;
     std::array<std::array<bool,MaxSequenceSteps>,Pads> drum{};
     std::array<int,MaxSequenceSteps> melody{};
-    SequenceData(){melody.fill(-1);}
+    std::array<TrackData,Pads> tracks{};
+    SequenceData(){
+        melody.fill(-1);
+        for(int track=0;track<Pads;++track){tracks[track].name="Track "+std::to_string(track+1);tracks[track].sourcePad=track;}
+    }
 };
 struct SongStep {
     int sequence=0;
@@ -74,6 +89,7 @@ struct Snapshot {
     double tempo=120,volume=.65;
     bool playing=false,songPlaying=false;
     int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1,group=0;
+    int selectedTrack=0;
     int songLength=0,songPosition=-1,songRepeat=0;
     float peak=0;
 };
@@ -104,6 +120,13 @@ public:
     void setPerformanceMode(PerformanceMode mode);
     void setMelodicSourcePad(int pad);
     void setRootNote(int note);
+    void selectTrack(int track);
+    void setTrackLevel(int track,double level);
+    void setTrackPan(int track,double pan);
+    void setTrackMute(int track,bool mute);
+    void setTrackSolo(int track,bool solo);
+    void setTrackArmed(int track,bool armed);
+    void setTrackProgram(int track,ProgramType program);
     int performanceNote(int performancePad)const;
     // Records onto the running sequence, snapped to 1/4, 1/8 or 1/16.
     // note < 0 records a drum hit on pad; otherwise it records the MIDI note.

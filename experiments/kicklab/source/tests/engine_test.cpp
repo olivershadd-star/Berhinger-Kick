@@ -86,7 +86,11 @@ int main(int argc,char**argv){try{
     e.setGroup(0);check(e.snapshot().group==0&&!e.snapshot().paths[0].empty()&&e.snapshot().edits[0].gain!=.23,"group A was not restored");
     e.setGroup(1);check(e.snapshot().paths[0]==path("mono.wav")&&e.snapshot().edits[0].gain==.23&&e.snapshot().edits[0].semitones==5,"group B was not restored");
     check(e.save(path("groups.kicklab"),error),error.c_str());e.setGroup(2);check(e.load(0,path("resample.wav"),error),error.c_str());check(e.open(path("groups.kicklab"),error),error.c_str());
-    check(e.snapshot().group==1&&e.snapshot().paths[0]==path("mono.wav")&&e.snapshot().edits[0].gain==.23,"KICKLAB 6 active group roundtrip failed");e.setGroup(0);check(!e.snapshot().paths[0].empty(),"KICKLAB 6 group A roundtrip failed");
+    check(e.snapshot().group==1&&e.snapshot().paths[0]==path("mono.wav")&&e.snapshot().edits[0].gain==.23,"pad group active roundtrip failed");e.setGroup(0);check(!e.snapshot().paths[0].empty(),"pad group A roundtrip failed");
+    // KICK Track Mixer state is audible, sequence-local and persisted by KICKLAB 7.
+    e.stop();e.selectSequence(0);e.clearPattern();e.setPerformanceMode(PerformanceMode::Drum);e.toggle(0,0);e.selectTrack(0);e.setTrackLevel(0,.5);e.setTrackPan(0,-1);e.setTrackMute(0,false);e.setTrackSolo(0,true);e.setTrackArmed(0,true);e.setTrackProgram(0,ProgramType::Drum);e.setPlaying(true);e.render(block);double leftTrack=0,rightTrack=0;for(int n=0;n<Block;++n){leftTrack+=std::abs(block[n*2]);rightTrack+=std::abs(block[n*2+1]);}check(leftTrack>0&&rightTrack<leftTrack*1e-8,"track pan is not audible");e.stop();
+    e.setTrackMute(0,true);e.setPlaying(true);e.render(block);double mutedTrack=0;for(float value:block)mutedTrack+=std::abs(value);check(mutedTrack<1e-8,"track mute is not audible");e.stop();e.setTrackMute(0,false);
+    check(e.save(path("tracks.kicklab"),error),error.c_str());e.setTrackLevel(0,1);e.setTrackPan(0,0);e.setTrackSolo(0,false);e.setTrackArmed(0,false);check(e.open(path("tracks.kicklab"),error),error.c_str());auto trackState=e.snapshot();check(trackState.selectedTrack==0&&trackState.sequences[0].tracks[0].level==.5&&trackState.sequences[0].tracks[0].pan==-1&&trackState.sequences[0].tracks[0].solo&&trackState.sequences[0].tracks[0].armed,"KICKLAB 7 track state roundtrip failed");
     {std::ofstream f(std::filesystem::u8path(path("broken.wav")),std::ios::binary);f<<"RIFF";}check(!e.load(0,path("broken.wav"),error),"truncated WAV accepted");
     {std::ofstream f(std::filesystem::u8path(path("bad.kicklab")));f<<"INVALID";}check(!e.open(path("bad.kicklab"),error),"invalid project accepted");
     {std::ofstream f(std::filesystem::u8path(path("sparse.kicklab")));f<<"KICKLAB 1\n120 0.65\n";for(int p=0;p<Pads;++p)f<<0<<' '<<std::quoted(p==0?path("long.wav"):std::string{})<<'\n';}
@@ -158,7 +162,7 @@ int main(int argc,char**argv){try{
     envelope.attack=0;envelope.release=.1;e.setEdit(0,envelope);e.stop();e.trigger(0);e.render(block);e.release(0);for(int b=0;b<12;++b)e.render(block);check(!e.snapshot().active[0],"amplitude envelope release did not stop the voice");
     e.setInsertEffect(0,2,InsertEffect::PurestDrive);e.setInsertParameter(0,2,0,.42);e.setInsertBypass(0,2,true);restored=e.snapshot().edits[0];check(restored.inserts[2].effect==InsertEffect::PurestDrive&&restored.inserts[2].parameters[0]==.42&&restored.inserts[2].bypass,"insert control API failed");
     std::cout<<"PASS: trim, Pad Perform pitch, ADSR, 26 Airwindows effects and four AudIO inserts\n";
-    std::cout<<"PASS: A-H pad groups, KICKLAB 6, 16 sequences, Song and v1/v2/v3/v4 compatibility\n";
+    std::cout<<"PASS: A-H pad groups, KICKLAB 7 tracks, mixer, 16 sequences, Song and legacy compatibility\n";
     // Batched driver completions across the ring boundary must preserve time order.
     AudioQueue<4> queue;std::array<bool,4> ready={true,true,true,false};std::vector<int> submitted;
     auto submit=[&](size_t b){submitted.push_back(int(b));ready[b]=false;return true;};

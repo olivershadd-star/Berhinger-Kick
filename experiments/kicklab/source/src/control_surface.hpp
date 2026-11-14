@@ -53,6 +53,9 @@ enum class MidiCommandTarget {
     FixedVelocity,Scene,Pattern,Events,Variation,Duplicate,Select,Solo,Mute,
     Volume,Swing,Tempo,NoteRepeat,Lock,Pitch,Mod,Perform,Notes,
     Channel,Plugin,Ideas,Mixer,Browser,Sampling,FileSave,Settings,Auto,Macro,
+    // Maschine+ exposes a second control page with distinct MIDI messages.
+    // Appending these targets preserves every KICKMIDI 4 command index.
+    Soft9,Soft10,Soft11,Soft12,Soft13,Soft14,Soft15,Soft16,
     Count
 };
 

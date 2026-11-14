@@ -1,11 +1,13 @@
-KICK Lab 0.7.0 — bibliothèque et REC quantifié
+KICK Lab 0.8.0 — Tracks KICK et deux pages Maschine+
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 26 effets ; quatre inserts ; groupes A–H indépendants ; Pad/Keyboard/Step ; REC quantifié ; Next Sequence ; Song ; sauvegarde KICKLAB 6 ; migration KICKLAB 1 à 5 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 26 effets ; quatre inserts ; groupes A–H indépendants ; Pad/Keyboard/Step ; REC quantifié ; Next Sequence ; Song ; niveau/pan/mute/solo de piste ; sauvegarde KICKLAB 7 ; migration KICKLAB 1 à 6 ; remise en file des buffers ; continuité sous activité graphique.
+
+0.8.0 ajoute seize états de piste par séquence et un Track Mixer audible. Les huit encodeurs règlent les pistes 1–8 sur la première page Maschine+ et 9–16 sur la seconde ; Level et Pan sont disponibles, ainsi que Mute, Solo et Arm. Les seize messages Soft des deux pages sont apprenables séparément. KICKMIDI 5 et KICKLAB 7 relisent tous les formats précédents.
 
 0.7.0 remplace les neuf catégories figées par un Browser hiérarchique qui suit directement le dossier samples externe, y compris les packs et sous-dossiers. PITCH / PAD EDIT ouvre l'édition du pad. REC enregistre les pads rythmiques et le Keyboard monophonique sur la séquence en cours, avec une grille 1/4, 1/8 ou 1/16 choisie par FOLLOW / Grid. Le Master affiche la charge DSP réelle et le nombre de blocs audio rendus en retard.
 
@@ -15,9 +17,9 @@ Scénarios : lecture WAV et silence ; découpe et hauteur Pad Perform ; gain ind
 
 0.6.2 relie le changement Pad Mode → Step à la piste du dernier pad sélectionné, route aussi les pads MIDI physiques vers les steps et permet le passage Keyboard → Step pour éditer une hauteur mélodique. Le bandeau supérieur est supprimé ; les deux écrans ne se chevauchent plus et le logo KICK @ NKS LABS rejoint la colonne latérale avec le Master.
 
-Les huit groupes possèdent chacun seize samples et réglages indépendants, mais seuls les seize lecteurs AudIO du groupe actif sont raccordés, afin de conserver la stabilité Windows. KICKLAB 6 sauvegarde les 128 emplacements et reste compatible avec les projets 1 à 5.
+Les huit groupes possèdent chacun seize samples et réglages indépendants, mais seuls les seize lecteurs AudIO du groupe actif sont raccordés, afin de conserver la stabilité Windows. KICKLAB 7 sauvegarde les 128 emplacements, les états de piste et reste compatible avec les projets 1 à 6.
 
-KICKMIDI 4 mémorise 16 knobs, 128 pads A–H et toutes les commandes physiques. L'encodeur 4D est appris en relatif 1/127 pour les deux sens ; ABS et 63/65 restent sélectionnables. File et Settings regroupent maintenant projet, bibliothèque, audio et MIDI.
+KICKMIDI 5 mémorise 16 knobs, 16 touches Soft, 128 pads A–H et toutes les commandes physiques. L'encodeur 4D est appris en relatif 1/127 pour les deux sens ; ABS et 63/65 restent sélectionnables. File et Settings regroupent maintenant projet, bibliothèque, audio et MIDI.
 
 0.4.1 ajoute le MIDI Learn individuel des seize pads, une commande Retour/Escape assignable et le format de profil KICKMIDI 3. L'encodeur 4D de Maschine+ est maintenant interprété comme une valeur absolue afin que les deux sens fonctionnent. Dans Sample & FX, sa rotation parcourt les quatre slots et son appui ouvre le choix d'effet. La rotation du menu traverse désormais les éléments 8 et 9 entre les deux écrans. Un bouton Menu ramène les deux écrans à l'accueil et le potentiomètre Master surdimensionné est remplacé par un vumètre avec niveau, maintien visuel et indication CLIP.
 

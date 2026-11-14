@@ -124,7 +124,7 @@ public:
     std::wstring status=L"Clique sur un pad pour jouer. Clic droit pour charger un WAV.";
     std::array<ULONGLONG,16> flashed{};int mouseX=-1,mouseY=-1;int width=DesignWidth,height=DesignHeight;
     // Physical layout state. 0=Pad, 1=Keyboard, 2=Chords, 3=Step.
-    int padMode=0,padGroup=0,stepTrack=0;bool selectLatch=false,recordArmed=false;int recordQuantize=16;
+    int padMode=0,padGroup=0,stepTrack=0,mixerBank=0,mixerParameter=0;bool selectLatch=false,soloLatch=false,muteLatch=false,recordArmed=false;int recordQuantize=16;
     App(){
         wchar_t path[32768];DWORD n=GetModuleFileNameW(nullptr,path,32768);base=std::filesystem::path(std::wstring(path,n)).parent_path();library=base/L"samples";portableMidiProfile=base/L"profiles"/L"MaschinePlus.kickmidi";
         wchar_t local[32768];DWORD localSize=GetEnvironmentVariableW(L"LOCALAPPDATA",local,32768);const auto settingsRoot=localSize&&localSize<32768?std::filesystem::path(std::wstring(local,localSize))/L"KICKLab":base;
@@ -148,18 +148,18 @@ public:
     }
     bool loadMidiProfileFile(const std::filesystem::path& source){
         std::ifstream file(source.u8string());if(!file)return false;
-        std::string signature;int version=0;file>>signature>>version;if(signature!="KICKMIDI"||(version<1||version>4))return false;
+        std::string signature;int version=0;file>>signature>>version;if(signature!="KICKMIDI"||(version<1||version>5))return false;
         std::array<lab::MidiCcBinding,lab::SurfaceMidiQLinks> loadedQlinks{};std::array<lab::MidiPadBinding,lab::SurfaceMidiPads> loadedPads{};std::array<lab::MidiCommandBinding,lab::MidiCommandCount> loadedCommands{};
         const int storedQlinks=version>=4?lab::SurfaceMidiQLinks:8;for(int expected=0;expected<storedQlinks;++expected){char record='Q';int index=-1,channel=-1,cc=-1,mode=0;if(version>=2)file>>record;if(!(file>>index>>channel>>cc>>mode)||record!='Q'||index!=expected||channel< -1||channel>15||cc< -1||cc>127||mode<0||mode>2)return false;loadedQlinks[index].channel=channel;loadedQlinks[index].cc=cc;loadedQlinks[index].mode=static_cast<lab::MidiCcMode>(mode);}
         const int storedPads=version>=4?lab::SurfaceMidiPads:version==3?lab::SurfacePads:0;for(int expected=0;expected<storedPads;++expected){char record=0;int index=-1,channel=-1,note=-1;if(!(file>>record>>index>>channel>>note)||record!='P'||index!=expected||channel< -1||channel>15||note< -1||note>127)return false;loadedPads[index]={channel,note};}
-        if(version>=2){const int storedCommands=version<3?int(lab::MidiCommandTarget::Turn)+1:version<4?int(lab::MidiCommandTarget::Back)+1:lab::MidiCommandCount;for(int expected=0;expected<storedCommands;++expected){char record=0;int index=-1,kind=0,channel=-1,numberValue=-1,mode=0;if(!(file>>record>>index>>kind>>channel>>numberValue>>mode)||record!='C'||index!=expected||kind<0||kind>2||channel< -1||channel>15||numberValue< -1||numberValue>127||mode<0||mode>2)return false;auto& binding=loadedCommands[index];binding.kind=static_cast<lab::MidiMessageKind>(kind);binding.channel=channel;binding.number=numberValue;binding.mode=static_cast<lab::MidiCcMode>(mode);}}
+        if(version>=2){const int storedCommands=version<3?int(lab::MidiCommandTarget::Turn)+1:version<4?int(lab::MidiCommandTarget::Back)+1:version<5?int(lab::MidiCommandTarget::Soft9):lab::MidiCommandCount;for(int expected=0;expected<storedCommands;++expected){char record=0;int index=-1,kind=0,channel=-1,numberValue=-1,mode=0;if(!(file>>record>>index>>kind>>channel>>numberValue>>mode)||record!='C'||index!=expected||kind<0||kind>2||channel< -1||channel>15||numberValue< -1||numberValue>127||mode<0||mode>2)return false;auto& binding=loadedCommands[index];binding.kind=static_cast<lab::MidiMessageKind>(kind);binding.channel=channel;binding.number=numberValue;binding.mode=static_cast<lab::MidiCcMode>(mode);}}
         if(version<4&&loadedCommands[int(lab::MidiCommandTarget::Turn)].kind!=lab::MidiMessageKind::None)loadedCommands[int(lab::MidiCommandTarget::Turn)].mode=lab::MidiCcMode::Relative1;
         midiQlinks=loadedQlinks;midiPads=loadedPads;midiCommands=loadedCommands;midiProfileLoaded=true;midiProfileSource=source;return true;
     }
     bool writeMidiProfile(const std::filesystem::path& destination){
         std::error_code ec;std::filesystem::create_directories(destination.parent_path(),ec);if(ec)return false;
         auto temporary=destination;temporary+=L".tmp";std::ofstream file(temporary.u8string(),std::ios::trunc);if(!file)return false;
-        file<<"KICKMIDI 4\n";for(int index=0;index<int(midiQlinks.size());++index){const auto& binding=midiQlinks[index];file<<"Q "<<index<<' '<<binding.channel<<' '<<binding.cc<<' '<<int(binding.mode)<<'\n';}for(int index=0;index<int(midiPads.size());++index){const auto& binding=midiPads[index];file<<"P "<<index<<' '<<binding.channel<<' '<<binding.note<<'\n';}for(int index=0;index<lab::MidiCommandCount;++index){const auto& binding=midiCommands[index];file<<"C "<<index<<' '<<int(binding.kind)<<' '<<binding.channel<<' '<<binding.number<<' '<<int(binding.mode)<<'\n';}file.close();if(!file)return false;
+        file<<"KICKMIDI 5\n";for(int index=0;index<int(midiQlinks.size());++index){const auto& binding=midiQlinks[index];file<<"Q "<<index<<' '<<binding.channel<<' '<<binding.cc<<' '<<int(binding.mode)<<'\n';}for(int index=0;index<int(midiPads.size());++index){const auto& binding=midiPads[index];file<<"P "<<index<<' '<<binding.channel<<' '<<binding.note<<'\n';}for(int index=0;index<lab::MidiCommandCount;++index){const auto& binding=midiCommands[index];file<<"C "<<index<<' '<<int(binding.kind)<<' '<<binding.channel<<' '<<binding.number<<' '<<int(binding.mode)<<'\n';}file.close();if(!file)return false;
         return MoveFileExW(temporary.c_str(),destination.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=FALSE;
     }
     bool saveMidiProfile(){const bool persistent=writeMidiProfile(midiProfile);const bool portable=midiProfile==portableMidiProfile?persistent:writeMidiProfile(portableMidiProfile);if(persistent||portable){midiProfileLoaded=true;midiProfileSource=persistent?midiProfile:portableMidiProfile;return true;}return false;}
@@ -183,19 +183,23 @@ public:
         case T::ScreenA:if(pressed)dispatch({lab::SurfaceAction::PagePrevious});break;
         case T::ScreenB:if(pressed)dispatch({lab::SurfaceAction::PageNext});break;
         case T::Back:if(pressed)dispatch({lab::SurfaceAction::Back});break;
-        case T::Soft1:case T::Soft2:case T::Soft3:case T::Soft4:case T::Soft5:case T::Soft6:case T::Soft7:case T::Soft8:if(pressed){const int soft=target-int(T::Soft1);surface.focusDisplay(soft/4);status=L"MIDI — Soft "+number(soft+1)+L" reçu sur l'écran "+std::wstring(soft<4?L"A":L"B")+L".";}break;
+        case T::Soft1:case T::Soft2:case T::Soft3:case T::Soft4:case T::Soft5:case T::Soft6:case T::Soft7:case T::Soft8:if(pressed){const int soft=target-int(T::Soft1);activateSurfaceSoft(soft/4,soft%4,0);}break;
+        case T::Soft9:case T::Soft10:case T::Soft11:case T::Soft12:case T::Soft13:case T::Soft14:case T::Soft15:case T::Soft16:if(pressed){const int soft=target-int(T::Soft9);activateSurfaceSoft(soft/4,soft%4,1);}break;
         case T::GroupA:case T::GroupB:case T::GroupC:case T::GroupD:case T::GroupE:case T::GroupF:case T::GroupG:case T::GroupH:if(pressed){const int group=target-int(T::GroupA);engine.setGroup(group);padGroup=engine.snapshot().group;selectPad(0);stepTrack=0;status=L"MIDI — groupe "+std::wstring(1,wchar_t(L'A'+group))+L".";}break;
-        case T::PadMode:if(pressed){padMode=0;engine.setPerformanceMode(lab::PerformanceMode::Drum);status=L"MIDI — Pad Mode.";}break;
-        case T::Keyboard:if(pressed){padMode=1;stepTrack=0;engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);status=L"MIDI — Keyboard : joue une hauteur puis passe sur Step pour la séquencer.";}break;
+        case T::PadMode:if(pressed){padMode=0;engine.setTrackProgram(stepTrack,lab::ProgramType::Drum);engine.setPerformanceMode(lab::PerformanceMode::Drum);status=L"MIDI — Pad Mode.";}break;
+        case T::Keyboard:if(pressed){padMode=1;selectTrack(selected);engine.setTrackProgram(stepTrack,lab::ProgramType::Keygroup);engine.setMelodicSourcePad(selected);engine.setPerformanceMode(lab::PerformanceMode::Chromatic);status=L"MIDI — Keyboard : joue une hauteur puis passe sur Step pour la séquencer.";}break;
         case T::Chords:if(pressed)status=L"MIDI — Chords reçu ; moteur d'accords pas encore porté.";break;
         case T::Step:if(pressed)enterStepMode();break;
         case T::Pattern:if(pressed)showSurfaceNextSequence(surface.focusedDisplay);break;
-        case T::Select:selectLatch=pressed;if(pressed){stepTrack=selected;status=L"MIDI — Select maintenu ; frappe un pad pour choisir la piste Step.";}break;
+        case T::Select:selectLatch=pressed;if(pressed){soloLatch=muteLatch=false;selectTrack(selected);status=L"MIDI — Select maintenu ; frappe un pad pour choisir la piste Step.";}break;
+        case T::Solo:if(pressed){soloLatch=!soloLatch;muteLatch=selectLatch=false;status=soloLatch?L"MIDI — Solo actif ; frappe un pad pour isoler une piste.":L"MIDI — Solo relâché.";}break;
+        case T::Mute:if(pressed){muteLatch=!muteLatch;soloLatch=selectLatch=false;status=muteLatch?L"MIDI — Mute actif ; frappe un pad pour couper une piste.":L"MIDI — Mute relâché.";}break;
         case T::Perform:if(pressed)showSurfaceInserts(surface.focusedDisplay);break;
         case T::Notes:if(pressed){padMode=1;showSurfacePadPerform(surface.focusedDisplay);}break;
-        case T::Channel:if(pressed)showSurfaceMidiControl(surface.focusedDisplay);break;
+        case T::Channel:if(pressed){if(surface.shift)showSurfaceMidiControl(surface.focusedDisplay);else showSurfaceMixer(stepTrack/8);}break;
         case T::Plugin:if(pressed)showSurfaceInserts(surface.focusedDisplay);break;
         case T::Ideas:if(pressed)showSurfaceSong(surface.focusedDisplay);break;
+        case T::Mixer:if(pressed)showSurfaceMixer(stepTrack/8);break;
         case T::Browser:if(pressed)showSurfaceBrowser(surface.focusedDisplay);break;
         case T::Sampling:if(pressed){tab=1;status=L"Sampler / Sample Editor KICK.";}break;
         case T::FileSave:if(pressed){if(surface.shift)project(true);else fileMenu();}break;
@@ -204,9 +208,9 @@ public:
         case T::Record:if(pressed)toggleRecord();break;
         case T::Pitch:if(pressed)showSurfaceProgram(surface.focusedDisplay);break;
         case T::Restart:case T::Erase:case T::Tap:
-        case T::FixedVelocity:case T::Scene:case T::Events:case T::Variation:case T::Duplicate:case T::Solo:case T::Mute:
+        case T::FixedVelocity:case T::Scene:case T::Events:case T::Variation:case T::Duplicate:
         case T::Volume:case T::Swing:case T::Tempo:case T::NoteRepeat:case T::Lock:case T::Mod:
-        case T::Mixer:case T::Auto:case T::Macro:if(pressed)status=L"MIDI — "+midiCommandLabels[target]+L" reçu ; module KICK pas encore porté.";break;
+        case T::Auto:case T::Macro:if(pressed)status=L"MIDI — "+midiCommandLabels[target]+L" reçu ; module KICK pas encore porté.";break;
         default:break;
         }
     }
@@ -226,7 +230,7 @@ public:
         if(type!=0xb0)return;
         for(int target=0;target<int(midiQlinks.size());++target){
             const auto& binding=midiQlinks[target];if(binding.channel!=channel||binding.cc!=data1)continue;
-            const int logical=target%8,display=logical/4,knob=logical%4;
+            const int bank=target/8,logical=target%8,display=logical/4,knob=logical%4;if(surface.displays[display].module==lab::DisplayModule::Mixer&&mixerBank!=bank)showSurfaceMixer(bank);
             if(binding.mode==lab::MidiCcMode::Absolute)dispatch({lab::SurfaceAction::QLinkSet,knob,data2,display});
             else {int delta=lab::midiCcDelta(binding.mode,data2);if(delta)dispatch({lab::SurfaceAction::QLinkTurn,knob,delta,display});}
         }
@@ -234,15 +238,15 @@ public:
     void midiMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING|(midiId<0?MF_CHECKED:0),500,L"Désactivé");for(UINT i=0;i<midiInGetNumDevs();++i)AppendMenuW(menu,MF_STRING|(int(i)==midiId?MF_CHECKED:0),501+i,midiDeviceName(i).c_str());POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(!choice)return;if(choice>500)openMidiDevice(UINT(choice-501),true);else{closeMidi();preferredMidiDevice.clear();saveMidiDevicePreference();status=L"MIDI désactivé.";}}
     void audioMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING|(audioId==WAVE_MAPPER?MF_CHECKED:0),600,L"Sortie Windows par défaut");for(UINT i=0;i<waveOutGetNumDevs();++i){WAVEOUTCAPSW cap{};waveOutGetDevCapsW(i,&cap,sizeof(cap));AppendMenuW(menu,MF_STRING|(i==audioId?MF_CHECKED:0),601+i,cap.szPname);}POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice){audioId=choice==600?WAVE_MAPPER:UINT(choice-601);audio.start(audioId);status=L"Changement de sortie audio...";}}
     std::filesystem::path chooseMidiProfile(){std::vector<wchar_t> name(32768,0);OPENFILENAMEW dialog{};dialog.lStructSize=sizeof(dialog);dialog.hwndOwner=window;dialog.lpstrFile=name.data();dialog.nMaxFile=DWORD(name.size());dialog.lpstrFilter=L"Profil MIDI KICK (*.kickmidi)\0*.kickmidi\0Tous les fichiers\0*.*\0\0";dialog.lpstrDefExt=L"kickmidi";dialog.Flags=OFN_EXPLORER|OFN_NOCHANGEDIR|OFN_PATHMUSTEXIST|OFN_FILEMUSTEXIST;return GetOpenFileNameW(&dialog)?std::filesystem::path(name.data()):std::filesystem::path();}
-    void importMidiProfile(){const auto source=chooseMidiProfile();if(source.empty())return;if(!loadMidiProfileFile(source)){MessageBoxW(window,L"Ce fichier n'est pas un profil KICKMIDI valide (versions 1 à 4).",L"Importer le profil MIDI",MB_OK|MB_ICONINFORMATION);return;}const bool saved=saveMidiProfile();status=L"Profil MIDI importé : "+source.filename().wstring()+(saved?L" · conservé pour les prochains lancements.":L" · chargé, mais copie permanente impossible.");}
+    void importMidiProfile(){const auto source=chooseMidiProfile();if(source.empty())return;if(!loadMidiProfileFile(source)){MessageBoxW(window,L"Ce fichier n'est pas un profil KICKMIDI valide (versions 1 à 5).",L"Importer le profil MIDI",MB_OK|MB_ICONINFORMATION);return;}const bool saved=saveMidiProfile();status=L"Profil MIDI importé : "+source.filename().wstring()+(saved?L" · conservé pour les prochains lancements.":L" · chargé, mais copie permanente impossible.");}
     void settingsMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,900,L"Sortie audio Windows...");AppendMenuW(menu,MF_STRING,901,L"Entrée MIDI / Maschine+...");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,902,L"Ouvrir le dossier des profils MIDI");AppendMenuW(menu,MF_STRING,903,L"Importer un ancien profil MIDI...");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice==900)audioMenu();else if(choice==901)midiMenu();else if(choice==902)ShellExecuteW(window,L"open",midiProfile.parent_path().c_str(),nullptr,nullptr,SW_SHOWNORMAL);else if(choice==903)importMidiProfile();}
     std::wstring choose(bool save,bool project,const std::filesystem::path& initial={},const std::wstring& suggested={}){std::vector<wchar_t> name(32768,0);if(!suggested.empty())std::copy_n(suggested.c_str(),std::min(suggested.size(),name.size()-1),name.data());auto initialText=initial.wstring();OPENFILENAMEW dialog{};dialog.lStructSize=sizeof(dialog);dialog.hwndOwner=window;dialog.lpstrFile=name.data();dialog.nMaxFile=DWORD(name.size());dialog.lpstrFilter=project?L"Projet KICK Lab (*.kicklab)\0*.kicklab\0\0":L"Audio WAV (*.wav)\0*.wav\0\0";dialog.lpstrDefExt=project?L"kicklab":L"wav";dialog.lpstrInitialDir=initialText.empty()?nullptr:initialText.c_str();dialog.Flags=OFN_EXPLORER|OFN_NOCHANGEDIR|OFN_PATHMUSTEXIST|(save?OFN_OVERWRITEPROMPT:OFN_FILEMUSTEXIST);if(save?GetSaveFileNameW(&dialog):GetOpenFileNameW(&dialog))return name.data();return {};}
     void load(const std::wstring& path){if(path.empty())return;std::string error;if(engine.load(selected,utf8(path),error)){status=L"WAV chargé sur le pad "+padName(selected)+L". Conversion à 48 kHz si nécessaire.";play(selected);}else MessageBoxW(window,wide(error).c_str(),L"Chargement WAV",MB_OK|MB_ICONINFORMATION);}
     void sampleMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,700,L"Factory Sample Library");AppendMenuW(menu,MF_STRING,701,L"Importer depuis l'ordinateur");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,702,L"Ouvrir le dossier de la bibliothèque");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice==700)load(choose(false,false,library));else if(choice==701)load(choose(false,false));else if(choice==702)ShellExecuteW(window,L"open",library.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
     void savePadToLibrary(){auto s=engine.snapshot();if(s.paths[selected].empty()){MessageBoxW(window,L"Charge d'abord un WAV sur ce pad.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}auto source=std::filesystem::u8path(s.paths[selected]);auto folder=browsers[surface.focusedDisplay].directory;if(folder.empty()||!std::filesystem::is_directory(folder))folder=library;auto destinationText=choose(true,false,folder,source.filename().wstring());if(destinationText.empty())return;auto destination=std::filesystem::path(destinationText);std::error_code ec;if(std::filesystem::exists(destination,ec)&&std::filesystem::equivalent(source,destination,ec)){status=L"Ce WAV est déjà dans la bibliothèque : "+destination.filename().wstring();return;}ec.clear();std::filesystem::copy_file(source,destination,std::filesystem::copy_options::overwrite_existing,ec);if(ec){MessageBoxW(window,(L"Copie impossible : "+wide(ec.message())).c_str(),L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}std::string loadError;if(engine.load(selected,destination.u8string(),loadError,true))status=L"WAV ajouté à la bibliothèque : "+destination.filename().wstring();else status=L"WAV copié, mais impossible de rattacher le pad : "+wide(loadError);}
-    void project(bool save){auto p=choose(save,true);if(p.empty())return;std::string error;bool ok=save?engine.save(utf8(p),error):engine.open(utf8(p),error);if(!ok)MessageBoxW(window,wide(error).c_str(),L"Projet KICK Lab",MB_OK|MB_ICONINFORMATION);else{if(!save)padGroup=engine.snapshot().group;auto name=std::filesystem::path(p).filename().wstring();status=(save?L"Projet enregistré : ":L"Projet chargé : ")+name;}}
+    void project(bool save){auto p=choose(save,true);if(p.empty())return;std::string error;bool ok=save?engine.save(utf8(p),error):engine.open(utf8(p),error);if(!ok)MessageBoxW(window,wide(error).c_str(),L"Projet KICK Lab",MB_OK|MB_ICONINFORMATION);else{if(!save){auto snapshot=engine.snapshot();padGroup=snapshot.group;selectTrack(snapshot.selectedTrack);}auto name=std::filesystem::path(p).filename().wstring();status=(save?L"Projet enregistré : ":L"Projet chargé : ")+name;}}
     void fileMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,910,L"Ouvrir un projet KICK...");AppendMenuW(menu,MF_STRING,911,L"Enregistrer le projet KICK...");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,912,L"Ouvrir la Factory Sample Library");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice==910)project(false);else if(choice==911)project(true);else if(choice==912)ShellExecuteW(window,L"open",library.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
-    void selectPad(int p){surface.selectPad(p);selected=surface.selectedPad;}
+    void selectPad(int p){surface.selectPad(p);selected=surface.selectedPad;stepTrack=selected;engine.selectTrack(selected);}
     std::wstring recordQuantizeName()const{return L"1/"+number(recordQuantize);}
     void toggleRecord(){recordArmed=!recordArmed;status=recordArmed?L"REC armé · quantification "+recordQuantizeName()+L" · lance PLAY puis joue les pads.":L"REC désarmé.";}
     void cycleRecordQuantize(){recordQuantize=recordQuantize==16?8:recordQuantize==8?4:16;status=L"Grille d'enregistrement : "+recordQuantizeName()+L".";}
@@ -257,7 +261,7 @@ public:
     void releasePad(int p){const auto module=surface.displays[surface.focusedDisplay].module;if(module==lab::DisplayModule::NextSequence||module==lab::DisplayModule::Song)return;auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode!=lab::PerformanceMode::Drum)engine.releasePerformancePad(p);else engine.release(p);}
     void dispatch(const lab::SurfaceEvent& event){
         switch(event.action){
-        case lab::SurfaceAction::PadPress:{if(event.index>=0&&event.index<lab::SurfacePads){if(padMode==3){if(event.pressed&&(selectLatch||surface.shift)){stepTrack=event.index;const auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)selectPad(event.index);if(selectLatch)selectLatch=false;status=L"Step — piste "+number(stepTrack+1)+L" sélectionnée.";}else if(event.pressed)dispatch({lab::SurfaceAction::StepToggle,stepTrack,event.index});}else if(event.pressed)play(event.index);else releasePad(event.index);}}break;
+        case lab::SurfaceAction::PadPress:{if(event.index>=0&&event.index<lab::SurfacePads){if(event.pressed&&soloLatch){selectTrack(event.index);toggleTrackSolo(event.index);status=L"Solo piste "+number(event.index+1)+L" basculé.";}else if(event.pressed&&muteLatch){selectTrack(event.index);toggleTrackMute(event.index);status=L"Mute piste "+number(event.index+1)+L" basculé.";}else if(padMode==3){if(event.pressed&&(selectLatch||surface.shift)){selectTrack(event.index);const auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)selectPad(event.index);if(selectLatch)selectLatch=false;status=L"Step — piste "+number(stepTrack+1)+L" sélectionnée.";}else if(event.pressed)dispatch({lab::SurfaceAction::StepToggle,stepTrack,event.index});}else if(event.pressed)play(event.index);else releasePad(event.index);}}break;
         case lab::SurfaceAction::StepToggle:if(event.index>=0&&event.index<lab::SurfacePads&&event.value>=0&&event.value<lab::SurfaceSteps){auto snapshot=engine.snapshot();if(snapshot.sequences[snapshot.sequence].mode==lab::PerformanceMode::Drum)selectPad(event.index);engine.toggle(event.index,event.value);}break;
         case lab::SurfaceAction::PlayPause:{auto s=engine.snapshot();engine.setPlaying(!s.playing);break;}
         case lab::SurfaceAction::Stop:engine.stop();recordArmed=false;break;
@@ -271,8 +275,8 @@ public:
         case lab::SurfaceAction::QLinkTurn:if(tab==0)turnSurfaceQLink(event.display,event.index,event.value);break;
         case lab::SurfaceAction::QLinkSet:if(tab==0)setSurfaceQLink(event.display,event.index,event.value/127.);break;
         case lab::SurfaceAction::FocusNext:if(tab==0)surface.focusDisplay(1-surface.focusedDisplay);break;
-        case lab::SurfaceAction::PagePrevious:if(tab==0)surface.focusDisplay(0);break;
-        case lab::SurfaceAction::PageNext:if(tab==0)surface.focusDisplay(1);break;
+        case lab::SurfaceAction::PagePrevious:if(tab==0){if(surface.displays[0].module==lab::DisplayModule::Mixer||surface.displays[1].module==lab::DisplayModule::Mixer)showSurfaceMixer(0);else surface.focusDisplay(0);}break;
+        case lab::SurfaceAction::PageNext:if(tab==0){if(surface.displays[0].module==lab::DisplayModule::Mixer||surface.displays[1].module==lab::DisplayModule::Mixer)showSurfaceMixer(1);else surface.focusDisplay(1);}break;
         case lab::SurfaceAction::Shift:surface.shift=event.pressed;break;
         case lab::SurfaceAction::Back:if(tab==0)closeSurfaceModule();break;
         default:break;
@@ -379,7 +383,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,DesignWidth,DesignHeight};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.7.0 — AudIO / Portage Windows",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.8.0 — Tracks / Maschine+",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }

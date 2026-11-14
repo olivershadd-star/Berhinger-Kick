@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.7.0 conserve le moteur audio validé et la surface Maschine+, puis ajoute une bibliothèque externe hiérarchique, l'enregistrement quantifié des pads rythmiques et du Keyboard monophonique, un accès direct à Pad Edit et une mesure de la charge audio temps réel.
+La version 0.8.0 introduit les seize états de piste issus de la logique KICK, un Track Mixer audible, niveau/panoramique/mute/solo/armement, et exploite séparément les deux pages de contrôles Maschine+. Elle conserve le moteur audio, le Browser hiérarchique, REC quantifié et Pad Edit de la version précédente.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -19,6 +19,7 @@ La version 0.7.0 conserve le moteur audio validé et la surface Maschine+, puis 
 5. Cliquer sur l'écran A ou B, puis sur **PLUG-IN / Instance** ou **PERFORM / FX** affiche les inserts. Choisir un slot et régler ses paramètres avec P1–P4 ou P5–P8. Les flèches `<` et `>` changent de page.
 6. **SAMPLING** ouvre l'éditeur détaillé. **PITCH / PAD EDIT** ouvre directement volume, pitch, découpe et ADSR dans l'écran actif. **BROWSER** parcourt toute l'arborescence du dossier `samples`.
 7. Armer **REC**, lancer **PLAY**, puis jouer les pads. **FOLLOW / Grid** choisit la correction à l'enregistrement : 1/4, 1/8 ou 1/16. **4 Sequences** sélectionne une séquence ; **8 Songs** construit l'arrangement.
+8. **MIXER** ouvre huit pistes à la fois. Les deux pages physiques commandent respectivement les pistes 1–8 et 9–16. Haut/bas choisit Level ou Pan ; **SOLO** ou **MUTE**, puis un pad, applique l'état à cette piste. Shift + touche Soft arme la piste.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
@@ -72,8 +73,8 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Tempo : boutons − / + ou molette. Volume général : barre Master.
 - Clic droit sur un pad : charger un WAV. Glisser-déposer un WAV sur un pad ou sur l'éditeur est également possible.
 - MIDI : sélectionner Maschine+ depuis **SETTINGS** ou **MIDI Control**. Les notes 36 à 51 restent le secours initial du groupe actif. Note Off et Note On de vélocité nulle libèrent l'enveloppe.
-- **MIDI Control** apprend 16 CC de knobs (deux pages physiques), 128 pads répartis dans A–H, les huit touches Soft, les groupes, les modes, le transport, les commandes latérales, les raccourcis, les directions, la rotation 4D et Retour/Escape. La page de pads suit le groupe A–H actif. Un clic droit efface une affectation ou change le mode d'un encodeur. La 0.6.1 reconnecte automatiquement le dernier port MIDI et conserve le profil dans `%LOCALAPPDATA%\KICKLab`, avec une copie portable. La 0.6.2 route aussi les pads physiques vers les steps lorsque STEP est actif.
-- Un CC appris commande le même Q-Link que la souris. Les deux pages physiques de knobs peuvent viser les huit paramètres visibles. Les commandes apprises passent par la même couche que le clavier et la souris. Le profil `KICKMIDI 4` possède une copie portable dans `profiles/MaschinePlus.kickmidi`; les versions 1–3 restent lisibles. Une nouvelle rotation 4D est apprise en relatif `1/127`, ce qui gère les deux sens ; `ABS` et relatif `63/65` restent disponibles.
+- **MIDI Control** apprend 16 CC de knobs, 128 pads A–H et désormais les seize messages Soft des deux pages Maschine+. La page de pads suit le groupe actif. Un clic droit efface une affectation ou change le mode d'un encodeur.
+- Dans le Mixer, la page physique 1 vise les pistes 1–8 et la page 2 les pistes 9–16 ; ailleurs, les Q-Links restent contextuels. Le profil `KICKMIDI 5` possède une copie portable dans `profiles/MaschinePlus.kickmidi` et relit les versions 1–4. La rotation 4D reste disponible en relatif `1/127`, `ABS` ou `63/65`.
 - REC est actuellement un overdub monophonique pour Keyboard. La durée des notes, les accords polyphoniques, la vélocité expressive, le mode Replace, le compte à rebours, le retour LED et l'horloge MIDI restent à porter.
 
 ## WAV et projets
@@ -86,7 +87,7 @@ L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la r
 
 **FILE → Enregistrer/Ouvrir** sauvegarde les huit groupes A–H, leurs 128 références de samples et réglages, les seize séquences, leurs pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo et le volume dans un fichier `.kicklab`. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement.
 
-Les projets **KICKLAB 1** à **KICKLAB 5** restent lisibles. Les nouveaux projets utilisent **KICKLAB 6** pour conserver les groupes A–H ; ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
+Les projets **KICKLAB 1** à **KICKLAB 6** restent lisibles. Les nouveaux projets utilisent **KICKLAB 7** pour conserver les groupes A–H et, pour chaque séquence, les seize pistes avec programme Drum/Keygroup, niveau, pan, mute, solo et armement. Ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 
@@ -105,7 +106,7 @@ Les corrections de 0.1.1 et 0.1.2 sont conservées : ordre des buffers, attente 
 
 Sortie fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames (environ 85 ms de réserve, plus le pilote). Pas d'ASIO ni de VST3 pour l'instant. Le séquenceur est quantifié au bloc de 256 trames (environ 5,33 ms), sans dérive cumulative du compteur. Le Master affiche `DSP`, la part de ce budget consommée, et `RETARDS`, le nombre de blocs ayant dépassé leur délai.
 
-Le premier Keygroup et son enregistrement sont monophoniques : une nouvelle note remplace la précédente et les accords/progressions du Pad Perform KICK ne sont pas encore portés. Song n'intègre pas encore les automations Track Mute ni un Track Mixer complet. Pas encore de kits avec médias intégrés, de synthétiseurs KICK ni de banque complète d'effets.
+Le premier Keygroup et son enregistrement sont monophoniques : une nouvelle note remplace la précédente et les accords/progressions du Pad Perform KICK ne sont pas encore portés. Le Track Mixer agit réellement sur les seize lecteurs actuels, mais les événements note/durée/vélocité et les automations Track Mute restent à porter. Pas encore de kits avec médias intégrés, de synthétiseurs KICK ni de banque complète d'effets.
 
 ## Développer
 
@@ -126,7 +127,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, la découpe, Pad Perform, ADSR, les vingt-six effets, les quatre inserts, Next Sequence, Song, les groupes A–H, la persistance v6, la migration v1–v5, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, la découpe, Pad Perform, ADSR, les vingt-six effets, les quatre inserts, Next Sequence, Song, les groupes A–H, le niveau/pan/mute des pistes, la persistance v7, la migration v1–v6, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 
