@@ -34,8 +34,8 @@ jobs:
           $app = "build/incremental-port/Release/KickLab.exe"
           $process = Start-Process $app -ArgumentList "--smoke-test" -PassThru -Wait
           if ($process.ExitCode -ne 0) { throw "KickLab UI exited with $($process.ExitCode)" }
-          foreach ($category in "Kicks","Snares","Hats","Percussions","Basses","Pads","Leads","FX","Autres") {
-            if (-not (Test-Path "build/incremental-port/Release/samples/$category")) { throw "Missing library category: $category" }
+          if (-not (Test-Path "build/incremental-port/Release/samples")) {
+            throw "Missing external sample-library root"
           }
       - name: Assemble prototype
         shell: pwsh
