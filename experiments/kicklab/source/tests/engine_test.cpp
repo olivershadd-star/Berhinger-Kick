@@ -15,6 +15,7 @@
 using namespace lab;
 void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 void wav(const std::string& file,int rate,int channels,int frames,double frequency=440,double amplitude=8000){std::ofstream f(std::filesystem::u8path(file),std::ios::binary);auto u16=[&](unsigned n){char b[2]={char(n),char(n>>8)};f.write(b,2);};auto u32=[&](unsigned n){u16(n);u16(n>>16);};f.write("RIFF",4);u32(36+frames*channels*2);f.write("WAVEfmt ",8);u32(16);u16(1);u16(channels);u32(rate);u32(rate*channels*2);u16(channels*2);u16(16);f.write("data",4);u32(frames*channels*2);for(int n=0;n<frames;++n)for(int c=0;c<channels;++c)u16(static_cast<uint16_t>(int16_t(amplitude*std::sin(2*3.141592653589793*frequency*n/rate))));}
+void extensibleWav(const std::string& file,int rate,int channels,int frames){std::ofstream f(std::filesystem::u8path(file),std::ios::binary);auto u16=[&](unsigned n){char b[2]={char(n),char(n>>8)};f.write(b,2);};auto u32=[&](unsigned n){u16(n);u16(n>>16);};const unsigned bytes=frames*channels*2;f.write("RIFF",4);u32(60+bytes);f.write("WAVEfmt ",8);u32(40);u16(0xfffe);u16(channels);u32(rate);u32(rate*channels*2);u16(channels*2);u16(16);u16(22);u16(16);u32(channels==1?4:3);u32(1);const char tail[12]={0,0,16,0,char(128),0,0,char(170),0,56,char(155),113};f.write(tail,12);f.write("data",4);u32(bytes);for(int n=0;n<frames;++n)for(int c=0;c<channels;++c)u16(static_cast<uint16_t>(int16_t(8000*std::sin(2*3.141592653589793*220*n/rate))));}
 int main(int argc,char**argv){try{
     SurfaceState surface;
     check(surface.displays[0].parameterForKnob(3)==3,"left display Q-Link mapping failed");
@@ -29,10 +30,12 @@ int main(int argc,char**argv){try{
     check(midiCcDelta(MidiCcMode::Relative1,1)==1&&midiCcDelta(MidiCcMode::Relative1,127)==-1,"relative 1/127 MIDI decoding failed");
     check(midiCcDelta(MidiCcMode::Relative65,65)==1&&midiCcDelta(MidiCcMode::Relative65,63)==-1,"relative 63/65 MIDI decoding failed");
     check(midiAbsoluteDelta(-1,64)==0&&midiAbsoluteDelta(64,65)==1&&midiAbsoluteDelta(65,63)==-2,"absolute 4D wheel decoding failed");
+    check(midiEncoderDelta(MidiCcMode::Relative1,-1,1)==1&&midiEncoderDelta(MidiCcMode::Relative1,1,127)==-1,"1/127 encoder direction failed");
+    check(midiEncoderDelta(MidiCcMode::Relative1,-1,65)==1&&midiEncoderDelta(MidiCcMode::Relative1,65,63)==-1,"65/63 encoder direction failed");
     MidiPadBinding padBinding{0,12};check(padBinding.matches(0,12)&&!padBinding.matches(0,13)&&!padBinding.matches(1,12),"learned pad matching failed");
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
-    wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);
+    wav(path("mono.wav"),48000,1,300);wav(path("resample.wav"),44100,2,4410);wav(path("long.wav"),48000,2,48000);std::filesystem::create_directories(dir/"packs"/"industrial"/"loops");auto nested=(dir/"packs"/"industrial"/"loops"/"extensible.wav").u8string();extensibleWav(nested,48000,2,4800);
     Engine e;float block[Block*2];std::string error;
     e.render(block);for(float v:block)check(v==0,"empty engine is not silent");
     check(e.preview(path("mono.wav"),error),error.c_str());e.render(block);double previewEnergy=0;for(float value:block)previewEnergy+=value*value;
@@ -43,6 +46,7 @@ int main(int argc,char**argv){try{
     double energy=0;for(int n=0;n<Block;++n){check(block[n*2]==block[n*2+1],"mono is not duplicated");energy+=block[n*2]*block[n*2];}check(energy>1e-5,"playback is silent with short fade");
     e.render(block);check(block[43*2]==0,"end fade is not silent at boundary");for(int n=44;n<Block;++n)check(block[n*2]==0&&block[n*2+1]==0,"stale samples after EOF");e.render(block);for(float v:block)check(v==0,"one-shot does not stop");
     check(e.load(1,path("resample.wav"),error),error.c_str());e.trigger(1);int active=0;for(int b=0;b<24;++b){e.render(block);for(int n=0;n<Block;++n)if(std::abs(block[n*2])>.00001)++active;}check(active>4500&&active<4801,"44.1 kHz conversion duration incorrect");
+    check(e.load(2,nested,error),error.c_str());check(e.snapshot().paths[2]==nested,"nested WAV Extensible path was not retained");e.trigger(2);e.render(block);double nestedEnergy=0;for(float value:block)nestedEnergy+=value*value;check(nestedEnergy>1e-5,"nested WAV Extensible file is silent");e.stop();
     check(e.load(0,path("long.wav"),error),error.c_str());e.stop();e.trigger(0);for(int b=0;b<200;++b)e.render(block);check(!e.snapshot().active[0],"manual pad audition looped after WAV end");
     PadEdit preserved;preserved.gain=.37;preserved.semitones=-5;preserved.inserts[2]=defaultInsertState(InsertEffect::Chorus);e.setEdit(0,preserved);
     check(e.load(0,path("mono.wav"),error,true),error.c_str());auto preservedState=e.snapshot().edits[0];

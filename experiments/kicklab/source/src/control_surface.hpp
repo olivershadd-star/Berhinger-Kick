@@ -83,6 +83,17 @@ inline int midiAbsoluteDelta(int previous, int value) {
     return std::clamp(value - previous, -16, 16);
 }
 
+// Maschine templates commonly emit either 1/127 or 65/63 for one encoder
+// tick. Decode both conventions before falling back to the selected mode.
+inline int midiEncoderDelta(MidiCcMode mode, int previous, int value) {
+    value = std::clamp(value, 0, 127);
+    if (value == 1 || value == 65) return 1;
+    if (value == 127 || value == 63) return -1;
+    return mode == MidiCcMode::Absolute
+        ? midiAbsoluteDelta(previous, value)
+        : midiCcDelta(mode, value);
+}
+
 // Logical KICK commands. Windows mouse, keyboard and MIDI adapters all emit
 // these events instead of talking directly to the audio engine.
 enum class SurfaceAction {

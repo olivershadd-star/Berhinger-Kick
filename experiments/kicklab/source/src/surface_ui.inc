@@ -353,7 +353,7 @@ bool surfaceWheel(int x,int y,int delta){
     for(int display=0;display<2;++display)if(surfaceDisplayBox(display).contains(x,y)){
         surface.focusDisplay(display);
         if(surface.displays[display].module==lab::DisplayModule::Menu)turnSurfaceMenu(delta);
-        else if(surface.displays[display].module==lab::DisplayModule::Browser)moveSurfaceBrowserSelection(display,delta);
+        else if(surface.displays[display].module==lab::DisplayModule::Browser)moveSurfaceBrowserSelection(display,-delta);
         return true;
     }
     return false;

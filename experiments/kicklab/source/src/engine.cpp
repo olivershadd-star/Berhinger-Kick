@@ -64,7 +64,7 @@ std::unique_ptr<AudioFile<float>> decode(const std::string& path) {
     std::ifstream in(std::filesystem::u8path(path),std::ios::binary|std::ios::ate);
     if(!in) throw std::runtime_error("Impossible d'ouvrir ce fichier.");
     auto length=in.tellg();
-    if(length<44 || length>32*1024*1024) throw std::runtime_error("WAV invalide ou trop volumineux (maximum 32 Mo).");
+    if(length<44 || length>64*1024*1024) throw std::runtime_error("WAV invalide ou trop volumineux (maximum 64 Mo).");
     std::vector<uint8_t> raw(static_cast<size_t>(length)); in.seekg(0);
     if(!in.read(reinterpret_cast<char*>(raw.data()),length)) throw std::runtime_error("Lecture du fichier impossible.");
     if(memcmp(raw.data(),"RIFF",4)||memcmp(raw.data()+8,"WAVE",4)||u32(raw,4)!=raw.size()-8)
@@ -79,11 +79,17 @@ std::unique_ptr<AudioFile<float>> decode(const std::string& path) {
     }
     if(!fmt||!data) throw std::runtime_error("Blocs WAV manquants.");
     unsigned encoding=u16(raw,fmt+8),ch=u16(raw,fmt+10),rate=u32(raw,fmt+12),bits=u16(raw,fmt+22);
+    if(encoding==0xfffe){
+        const size_t fmtBytes=u32(raw,fmt+4);if(fmtBytes<40||u16(raw,fmt+24)<22)throw std::runtime_error("En-tête WAV Extensible incomplet.");
+        static const uint8_t guidTail[12]={0,0,16,0,128,0,0,170,0,56,155,113};
+        if(std::memcmp(raw.data()+fmt+36,guidTail,12))throw std::runtime_error("Sous-format WAV Extensible non pris en charge.");
+        encoding=u16(raw,fmt+32);
+    }
     if((encoding!=1 && encoding!=3)||(encoding==3 && bits!=32)||(bits!=16 && bits!=24 && bits!=32)||ch<1||ch>2||rate<8000||rate>192000)
         throw std::runtime_error("WAV mono/stereo PCM 16/24/32 ou flottant 32 requis (8 a 192 kHz).");
     unsigned align=ch*bits/8;
-    if(u16(raw,fmt+20)!=align||u32(raw,fmt+16)!=rate*align||bytes%align||bytes==0||bytes/align>rate*30)
-        throw std::runtime_error("WAV incoherent, vide ou de plus de 30 secondes.");
+    if(u16(raw,fmt+20)!=align||u32(raw,fmt+16)!=rate*align||bytes%align||bytes==0||bytes/align>rate*60)
+        throw std::runtime_error("WAV incoherent, vide ou de plus de 60 secondes.");
     // Feed a canonical header to the bundled decoder; omit optional metadata.
     std::vector<uint8_t> canonical(44+bytes+(bytes&1),0);
     auto put16=[&](size_t o,unsigned n){canonical[o]=n&255;canonical[o+1]=(n>>8)&255;};
