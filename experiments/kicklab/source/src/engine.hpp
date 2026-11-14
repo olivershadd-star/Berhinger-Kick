@@ -28,7 +28,9 @@ enum class InsertEffect {
     Chorus=10, StarChild=11, Reverb=12, Loud=13, Mackity=14,
     Baxandall2=15, Biquad2=16, Pressure5=17, Pop2=18,
     AutoPan=19, ChorusEnsemble=20, PurestEcho=21, TapeDelay2=22,
-    Chamber2=23, Galactic=24, DeRez2=25, BitGlitter=26, Count=27
+    Chamber2=23, Galactic=24, DeRez2=25, BitGlitter=26,
+    PurestGain=27, EveryTrim=28, GlitchShifter=29, TremoSquare=30,
+    Fracture=31, Count=32
 };
 struct InsertState {
     InsertEffect effect=InsertEffect::None;
@@ -44,7 +46,7 @@ struct InsertEffectInfo {
     std::array<double,InsertParameters> defaults;
     int tailBlocks;
 };
-const std::array<InsertEffectInfo,26>& insertEffectCatalog();
+const std::array<InsertEffectInfo,31>& insertEffectCatalog();
 InsertState defaultInsertState(InsertEffect effect);
 struct PadEdit {
     double start=0, end=1, gain=1, semitones=0, fadeMs=2;
@@ -112,6 +114,7 @@ public:
     void setInsertParameter(int pad,int slot,int parameter,double value);
     void toggle(int pad,int step);
     void clearPattern(); void demoPattern();
+    void resetProject();
     void selectSequence(int sequence);
     void queueSequence(int sequence);
     void setSequenceBars(int bars);

@@ -17,8 +17,8 @@ namespace AudIO { const std::string _emptyStr{""}; }
 #include "pad_voice.hpp"
 
 namespace lab {
-const std::array<InsertEffectInfo,26>& insertEffectCatalog(){
-    static const std::array<InsertEffectInfo,26> catalog={{
+const std::array<InsertEffectInfo,31>& insertEffectCatalog(){
+    static const std::array<InsertEffectInfo,31> catalog={{
         {InsertEffect::Lowpass,"Lowpass","Filter",3,{"Lowpass","Soft/Hard","Dry/Wet"},{1,.5,1},32},
         {InsertEffect::PurestDrive,"PurestDrive","Saturation",1,{"Drive","",""},{0,0,0},32},
         {InsertEffect::Highpass,"Highpass","Filter",3,{"Highpass","Loose/Tight","Dry/Wet"},{0,.5,1},32},
@@ -44,7 +44,12 @@ const std::array<InsertEffectInfo,26>& insertEffectCatalog(){
         {InsertEffect::Chamber2,"Chamber2","Reverb",4,{"Delay","Regen","Thick","Wet"},{.34,.31,.28,.25},1500},
         {InsertEffect::Galactic,"Galactic","Reverb",5,{"Replace","Brightness","Detune","Bigness","Dry/Wet"},{.5,.5,.5,1,1},1500},
         {InsertEffect::DeRez2,"DeRez2","Lo-Fi",4,{"Rate","Resolution","Hard","Dry/Wet"},{1,1,1,1},32},
-        {InsertEffect::BitGlitter,"BitGlitter","Lo-Fi",4,{"Input","Glitter","Output","Dry/Wet"},{.5,0,.5,1},32}
+        {InsertEffect::BitGlitter,"BitGlitter","Lo-Fi",4,{"Input","Glitter","Output","Dry/Wet"},{.5,0,.5,1},32},
+        {InsertEffect::PurestGain,"PurestGain","Utility / Gain",2,{"Gain","Slow Fade"},{.5,1},32},
+        {InsertEffect::EveryTrim,"EveryTrim","Utility / Gain",5,{"Left","Right","Mid","Side","Master"},{.5,.5,.5,.5,.5},32},
+        {InsertEffect::GlitchShifter,"GlitchShifter","Pitch / Glitch",5,{"Note","Trim","Tighten","Feedback","Dry/Wet"},{.5,.5,.5,0,1},256},
+        {InsertEffect::TremoSquare,"TremoSquare","Rhythmic",2,{"Frequency","Dry/Wet"},{.5,1},32},
+        {InsertEffect::Fracture,"Fracture","Creative",4,{"Drive","Fracture","Output","Dry/Wet"},{.25,.5,.5,1},32}
     }};
     return catalog;
 }
@@ -156,6 +161,7 @@ struct Engine::Impl {
     ~Impl(){graph->teardown();buffer.reset();graph.reset();}
 };
 Engine::Engine():impl(std::make_unique<Impl>()) {} Engine::~Engine()=default;
+void Engine::resetProject(){impl=std::make_unique<Impl>();}
 bool Engine::load(int pad,const std::string& path,std::string& error,bool preserveEdit) {
     if(pad<0||pad>=Pads){error="Pad invalide.";return false;}
     try {
@@ -318,7 +324,7 @@ void Engine::render(float* out){
 bool Engine::save(const std::string& path,std::string& error){
     auto s=snapshot();std::array<std::array<std::string,Pads>,Groups> paths;std::array<std::array<PadEdit,Pads>,Groups> edits;
     {std::scoped_lock lock(impl->mutex,impl->metadataMutex);for(int group=0;group<Groups;++group)for(int pad=0;pad<Pads;++pad){paths[group][pad]=impl->banks[group][pad].path;edits[group][pad]=impl->banks[group][pad].edit;}}
-    std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 7\n"<<s.tempo<<' '<<s.volume<<' '<<s.group<<' '<<s.selectedTrack<<'\n';
+    std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 8\n"<<s.tempo<<' '<<s.volume<<' '<<s.group<<' '<<s.selectedTrack<<'\n';
     for(int group=0;group<Groups;++group){f<<"GROUP "<<group<<'\n';for(int p=0;p<Pads;++p){const auto& e=edits[group][p];f<<"PAD "<<p<<' '<<std::quoted(paths[group][p])<<' '<<e.start<<' '<<e.end<<' '<<e.gain<<' '<<e.semitones<<' '<<e.fadeMs<<' '<<e.attack<<' '<<e.decay<<' '<<e.sustain<<' '<<e.release<<' '<<e.insertsBypass;for(const auto& insert:e.inserts){int count=insertParameterCount(insert.effect);f<<' '<<int(insert.effect)<<' '<<insert.bypass<<' '<<count;for(int parameter=0;parameter<count;++parameter)f<<' '<<insert.parameters[parameter];}f<<'\n';}}
     f<<"SEQUENCES "<<Sequences<<' '<<s.sequence<<' '<<s.viewBar<<'\n';
     for(int index=0;index<Sequences;++index){const auto& sequence=s.sequences[index];f<<"SEQ "<<index<<' '<<std::quoted(sequence.name)<<' '<<sequence.bars<<' '<<int(sequence.mode)<<' '<<sequence.sourcePad<<' '<<sequence.rootNote<<'\n'<<"TRACKS "<<Pads<<'\n';for(int track=0;track<Pads;++track){const auto& t=sequence.tracks[track];f<<"TRACK "<<track<<' '<<std::quoted(t.name)<<' '<<int(t.program)<<' '<<t.sourcePad<<' '<<t.level<<' '<<t.pan<<' '<<t.mute<<' '<<t.solo<<' '<<t.armed<<'\n';}f<<"DRUM";for(int p=0;p<Pads;++p){unsigned long long bits=0;for(int step=0;step<MaxSequenceSteps;++step)if(sequence.drum[p][step])bits|=1ull<<step;f<<' '<<bits;}f<<"\nMELO";for(int note:sequence.melody)f<<' '<<note;f<<'\n';}
@@ -329,7 +335,7 @@ bool Engine::open(const std::string& path,std::string& error){
     std::ifstream f(std::filesystem::u8path(path),std::ios::ate);if(!f||f.tellg()>1024*1024){error="Projet introuvable ou trop volumineux.";return false;}f.seekg(0);
     std::string tag;int version;Snapshot s;
     for(int index=0;index<Sequences;++index)s.sequences[index].name="Sequence "+std::to_string(index+1);
-    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>7)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
+    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>8)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
     std::array<std::array<std::string,Pads>,Groups> bankPaths{};std::array<std::array<PadEdit,Pads>,Groups> bankEdits{};
     if(version>=6){if(!(f>>s.group)||s.group<0||s.group>=Groups){error="Groupe actif invalide.";return false;}if(version>=7&&(!(f>>s.selectedTrack)||s.selectedTrack<0||s.selectedTrack>=Pads)){error="Piste sélectionnée invalide.";return false;}
         for(int group=0;group<Groups;++group){int parsedGroup=-1;if(!(f>>tag>>parsedGroup)||tag!="GROUP"||parsedGroup!=group){error="Banque de pads invalide.";return false;}for(int p=0;p<Pads;++p){int parsedPad=-1;if(!(f>>tag>>parsedPad>>std::quoted(bankPaths[group][p]))||tag!="PAD"||parsedPad!=p){error="Pad de banque invalide.";return false;}auto& e=bankEdits[group][p];if(!(f>>e.start>>e.end>>e.gain>>e.semitones>>e.fadeMs>>e.attack>>e.decay>>e.sustain>>e.release>>e.insertsBypass)){error="Reglages du pad invalides.";return false;}for(auto& insert:e.inserts){int effect=0,count=0;bool bypass=false;if(!(f>>effect>>bypass>>count)||effect<int(InsertEffect::None)||effect>=int(InsertEffect::Count)||count<0||count>InsertParameters||count!=insertParameterCount(InsertEffect(effect))){error="Insert invalide.";return false;}InsertState parsed;parsed.effect=InsertEffect(effect);parsed.bypass=bypass;for(int parameter=0;parameter<count;++parameter){if(!(f>>parsed.parameters[parameter])||!std::isfinite(parsed.parameters[parameter])||parsed.parameters[parameter]<0||parsed.parameters[parameter]>1){error="Parametre d'insert invalide.";return false;}}insert=parsed;}const double values[]={e.start,e.end,e.gain,e.semitones,e.fadeMs,e.attack,e.decay,e.sustain,e.release};for(double value:values)if(!std::isfinite(value)){error="Reglages non finis.";return false;}if(e.start<0||e.end>1||e.end-e.start<.000999||e.gain<0||e.gain>2||e.semitones< -24||e.semitones>24||e.fadeMs<0||e.fadeMs>20||e.attack<0||e.attack>1||e.decay<0||e.decay>1||e.sustain<0||e.sustain>1||e.release<0||e.release>1){error="Reglages hors limites.";return false;}}}

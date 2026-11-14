@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.8.3 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués, puis corrige la rotation absolue `0–127` de l'encodeur 4D Maschine et complète la navigation FX au clavier.
+La version 0.9.0 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. Elle ajoute la gestion sûre des projets, une page Track Mutes fonctionnelle, l'affichage automatique des effets complexes sur les deux écrans et cinq effets Airwindows originaux. La surface est réalignée sur Maschine+ avec neuf emplacements futurs volontairement vides et un panneau unique KICK / ANKS Labs / Master.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -90,7 +90,7 @@ L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la r
 
 **FILE → Enregistrer/Ouvrir** sauvegarde les huit groupes A–H, leurs 128 références de samples et réglages, les seize séquences, leurs pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo et le volume dans un fichier `.kicklab`. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement.
 
-Les projets **KICKLAB 1** à **KICKLAB 6** restent lisibles. Les nouveaux projets utilisent **KICKLAB 7** pour conserver les groupes A–H et, pour chaque séquence, les seize pistes avec programme Drum/Keygroup, niveau, pan, mute, solo et armement. Ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
+Les projets **KICKLAB 1** à **KICKLAB 7** restent lisibles. Les nouveaux projets utilisent **KICKLAB 8** pour conserver les groupes A–H, les seize pistes et les nouveaux identifiants d'effets. Ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 

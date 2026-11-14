@@ -40,22 +40,22 @@ void insertMenu(){
     std::vector<std::string> categories;
     for(const auto& info:lab::insertEffectCatalog())if(std::find(categories.begin(),categories.end(),info.category)==categories.end())categories.emplace_back(info.category);
     for(const auto& category:categories){HMENU submenu=CreatePopupMenu();for(const auto& info:lab::insertEffectCatalog())if(category==info.category)AppendMenuW(submenu,MF_STRING,800+int(info.effect),wide(info.name).c_str());AppendMenuW(menu,MF_POPUP,reinterpret_cast<UINT_PTR>(submenu),wide(category).c_str());}
-    POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice>800&&choice<800+int(lab::InsertEffect::Count))engine.setInsertEffect(selected,selectedInsert,lab::InsertEffect(choice-800));else if(choice==800)engine.setInsertEffect(selected,selectedInsert,lab::InsertEffect::None);
+    POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice>800&&choice<800+int(lab::InsertEffect::Count)){engine.setInsertEffect(selected,selectedInsert,lab::InsertEffect(choice-800));markProjectDirty();arrangeSurfaceInsertPages(selected,selectedInsert,surface.focusedDisplay);}else if(choice==800){engine.setInsertEffect(selected,selectedInsert,lab::InsertEffect::None);markProjectDirty();arrangeSurfaceInsertPages(selected,selectedInsert,surface.focusedDisplay);}
 }
 void editorPointer(int x,int y){
     x-=EditorOffsetX;
     auto s=engine.snapshot();auto edit=s.edits[selected];
-    if(editorDrag==6||editorDrag==7){double p=std::clamp((x-52)/1096.,0.,1.);if(editorDrag==6)edit.start=std::min(p,edit.end-.001);else edit.end=std::max(p,edit.start+.001);engine.setEdit(selected,edit);}
-    else if(editorDrag>=EditorVolume&&editorDrag<=EditorFade){setEditorRatio(edit,editorDrag,editorDragStartRatio+(editorDragStartY-y)/140.);engine.setEdit(selected,edit);}
-    else if(editorDrag>=InsertKnobBase){engine.setInsertParameter(selected,selectedInsert,editorDrag-InsertKnobBase,editorDragStartRatio+(editorDragStartY-y)/120.);}
+    if(editorDrag==6||editorDrag==7){double p=std::clamp((x-52)/1096.,0.,1.);if(editorDrag==6)edit.start=std::min(p,edit.end-.001);else edit.end=std::max(p,edit.start+.001);engine.setEdit(selected,edit);markProjectDirty();}
+    else if(editorDrag>=EditorVolume&&editorDrag<=EditorFade){setEditorRatio(edit,editorDrag,editorDragStartRatio+(editorDragStartY-y)/140.);engine.setEdit(selected,edit);markProjectDirty();}
+    else if(editorDrag>=InsertKnobBase){engine.setInsertParameter(selected,selectedInsert,editorDrag-InsertKnobBase,editorDragStartRatio+(editorDragStartY-y)/120.);markProjectDirty();}
 }
 bool editorWheel(int x,int y,int delta){
     if(tab!=1)return false;
     x-=EditorOffsetX;
     auto s=engine.snapshot();auto edit=s.edits[selected];
-    for(int id=EditorVolume;id<=EditorFade;++id)if(editorKnob(id).contains(x,y)){double step=id==EditorTune?1./48.:.01;setEditorRatio(edit,id,editorRatio(edit,id)+(delta>0?step:-step));engine.setEdit(selected,edit);return true;}
+    for(int id=EditorVolume;id<=EditorFade;++id)if(editorKnob(id).contains(x,y)){double step=id==EditorTune?1./48.:.01;setEditorRatio(edit,id,editorRatio(edit,id)+(delta>0?step:-step));engine.setEdit(selected,edit);markProjectDirty();return true;}
     auto effect=edit.inserts[selectedInsert].effect;int count=lab::insertParameterCount(effect),first=editorInsertPage*3;
-    for(int parameter=first;parameter<std::min(count,first+3);++parameter)if(editorKnob(InsertKnobBase+parameter).contains(x,y)){engine.setInsertParameter(selected,selectedInsert,parameter,edit.inserts[selectedInsert].parameters[parameter]+(delta>0?.01:-.01));return true;}
+    for(int parameter=first;parameter<std::min(count,first+3);++parameter)if(editorKnob(InsertKnobBase+parameter).contains(x,y)){engine.setInsertParameter(selected,selectedInsert,parameter,edit.inserts[selectedInsert].parameters[parameter]+(delta>0?.01:-.01));markProjectDirty();return true;}
     return false;
 }
 void editorClick(int x,int y,bool right){
@@ -64,8 +64,8 @@ void editorClick(int x,int y,bool right){
     auto edit=engine.snapshot().edits[selected];
     for(int slot=0;slot<lab::InsertSlots;++slot)if(insertSlotBox(slot).contains(x,y)){selectedInsert=slot;editorInsertPage=0;return;}
     if(insertEffectBox().contains(x,y)){insertMenu();editorInsertPage=0;return;}
-    if(insertBypassBox().contains(x,y)&&edit.inserts[selectedInsert].effect!=lab::InsertEffect::None){engine.setInsertBypass(selected,selectedInsert,!edit.inserts[selectedInsert].bypass);return;}
-    if(insertsBypassBox().contains(x,y)){engine.setInsertsBypass(selected,!edit.insertsBypass);return;}
+    if(insertBypassBox().contains(x,y)&&edit.inserts[selectedInsert].effect!=lab::InsertEffect::None){engine.setInsertBypass(selected,selectedInsert,!edit.inserts[selectedInsert].bypass);markProjectDirty();return;}
+    if(insertsBypassBox().contains(x,y)){engine.setInsertsBypass(selected,!edit.insertsBypass);markProjectDirty();return;}
     if(Box{44,226,1112,150}.contains(x,y)){double p=(x-52)/1096.;editorDrag=std::abs(p-edit.start)<=std::abs(p-edit.end)?6:7;}
     else for(int id=EditorVolume;id<=EditorFade;++id)if(editorKnob(id).contains(x,y)){editorDrag=id;editorDragStartY=y;editorDragStartRatio=editorRatio(edit,id);break;}
     const int effectPages=std::max(1,(lab::insertParameterCount(edit.inserts[selectedInsert].effect)+2)/3);
@@ -73,7 +73,7 @@ void editorClick(int x,int y,bool right){
     if(editorInsertNextBox().contains(x,y)){editorInsertPage=std::min(effectPages-1,editorInsertPage+1);return;}
     if(!editorDrag){int count=lab::insertParameterCount(edit.inserts[selectedInsert].effect),first=editorInsertPage*3;for(int parameter=first;parameter<std::min(count,first+3);++parameter)if(editorKnob(InsertKnobBase+parameter).contains(x,y)){editorDrag=InsertKnobBase+parameter;editorDragStartY=y;editorDragStartRatio=edit.inserts[selectedInsert].parameters[parameter];break;}}
     if(editorDrag){SetCapture(window);if(editorDrag==6||editorDrag==7)editorPointer(x+EditorOffsetX,y);return;}
-    if(Box{28,690,200,42}.contains(x,y))engine.setEdit(selected,{});
+    if(Box{28,690,200,42}.contains(x,y)){engine.setEdit(selected,{});markProjectDirty();}
     else if(Box{244,690,180,42}.contains(x,y))sampleMenu();
     else if(Box{440,690,200,42}.contains(x,y))project(true);
     else if(Box{656,690,250,42}.contains(x,y))savePadToLibrary();

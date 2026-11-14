@@ -135,6 +135,31 @@ namespace awbitglitter {
 #include "airwindows/src/BitGlitter/BitGlitter.cpp"
 #include "airwindows/src/BitGlitter/BitGlitterProc.cpp"
 }
+namespace awpurestgain {
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/PurestGain/PurestGain.h"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/PurestGain/PurestGain.cpp"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/PurestGain/PurestGainProc.cpp"
+}
+namespace aweverytrim {
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/EveryTrim/EveryTrim.h"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/EveryTrim/EveryTrim.cpp"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/EveryTrim/EveryTrimProc.cpp"
+}
+namespace awglitchshifter {
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/GlitchShifter/GlitchShifter.h"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/GlitchShifter/GlitchShifter.cpp"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/GlitchShifter/GlitchShifterProc.cpp"
+}
+namespace awtremosquare {
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/TremoSquare/TremoSquare.h"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/TremoSquare/TremoSquare.cpp"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/TremoSquare/TremoSquareProc.cpp"
+}
+namespace awfracture {
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/Fracture/Fracture.h"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/Fracture/Fracture.cpp"
+#include "../../../../upstream/0700-AAM/AudIO/AudIO/airwindows/src/Fracture/FractureProc.cpp"
+}
 #undef __audioeffect__
 
 static AudIO::ObjectFactoryRegistration<awlow::Lowpass> registerLowpass("Lowpass",1,"AirWindows","Plugin","Filter");
@@ -163,6 +188,11 @@ static AudIO::ObjectFactoryRegistration<awchamber2::Chamber2> registerChamber2("
 static AudIO::ObjectFactoryRegistration<awgalactic::Galactic> registerGalactic("Galactic",1,"AirWindows","Plugin","Reverb");
 static AudIO::ObjectFactoryRegistration<awderez2::DeRez2> registerDeRez2("DeRez2",1,"AirWindows","Plugin","Lo-Fi");
 static AudIO::ObjectFactoryRegistration<awbitglitter::BitGlitter> registerBitGlitter("BitGlitter",1,"AirWindows","Plugin","Lo-Fi");
+static AudIO::ObjectFactoryRegistration<awpurestgain::PurestGain> registerPurestGain("PurestGain",1,"AirWindows","Plugin","Utility / Gain");
+static AudIO::ObjectFactoryRegistration<aweverytrim::EveryTrim> registerEveryTrim("EveryTrim",1,"AirWindows","Plugin","Utility / Gain");
+static AudIO::ObjectFactoryRegistration<awglitchshifter::GlitchShifter> registerGlitchShifter("GlitchShifter",1,"AirWindows","Plugin","Pitch / Glitch");
+static AudIO::ObjectFactoryRegistration<awtremosquare::TremoSquare> registerTremoSquare("TremoSquare",1,"AirWindows","Plugin","Rhythmic");
+static AudIO::ObjectFactoryRegistration<awfracture::Fracture> registerFracture("Fracture",1,"AirWindows","Plugin","Creative");
 
 struct PadEffects : public AudIO::DawInserts {
     static_assert(lab::InsertSlots==AudIO::DawInserts::MAX_INSERTS,"KICK insert count changed");
