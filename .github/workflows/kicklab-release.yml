@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.11.0
+        default: 0.11.1
 
 permissions:
   contents: write
@@ -63,7 +63,7 @@ jobs:
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
 
-            Version 0.11.0 adds tempo-aware Loop Sync with source BPM stored in
+            Version 0.11.1 adds tempo-aware Loop Sync with source BPM stored in
             KICKLAB 9 projects, a complete bidirectional Tempo page, audio-clock
             Note Repeat, melodic arpeggiation and triad Chords. Mixer always
             opens on tracks 1-8 and its second physical page addresses 9-16.

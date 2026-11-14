@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.11.0 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont huit blocs kit/pattern autonomes dont l'enchaînement attend la fin du pattern. Les loops suivent maintenant le tempo du projet, Tempo possède un véritable écran bidirectionnel, Note Repeat est généré par l'horloge audio et Keyboard/Chords disposent d'un arpégiateur. `Duplicate`, puis A–H, copie le pattern courant. Le bloc actif peut être exporté en WAV avec son mixage et ses effets.
+La version 0.11.1 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont huit blocs kit/pattern autonomes dont l'enchaînement attend la fin du pattern. Les loops suivent maintenant le tempo du projet, Tempo possède un véritable écran bidirectionnel, Note Repeat est généré par l'horloge audio et Keyboard/Chords disposent d'un arpégiateur. `Duplicate`, puis A–H, copie le pattern courant. Le bloc actif peut être exporté en WAV avec son mixage et ses effets.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 

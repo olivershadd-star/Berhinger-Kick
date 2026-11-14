@@ -1,4 +1,4 @@
-KICK Lab 0.11.0 — Loop Sync, Tempo et Note Repeat
+KICK Lab 0.11.1 — Loop Sync, Tempo et Note Repeat
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
@@ -7,7 +7,7 @@ Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnost
 
 Scénarios : lecture WAV et silence ; Loop Sync 130→120 BPM ; Note Repeat cadencé par l'audio ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 31 effets ; quatre inserts ; groupes A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; niveau/pan/mute/solo ; sauvegarde KICKLAB 9 ; migration KICKLAB 1 à 8 ; remise en file des buffers ; continuité sous activité graphique.
 
-0.11.0 ajoute Loop Sync et le BPM source à chaque pad. Les fichiers identifiés comme loops sont automatiquement analysés, puis leur vitesse suit le tempo courant ; la page Pad Edit permet de corriger ou désactiver cette détection. Tempo possède une page 40–240 BPM contrôlable dans les deux sens, avec pas de 10, 1 ou 0,1 BPM. Note Repeat et l'arpégiateur sont cadencés dans le moteur audio ; Chords fournit des triades majeures/mineures arpégées. Le Mixer s'ouvre sur 1–8 et la seconde page physique contrôle 9–16.
+0.11.1 ajoute Loop Sync et le BPM source à chaque pad. Les fichiers identifiés comme loops sont automatiquement analysés, puis leur vitesse suit le tempo courant ; la page Pad Edit permet de corriger ou désactiver cette détection. Tempo possède une page 40–240 BPM contrôlable dans les deux sens, avec pas de 10, 1 ou 0,1 BPM. Note Repeat et l'arpégiateur sont cadencés dans le moteur audio ; Chords fournit des triades majeures/mineures arpégées à la souris comme avec les pads Maschine+. Le Mixer s'ouvre sur 1–8 et la seconde page physique contrôle 9–16.
 
 0.10.1 ajoute FILE → Exporter le bloc actif en WAV. Le moteur rend hors ligne une boucle complète du bloc A–H courant, à son tempo et sur sa longueur de une à quatre mesures. Le fichier stéréo PCM 24 bits / 48 kHz inclut le mixage des pistes, le Master, le pitch, l'ADSR et les quatre inserts de chaque pad.
 
