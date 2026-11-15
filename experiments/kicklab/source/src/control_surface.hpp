@@ -143,6 +143,7 @@ enum class DisplayModule {
     NextSequence,
     Programs,
     Events,
+    ListEdit,
     Song,
     Tempo,
     MidiControl

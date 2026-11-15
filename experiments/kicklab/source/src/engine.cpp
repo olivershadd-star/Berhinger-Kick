@@ -382,6 +382,26 @@ void Engine::toggle(int p,int step){
 void Engine::setStepEvent(int track,int absoluteStep,const StepEvent& requested,bool melodic){
     if(track<0||track>=Pads||absoluteStep<0||absoluteStep>=MaxSequenceSteps)return;StepEvent event=requested;event.velocity=std::clamp(event.velocity,1,127);event.probability=std::clamp(event.probability,0,100);event.ratchet=std::clamp(event.ratchet,1,8);event.length=std::clamp(event.length,1,16);std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];if(melodic)sequence.melodyEvents[absoluteStep]=event;else sequence.drumEvents[track][absoluteStep]=event;
 }
+bool Engine::insertStepEvent(int trackOrNote,int absoluteStep,bool melodic){
+    if(absoluteStep<0||absoluteStep>=MaxSequenceSteps||trackOrNote<0||trackOrNote>(melodic?127:Pads-1))return false;
+    std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];if(absoluteStep>=sequence.bars*Steps)return false;
+    if(melodic){if(sequence.melody[absoluteStep]>=0)return false;sequence.melody[absoluteStep]=trackOrNote;sequence.melodyEvents[absoluteStep]={};}
+    else {if(sequence.drum[trackOrNote][absoluteStep])return false;sequence.drum[trackOrNote][absoluteStep]=true;sequence.drumEvents[trackOrNote][absoluteStep]={};}
+    return true;
+}
+bool Engine::moveStepEvent(int sourceTrack,int sourceStep,int destinationTrackOrNote,int destinationStep,bool melodic){
+    if(sourceStep<0||sourceStep>=MaxSequenceSteps||destinationStep<0||destinationStep>=MaxSequenceSteps||sourceTrack<0||sourceTrack>=Pads||destinationTrackOrNote<0||destinationTrackOrNote>(melodic?127:Pads-1))return false;
+    std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];if(sourceStep>=sequence.bars*Steps||destinationStep>=sequence.bars*Steps)return false;
+    if(melodic){if(sequence.melody[sourceStep]<0)return false;if(destinationStep!=sourceStep&&sequence.melody[destinationStep]>=0)return false;const auto event=sequence.melodyEvents[sourceStep];sequence.melody[sourceStep]=-1;sequence.melodyEvents[sourceStep]={};sequence.melody[destinationStep]=destinationTrackOrNote;sequence.melodyEvents[destinationStep]=event;}
+    else {if(!sequence.drum[sourceTrack][sourceStep])return false;if((destinationTrackOrNote!=sourceTrack||destinationStep!=sourceStep)&&sequence.drum[destinationTrackOrNote][destinationStep])return false;const auto event=sequence.drumEvents[sourceTrack][sourceStep];sequence.drum[sourceTrack][sourceStep]=false;sequence.drumEvents[sourceTrack][sourceStep]={};sequence.drum[destinationTrackOrNote][destinationStep]=true;sequence.drumEvents[destinationTrackOrNote][destinationStep]=event;}
+    return true;
+}
+bool Engine::deleteStepEvent(int track,int absoluteStep,bool melodic){
+    if(track<0||track>=Pads||absoluteStep<0||absoluteStep>=MaxSequenceSteps)return false;std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];
+    if(melodic){if(sequence.melody[absoluteStep]<0)return false;sequence.melody[absoluteStep]=-1;sequence.melodyEvents[absoluteStep]={};}
+    else {if(!sequence.drum[track][absoluteStep])return false;sequence.drum[track][absoluteStep]=false;sequence.drumEvents[track][absoluteStep]={};}
+    return true;
+}
 void Engine::clearPattern(){std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];sequence.drum={};sequence.melody.fill(-1);sequence.drumEvents={};sequence.melodyEvents={};}
 void Engine::demoPattern(){std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];sequence.drum={};sequence.melody.fill(-1);sequence.drumEvents={};sequence.melodyEvents={};sequence.bars=1;impl->state.viewBar=0;for(int s:{0,4,8,12})sequence.drum[0][s]=true;for(int s:{4,12})sequence.drum[1][s]=true;for(int s=0;s<16;s+=2)sequence.drum[2][s]=true;sequence.drum[3][14]=true;sequence.sourcePad=12;sequence.rootNote=48;const int notes[8]={48,48,50,55,53,50,48,55};for(int i=0;i<8;++i)sequence.melody[i*2]=notes[i];}
 void Engine::selectSequence(int requested){

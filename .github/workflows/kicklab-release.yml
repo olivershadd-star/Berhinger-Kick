@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.16.0
+        default: 0.17.0
 
 permissions:
   contents: write
@@ -62,6 +62,15 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.17.0 ports the original KICK List Edit note table onto
+            the dual-screen Windows surface. Screen A lists every drum and
+            melodic event in musical time and edits Time, Pad/Note and row
+            selection. Screen B edits Length, Velocity, Probability and
+            Ratchet. Events can be inserted, deleted and moved without losing
+            their metadata; occupied destinations are protected. List Edit is
+            available from menu item 9 or Shift + Events and uses the existing
+            KICKLAB 13 event data without another format break.
 
             Version 0.16.0 ports the original KICK Program-level Pad Mixer and
             Pad Mutes as a separate layer from the sequence Track Mixer. Shift

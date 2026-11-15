@@ -162,6 +162,9 @@ public:
     void setInsertParameter(int pad,int slot,int parameter,double value);
     void toggle(int pad,int step);
     void setStepEvent(int track,int absoluteStep,const StepEvent& event,bool melodic=false);
+    bool insertStepEvent(int trackOrNote,int absoluteStep,bool melodic=false);
+    bool moveStepEvent(int sourceTrack,int sourceStep,int destinationTrackOrNote,int destinationStep,bool melodic=false);
+    bool deleteStepEvent(int track,int absoluteStep,bool melodic=false);
     void clearPattern(); void demoPattern();
     void resetProject();
     void selectSequence(int sequence);

@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.16.0 porte le **Pad Mixer** et les **Pad Mutes** publiés de KICK. Ils travaillent au niveau du Program réutilisable, séparément du Track Mixer propre à chaque pattern : Level, Pan et Mute suivent donc le kit lorsqu'il est réassigné à une autre séquence. La version 0.15.0 avait porté les Events Velocity, Probability, Ratchet et Length du séquenceur.
+La version 0.17.0 porte le **List Edit** publié de KICK sur les deux écrans Windows. L'écran A regroupe tous les événements Drum et mélodiques du pattern avec leur position et leur Pad/Note ; l'écran B édite Length, Velocity, Probability et Ratchet. Insertion, suppression et déplacement conservent les propriétés de la note. La version 0.16.0 avait porté le Pad Mixer et les Pad Mutes au niveau du Program.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -20,6 +20,7 @@ La version 0.16.0 porte le **Pad Mixer** et les **Pad Mutes** publiés de KICK. 
 6. **SAMPLING** ouvre l'éditeur détaillé. **PITCH / PAD EDIT** ouvre cinq pages : Sample, ADSR, Loop Sync, Drum et Layers. Sur Layers, P1 choisit L1–L4, P2/P3 règlent la plage de vélocité, P4 active Reverse ; un clic droit sur la barre d'écoute charge le WAV de cette couche. **BROWSER** parcourt toute l'arborescence du dossier `samples`.
 7. Armer **REC**, lancer **PLAY**, puis jouer les pads. **FOLLOW / Grid** choisit la correction à l'enregistrement : 1/4, 1/8 ou 1/16. **4 Sequences** sélectionne une séquence ; **8 Songs** construit l'arrangement.
 8. **MIXER** ouvre le Track Mixer du pattern : les deux pages physiques commandent les pistes 1–8 et 9–16. Haut/bas choisit Level ou Pan ; **SOLO** ou **MUTE**, puis un pad, applique l'état à cette piste. Shift + touche Soft arme la piste. **Shift + MIXER** ouvre le Pad Mixer du Program ; haut/bas choisit Level/Pan, les flèches de page passent de 1–8 à 9–16 et un clic droit coupe le pad. **Shift + MUTE** ouvre les seize Pad Mutes KICK.
+9. Le menu **List Edit** ou **Shift + EVENTS** ouvre la table globale du pattern. Tourner l'encodeur, utiliser les flèches ou cliquer une ligne choisit l'événement. P1 change Time, P2 le Pad/Note, P3 la ligne ; P5–P8 règlent Length, Velocity, Probability et Ratchet. Les touches contextuelles permettent Précédent, Suivant, Insérer et Supprimer.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
@@ -76,6 +77,7 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Chaque séquence conserve ses pistes de batterie et une piste mélodique. **PAD MODE** choisit une piste de sample, **KEYBOARD** travaille les hauteurs et **STEP** affiche les seize pas sur les pads.
 - **REC** arme l'enregistrement. Une fois PLAY actif, chaque pad joué est écrit sur la séquence courante. FOLLOW / Grid alterne entre 1/4, 1/8 et 1/16 ; l'enregistrement rythmique et mélodique utilise exactement la même grille que Step. STOP coupe le transport et désarme REC.
 - **EVENTS** ouvre les propriétés du step sélectionné. Les seize pads choisissent le step sans le supprimer ; gauche/droite ou la rotation 4D avancent et reculent. **P1 Velocity** règle 1–127, **P2 Probability** 0–100 %, **P3 Ratchet** ×1–×8 et **P4 Length** 1–16 steps. Enter bascule l'événement. Les valeurs s'appliquent aussi aux notes Keyboard, et REC capture la vélocité MIDI réelle.
+- **List Edit** reprend la table de notes du firmware KICK : événements triés par Time, Pad/Note, Length, Velocity, Probability et Ratchet. Un événement peut être déplacé vers un autre step ou un autre pad/note en conservant ses données. Une destination déjà occupée est protégée. Le menu 9 et Shift + EVENTS ouvrent cette vue sans modifier le mode de lecture du pattern.
 - **NOTE REPEAT / Arp** répète le pad Drum tenu ou parcourt les notes MIDI maintenues en Keyboard. La répétition est calculée dans le moteur audio à 1/4, 1/8 ou 1/16 et ne dépend pas du rafraîchissement graphique. **CHORDS** construit une triade sur le pad choisi et la confie à ce même arpégiateur.
 - **Pad Notes / Keygroup** reprend la logique Pad Perform publiée dans KICK : modes chromatique, gamme majeure et gamme mineure, sample source et note racine. Un clic de pad, une touche AZERTY ou une note MIDI joue le même sample à une hauteur différente. La transposition change aussi la durée, sans time-stretch.
 - **Next Sequence** affecte les séquences 1–16 aux pads. À l'arrêt, le choix est immédiat ; pendant la lecture, la nouvelle séquence est mise en attente jusqu'à la fin complète de la séquence courante.
@@ -146,7 +148,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, Reverse, les quatre couches Velocity/Cycle, les trois modes de déclenchement, Choke, les couleurs, les Events Velocity/Probability/Ratchet/Length, la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, la séparation Program/Pattern, Pad Mixer/Mutes, KICKLAB 13/KICKKIT 3 et leurs migrations, le mixage, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, Reverse, les quatre couches Velocity/Cycle, les trois modes de déclenchement, Choke, les couleurs, Events et List Edit (insertion/déplacement/suppression), la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, la séparation Program/Pattern, Pad Mixer/Mutes, KICKLAB 13/KICKKIT 3 et leurs migrations, le mixage, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 
