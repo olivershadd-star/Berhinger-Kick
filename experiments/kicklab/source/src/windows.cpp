@@ -7,6 +7,7 @@
 #include <avrt.h>
 #include <commdlg.h>
 #include <shellapi.h>
+#include <objidl.h>
 #include <gdiplus.h>
 #include <array>
 #include <thread>
