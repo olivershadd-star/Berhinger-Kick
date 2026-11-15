@@ -580,7 +580,9 @@ void Engine::render(float* out){
     // pumped and made the output weak.  Attack only at the offending sample;
     // release smoothly over 50 ms while keeping the hard ceiling as a final
     // numerical safety net.
-    constexpr float limiterRelease=1.f-std::exp(-1.f/(Rate*.050f));
+    // 1 - exp(-1 / (48000 * 0.050)); written explicitly because std::exp is
+    // not constexpr in the C++17 mode used by the MSVC release build.
+    constexpr float limiterRelease=.0004165799f;
     float postLimiterPeak=0,minimumLimiterGain=1;
     for(int frame=0;frame<Block;++frame){
         const float framePeak=std::max(std::abs(out[frame*2]),std::abs(out[frame*2+1]));
