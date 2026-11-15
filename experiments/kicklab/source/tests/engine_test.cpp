@@ -36,6 +36,8 @@ int main(int argc,char**argv){try{
     check(midiEncoderDelta(MidiCcMode::Absolute,127,127)==1&&midiEncoderDelta(MidiCcMode::Absolute,0,0)==-1,"absolute encoder stopped at an endpoint");
     check(midiEncoderDelta(MidiCcMode::Relative1,-1,1)==1&&midiEncoderDelta(MidiCcMode::Relative1,1,127)==-1,"1/127 encoder direction failed");
     check(midiEncoderDelta(MidiCcMode::Relative1,-1,65)==1&&midiEncoderDelta(MidiCcMode::Relative1,65,63)==-1,"65/63 encoder direction failed");
+    check(midiToggleButtonPress(-1,0)&&midiToggleButtonPress(0,127)&&midiToggleButtonPress(127,0)&&!midiToggleButtonPress(0,0),"Maschine toggle button decoding failed");
+    check(midiCommandUsesGate(MidiCommandTarget::Shift)&&midiCommandUsesGate(MidiCommandTarget::Select)&&!midiCommandUsesGate(MidiCommandTarget::Browser),"MIDI command gate classification failed");
     MidiPadBinding padBinding{0,12};check(padBinding.matches(0,12)&&!padBinding.matches(0,13)&&!padBinding.matches(1,12),"learned pad matching failed");
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
@@ -81,6 +83,10 @@ int main(int argc,char**argv){try{
     for(int p=0;p<Pads;++p)check(e.load(p,path("long.wav"),error),error.c_str());for(int p=0;p<Pads;++p)e.trigger(p);e.render(block);for(float v:block)check(std::isfinite(v)&&std::abs(v)<=MasterCeiling+1e-6f,"master limiter exceeded its -1 dBFS ceiling");auto gainStage=e.snapshot();check(gainStage.preLimiterPeak>MasterCeiling&&gainStage.peak<=MasterCeiling+1e-6f&&gainStage.limiterReductionDb>0&&gainStage.trackPeaks[1]>0,"master gain staging or per-track meter did not detect the summed overload");
     e.stop();e.demoPattern();e.setTempo(120);e.setPlaying(true);e.render(block);e.setPlaying(false);int paused=e.snapshot().step;for(int b=0;b<30;++b)e.render(block);check(e.snapshot().step==paused,"pause advances sequencer");e.stop();e.setPlaying(true);std::ofstream raw(std::filesystem::u8path(path("demo.f32")),std::ios::binary);
     int transitions=0,last=-1;double sum=0;for(int b=0;b<375;++b){e.render(block);raw.write(reinterpret_cast<const char*>(block),sizeof(block));for(float v:block)sum+=v*v;int s=e.snapshot().step;if(s!=last){++transitions;last=s;}}check(transitions==16,"sequencer timing failed");check(sum>1,"sequencer is silent");e.stop();
+    // The edit page is selected by the musician and must not chase the
+    // transport.  Playback can enter bar 2 while bar 1 remains editable, and
+    // can wrap to bar 1 while bar 2 remains editable.
+    {Engine editPage;editPage.setSequenceBars(2);editPage.setViewBar(0);editPage.setPlaying(true);for(int b=0;b<380;++b)editPage.render(block);auto state=editPage.snapshot();check(state.playBar==1&&state.viewBar==0,"playhead stole the selected edit bar");editPage.setViewBar(1);for(int b=0;b<380;++b)editPage.render(block);state=editPage.snapshot();check(state.playBar==0&&state.viewBar==1,"selected edit bar did not remain independent after transport wrap");editPage.stop();}
     // Export renders the active pattern through the real engine at an exact
     // musical length. One 4/4 bar at 120 BPM is 96,000 stereo frames.
     const auto exportedPath=path("pattern-export.wav");check(e.exportCurrentPatternWav(exportedPath,error),error.c_str());

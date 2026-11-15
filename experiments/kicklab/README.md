@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.21.2 corrige et sépare toute la chaîne de mesure audio. Le **Track Mixer** retrouve ses valeurs précises de 0 à 100 %, distinctes du véritable pic audio en dB. Le Master affiche séparément **MIX** avant son fader, **PRE** avant le limiteur et **OUT** après limiteur ; le rouge signifie désormais strictement plus de 0 dB. La rampe cachée de sortie AudIO est initialisée à l'unité avant le premier son. Le séquenceur graphique 16 pistes × 16 pas et les clics Windows sécurisés des versions 0.21.0–0.21.1 sont conservés.
+La version 0.21.3 sépare enfin la **mesure affichée** de la tête de lecture : on peut éditer la mesure 1 ou 2 sans que Play change la page. Les boutons à bascule du profil Maschine réagissent maintenant à chacune de leurs valeurs alternées 0/127, les mouvements sont rafraîchis à environ 60 Hz et le limiteur traite les crêtes échantillon par échantillon au lieu de faire pomper un bloc audio entier. Les mesures précises MIX/PRE/OUT et Track Mixer de la version 0.21.2 sont conservées.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 

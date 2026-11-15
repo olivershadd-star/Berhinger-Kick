@@ -556,7 +556,7 @@ void Engine::render(float* out){
     }else impl->untilRepeat=0;
     if(s.playing){
         if(impl->untilStep<=0){
-            auto& sequence=s.sequences[s.sequence];const int absolute=impl->nextStep;s.step=absolute%Steps;s.playBar=absolute/Steps;s.viewBar=s.playBar;
+            auto& sequence=s.sequences[s.sequence];const int absolute=impl->nextStep;s.step=absolute%Steps;s.playBar=absolute/Steps;
             const double stepSamples=Rate*60./s.tempo/4.;auto passes=[&](int probability){if(probability>=100)return true;if(probability<=0)return false;impl->randomState=impl->randomState*1664525u+1013904223u;return int((impl->randomState>>16)%100u)<probability;};
             for(int p=0;p<Pads;++p)if(impl->gateRemaining[p]>0&&--impl->gateRemaining[p]==0&&impl->banks[s.program][p].edit.samplePlay==SamplePlayType::NoteOn)impl->players[p]->release();
             for(int p=0;p<Pads;++p){const auto& track=sequence.tracks[p];const auto& event=sequence.drumEvents[p][absolute];if(sequence.drum[p][absolute]&&!track.mute&&(!anySolo||track.solo)&&passes(event.probability)){impl->triggerPad(p,0,event.velocity);impl->gateRemaining[p]=event.length;impl->ratchetRemaining[p]=event.ratchet-1;impl->ratchetPitch[p]=0;impl->ratchetVelocity[p]=event.velocity;impl->ratchetInterval[p]=stepSamples/event.ratchet;impl->ratchetUntil[p]=impl->ratchetInterval[p];}}
@@ -574,14 +574,26 @@ void Engine::render(float* out){
     }
     impl->graph->process(*impl->buffer);float mixPeak=0,preLimiterPeak=0;
     for(int n=0;n<Block;++n){impl->currentVolume+=(float(s.volume)-impl->currentVolume)*.004f;const float master=s.volume==0?0.f:impl->currentVolume;for(int c=0;c<2;++c){float mixed=impl->buffer->getOutputBuffer(c)[n];if(!std::isfinite(mixed))mixed=0;mixPeak=std::max(mixPeak,std::abs(mixed));const float value=mixed*master;out[n*2+c]=value;preLimiterPeak=std::max(preLimiterPeak,std::abs(value));}}
-    const float targetGain=preLimiterPeak>MasterCeiling?MasterCeiling/preLimiterPeak:1.f;
-    if(targetGain<impl->limiterGain)impl->limiterGain=targetGain;else impl->limiterGain+=float((1.-impl->limiterGain)*.015);
-    impl->limiterGain=std::clamp(impl->limiterGain,0.f,1.f);float postLimiterPeak=0;
-    for(int sample=0;sample<Block*2;++sample){out[sample]=std::clamp(out[sample]*impl->limiterGain,-MasterCeiling,MasterCeiling);postLimiterPeak=std::max(postLimiterPeak,std::abs(out[sample]));}
-    // Roughly 13 dB/s meter release: fast enough to follow drums, slow enough
-    // for a 30 Hz Windows UI to display their envelope instead of random dots.
+    // Stereo-linked sample peak limiter.  The previous block-wide limiter
+    // reduced the complete 5.3 ms block from one isolated transient and then
+    // recovered for roughly a third of a second.  On drums this audibly
+    // pumped and made the output weak.  Attack only at the offending sample;
+    // release smoothly over 50 ms while keeping the hard ceiling as a final
+    // numerical safety net.
+    constexpr float limiterRelease=1.f-std::exp(-1.f/(Rate*.050f));
+    float postLimiterPeak=0,minimumLimiterGain=1;
+    for(int frame=0;frame<Block;++frame){
+        const float framePeak=std::max(std::abs(out[frame*2]),std::abs(out[frame*2+1]));
+        const float targetGain=framePeak>MasterCeiling?MasterCeiling/framePeak:1.f;
+        if(targetGain<1.f)impl->limiterGain=std::min(impl->limiterGain,targetGain);
+        else impl->limiterGain+=(1.f-impl->limiterGain)*limiterRelease;
+        impl->limiterGain=std::clamp(impl->limiterGain,0.f,1.f);minimumLimiterGain=std::min(minimumLimiterGain,impl->limiterGain);
+        for(int channel=0;channel<2;++channel){auto& sample=out[frame*2+channel];sample=std::clamp(sample*impl->limiterGain,-MasterCeiling,MasterCeiling);postLimiterPeak=std::max(postLimiterPeak,std::abs(sample));}
+    }
+    // Hold percussion peaks long enough for the 60 Hz Windows UI to display
+    // their envelope instead of a single-frame dot.
     constexpr float meterRelease=.996f;
-    s.mixPeak=std::max(mixPeak,s.mixPeak*meterRelease);s.preLimiterPeak=std::max(preLimiterPeak,s.preLimiterPeak*meterRelease);s.peak=std::max(postLimiterPeak,s.peak*meterRelease);s.limiterReductionDb=impl->limiterGain<1.f?float(-20.*std::log10(std::max(impl->limiterGain,1e-6f))):0.f;
+    s.mixPeak=std::max(mixPeak,s.mixPeak*meterRelease);s.preLimiterPeak=std::max(preLimiterPeak,s.preLimiterPeak*meterRelease);s.peak=std::max(postLimiterPeak,s.peak*meterRelease);s.limiterReductionDb=minimumLimiterGain<1.f?float(-20.*std::log10(std::max(minimumLimiterGain,1e-6f))):0.f;
     for(int p=0;p<Pads;++p){s.active[p]=impl->players[p]->isPlaying();s.progress[p]=impl->players[p]->progress();s.trackPeaks[p]=std::max(impl->players[p]->outputPeak(),s.trackPeaks[p]*meterRelease);}
 }
 bool Engine::save(const std::string& path,std::string& error){

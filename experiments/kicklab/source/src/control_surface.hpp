@@ -61,6 +61,19 @@ enum class MidiCommandTarget {
 
 constexpr int MidiCommandCount = static_cast<int>(MidiCommandTarget::Count);
 
+// Maschine's Controller Editor can configure a button as a real toggle: one
+// physical press sends 0, the next sends 127, with no separate release
+// message.  Both transitions are therefore command presses.  Keep this tiny
+// decoder independent from WinMM so its behaviour stays covered on Linux CI.
+inline bool midiToggleButtonPress(int previous, int value) {
+    value = std::clamp(value, 0, 127);
+    return previous < 0 || value != std::clamp(previous, 0, 127);
+}
+
+inline bool midiCommandUsesGate(MidiCommandTarget target) {
+    return target == MidiCommandTarget::Shift || target == MidiCommandTarget::Select;
+}
+
 struct MidiCommandBinding {
     MidiMessageKind kind = MidiMessageKind::None;
     int channel = -1;
