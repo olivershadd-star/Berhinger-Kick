@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.11.1 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont huit blocs kit/pattern autonomes dont l'enchaînement attend la fin du pattern. Les loops suivent maintenant le tempo du projet, Tempo possède un véritable écran bidirectionnel, Note Repeat est généré par l'horloge audio et Keyboard/Chords disposent d'un arpégiateur. `Duplicate`, puis A–H, copie le pattern courant. Le bloc actif peut être exporté en WAV avec son mixage et ses effets.
+La version 0.12.0 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont huit blocs kit/pattern autonomes dont l'enchaînement attend la fin du pattern. Un kit de seize pads peut maintenant être sauvegardé ou chargé indépendamment de la pattern, sans incorporer les WAV. Les loops suivent le tempo du projet, Tempo possède un véritable écran bidirectionnel, Note Repeat est généré par l'horloge audio et Keyboard/Chords disposent d'un arpégiateur. `Duplicate`, puis A–H, copie le pattern courant. Le bloc actif peut être exporté en WAV avec son mixage et ses effets.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -13,7 +13,7 @@ La version 0.11.1 conserve les seize pistes, la sauvegarde MIDI portable et les 
 ## Pour essayer
 
 1. Extraire entièrement le ZIP dans un dossier accessible en écriture.
-2. Ouvrir **KickLab.exe**, en gardant le dossier **demo-kit** à côté. Le dossier **samples** de la bibliothèque est créé automatiquement.
+2. Ouvrir **KickLab.exe**, en gardant le dossier **demo-kit** à côté. Les dossiers externes **samples** et **kits/User** sont créés automatiquement.
 3. Les groupes **A–H** sont huit banques indépendantes de seize pads. A contient le kit de démonstration ; B–H commencent vides. Un clic droit sur un pad charge un WAV dans le groupe actif.
 4. **PAD MODE** joue les seize samples. Le dernier pad joué devient automatiquement la piste lorsque l'on passe sur **STEP**. **KEYBOARD** répartit le sample sélectionné sur seize hauteurs. **CHORDS** produit des triades majeures ou mineures arpégées ; **NOTE REPEAT / Arp** active et coupe la répétition, et **FOLLOW / Grid** choisit 1/4, 1/8 ou 1/16. `Select + pad` ou `Shift + pad` choisit explicitement une piste Step.
 5. Cliquer sur l'écran A ou B, puis sur **PLUG-IN / Instance** ou **PERFORM / FX** affiche les inserts. Choisir un slot et régler ses paramètres avec P1–P4 ou P5–P8. Les flèches `<` et `>` changent de page.
@@ -92,6 +92,8 @@ L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la r
 
 **FILE → Enregistrer/Ouvrir** sauvegarde les huit groupes A–H, leurs 128 références de samples et réglages, les seize séquences, leurs pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo et le volume dans un fichier `.kicklab`. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement.
 
+**FILE → Sauvegarder/Charger un kit de pads** utilise un fichier `.kickkit` indépendant du projet. Il contient seulement les références et réglages des seize pads du bloc A–H actif : découpe, volume, pitch, ADSR, Loop Sync et quatre inserts. Il ne contient ni WAV, ni steps, ni tempo, ni Song. Les WAV placés sous `samples` sont référencés relativement afin que l'ensemble portable puisse être déplacé ; les WAV extérieurs gardent leur chemin absolu. Un kit invalide ou dont un WAV manque est refusé sans modifier le kit déjà chargé. Le dossier `kits/User` reste extérieur à l'exécutable et peut être rempli librement par l'utilisateur.
+
 **FILE → Exporter le bloc actif en WAV** rend exactement une boucle du bloc A–H sélectionné à son tempo et sa longueur de une à quatre mesures. L'export est stéréo PCM 24 bits à 48 kHz et passe par le véritable moteur : pitch, enveloppes, niveaux, panoramiques, mutes/solos, Master et quatre inserts par pad sont inclus. Le transport est arrêté à la fin de l'export.
 
 Les projets **KICKLAB 1** à **KICKLAB 8** restent lisibles. Les nouveaux projets utilisent **KICKLAB 9** pour conserver en plus Loop Sync et le BPM source de chaque pad. Ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
@@ -100,7 +102,7 @@ Les projets **KICKLAB 1** à **KICKLAB 8** restent lisibles. Les nouveaux projet
 
 - **AudIO** : graphe `Design`, lecteur `AudioPlayback`, bus, mixage et modèle original `DawInserts` à quatre slots.
 - **AudioFile** : décodeur WAV livré dans le dépôt, après validation et normalisation de l'en-tête.
-- **Airwindows** : les vingt-six processeurs utilisent les sources originales et l'adaptation `AudioEffectX` fournies dans 0700-AAM. Chaque instance est créée par l'`ObjectFactory` d'AudIO dans le slot choisi.
+- **Airwindows** : les trente et un processeurs utilisent les sources originales et l'adaptation `AudioEffectX` fournies dans 0700-AAM. Chaque instance est créée par l'`ObjectFactory` d'AudIO dans le slot choisi.
 - **Ajouts du prototype** : interface Win32, éditeur, extension du lecteur (découpe, interpolation pour la hauteur, fondus), projection Windows des pages Pad Perform/Next Sequence/Song, MIDI, sortie WinMM, persistance et tests.
 
 L'éditeur JUCE complet et les classes de voix KICK dépendent encore des couches manquantes. Cette version étend le lecteur AudIO qui fonctionne déjà sur Windows ; elle ne prétend pas porter l'éditeur ou le séquenceur KICK complet. Voir `source/vendor/AudIO/DESKTOP-CHANGES.patch`.
@@ -113,7 +115,7 @@ Les corrections de 0.1.1 et 0.1.2 sont conservées : ordre des buffers, attente 
 
 Sortie fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames (environ 85 ms de réserve, plus le pilote). Pas d'ASIO ni de VST3 pour l'instant. Le séquenceur est quantifié au bloc de 256 trames (environ 5,33 ms), sans dérive cumulative du compteur. Le Master affiche `DSP`, la part de ce budget consommée, et `RETARDS`, le nombre de blocs ayant dépassé leur délai.
 
-Le premier Keygroup et son enregistrement sont monophoniques : une nouvelle note remplace la précédente et les accords/progressions du Pad Perform KICK ne sont pas encore portés. Le Track Mixer agit réellement sur les seize lecteurs actuels, mais les événements note/durée/vélocité et les automations Track Mute restent à porter. Pas encore de kits avec médias intégrés, de synthétiseurs KICK ni de banque complète d'effets.
+Le premier Keygroup et son enregistrement sont monophoniques : une nouvelle note remplace la précédente et les accords/progressions du Pad Perform KICK ne sont pas encore portés. Le Track Mixer agit réellement sur les seize lecteurs actuels, mais les événements note/durée/vélocité et les automations Track Mute restent à porter. Les `.kickkit` ne contiennent volontairement aucun média ; pas encore de synthétiseurs KICK ni de banque complète d'effets.
 
 ## Développer
 
@@ -134,7 +136,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, la découpe, Pad Perform, ADSR, les vingt-six effets, les quatre inserts, Next Sequence, Song, les groupes A–H, le niveau/pan/mute des pistes, la persistance v7, la migration v1–v6, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, les groupes A–H, les kits séparés des patterns, les chemins portables, le niveau/pan/mute des pistes, la persistance KICKLAB 9, les migrations anciennes, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 

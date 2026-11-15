@@ -1,4 +1,4 @@
-KICK Lab 0.11.1 — Loop Sync, Tempo et Note Repeat
+KICK Lab 0.12.0 — Kits de pads séparés des patterns
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
@@ -6,6 +6,8 @@ Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
 Scénarios : lecture WAV et silence ; Loop Sync 130→120 BPM ; Note Repeat cadencé par l'audio ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 31 effets ; quatre inserts ; groupes A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; niveau/pan/mute/solo ; sauvegarde KICKLAB 9 ; migration KICKLAB 1 à 8 ; remise en file des buffers ; continuité sous activité graphique.
+
+0.12.0 ajoute le format léger KICKKIT 1. Il sauvegarde et recharge les seize références de samples et tous les réglages des pads du bloc A–H actif sans modifier sa pattern, le tempo, le Song ou les autres blocs. Aucun WAV n'est incorporé : les samples sous le dossier portable samples utilisent des chemins relatifs. Un fichier manquant annule le chargement sans toucher au kit déjà actif. Le dossier externe kits/User est créé vide.
 
 0.11.1 ajoute Loop Sync et le BPM source à chaque pad. Les fichiers identifiés comme loops sont automatiquement analysés, puis leur vitesse suit le tempo courant ; la page Pad Edit permet de corriger ou désactiver cette détection. Tempo possède une page 40–240 BPM contrôlable dans les deux sens, avec pas de 10, 1 ou 0,1 BPM. Note Repeat et l'arpégiateur sont cadencés dans le moteur audio ; Chords fournit des triades majeures/mineures arpégées à la souris comme avec les pads Maschine+. Le Mixer s'ouvre sur 1–8 et la seconde page physique contrôle 9–16.
 

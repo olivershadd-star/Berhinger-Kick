@@ -37,10 +37,13 @@ jobs:
           if (-not (Test-Path "build/incremental-port/Release/samples")) {
             throw "Missing external sample-library root"
           }
+          if (-not (Test-Path "build/incremental-port/Release/kits/User")) {
+            throw "Missing external user-kit root"
+          }
       - name: Assemble prototype
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force dist/KickLab | Out-Null
+          New-Item -ItemType Directory -Force dist/KickLab,dist/KickLab/kits/User | Out-Null
           Copy-Item build/incremental-port/Release/KickLab.exe,build/incremental-port/Release/KickLab-Test.exe dist/KickLab/
           Copy-Item demo-kit,source dist/KickLab/ -Recurse
           Copy-Item profiles dist/KickLab/ -Recurse

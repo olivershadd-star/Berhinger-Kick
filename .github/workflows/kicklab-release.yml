@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.11.1
+        default: 0.12.0
 
 permissions:
   contents: write
@@ -41,7 +41,7 @@ jobs:
         run: |
           $version = "${{ inputs.version }}"
           $folder = "dist/KickLab-Windows-x64-$version-preview"
-          New-Item -ItemType Directory -Force "$folder/demo-kit","$folder/profiles" | Out-Null
+          New-Item -ItemType Directory -Force "$folder/demo-kit","$folder/profiles","$folder/kits/User" | Out-Null
           Copy-Item build/incremental-port/Release/KickLab.exe "$folder/"
           Copy-Item demo-kit/*.wav "$folder/demo-kit/"
           Copy-Item profiles/README.txt "$folder/profiles/"
@@ -62,6 +62,13 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.12.0 adds standalone KICKKIT 1 Drum Program files. FILE
+            can save or load the sixteen pads of the active A-H block without
+            touching its pattern, tempo, Song or the other blocks. WAV files
+            are never embedded: samples below the portable samples directory
+            use relative paths, and a missing file aborts the load safely. The
+            external kits/User directory starts empty.
 
             Version 0.11.1 adds tempo-aware Loop Sync with source BPM stored in
             KICKLAB 9 projects, a complete bidirectional Tempo page, audio-clock

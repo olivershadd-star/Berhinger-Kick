@@ -133,6 +133,52 @@ bool detectLoopAndBpm(const std::string& path,double duration,double projectTemp
     for(int bars:{1,2,4,8,16}){const double candidate=bars*4.*60./duration;if(candidate<40||candidate>240)continue;const double distance=std::abs(std::log(candidate/projectTempo));if(distance<bestDistance){bestDistance=distance;best=candidate;}}
     bpm=std::clamp(best,40.,240.);return true;
 }
+bool safeRelativePath(const std::filesystem::path& path){
+    if(path.empty()||path.is_absolute())return false;
+    for(const auto& part:path)if(part=="..")return false;
+    return true;
+}
+void writePadSettings(std::ostream& stream,const PadEdit& edit){
+    stream<<' '<<edit.start<<' '<<edit.end<<' '<<edit.gain<<' '<<edit.semitones<<' '<<edit.fadeMs
+          <<' '<<edit.attack<<' '<<edit.decay<<' '<<edit.sustain<<' '<<edit.release
+          <<' '<<edit.loopSync<<' '<<edit.sourceBpm<<' '<<edit.insertsBypass;
+    for(const auto& insert:edit.inserts){
+        const int count=insertParameterCount(insert.effect);
+        stream<<' '<<int(insert.effect)<<' '<<insert.bypass<<' '<<count;
+        for(int parameter=0;parameter<count;++parameter)stream<<' '<<insert.parameters[parameter];
+    }
+}
+bool readPadSettings(std::istream& stream,PadEdit& edit,std::string& error){
+    if(!(stream>>edit.start>>edit.end>>edit.gain>>edit.semitones>>edit.fadeMs
+              >>edit.attack>>edit.decay>>edit.sustain>>edit.release
+              >>edit.loopSync>>edit.sourceBpm>>edit.insertsBypass)){
+        error="Reglages du pad incomplets.";return false;
+    }
+    for(auto& insert:edit.inserts){
+        int effect=0,count=0;bool bypass=false;
+        if(!(stream>>effect>>bypass>>count)||effect<int(InsertEffect::None)||effect>=int(InsertEffect::Count)
+           ||count<0||count>InsertParameters||count!=insertParameterCount(InsertEffect(effect))){
+            error="Insert de kit invalide.";return false;
+        }
+        InsertState parsed;parsed.effect=InsertEffect(effect);parsed.bypass=bypass;
+        for(int parameter=0;parameter<count;++parameter){
+            if(!(stream>>parsed.parameters[parameter])||!std::isfinite(parsed.parameters[parameter])
+               ||parsed.parameters[parameter]<0||parsed.parameters[parameter]>1){
+                error="Parametre d'insert de kit invalide.";return false;
+            }
+        }
+        insert=parsed;
+    }
+    const double values[]={edit.start,edit.end,edit.gain,edit.semitones,edit.fadeMs,edit.attack,edit.decay,edit.sustain,edit.release,edit.sourceBpm};
+    for(double value:values)if(!std::isfinite(value)){error="Reglages du kit non finis.";return false;}
+    if(edit.start<0||edit.end>1||edit.end-edit.start<.000999||edit.gain<0||edit.gain>2
+       ||edit.semitones< -24||edit.semitones>24||edit.fadeMs<0||edit.fadeMs>20
+       ||edit.attack<0||edit.attack>1||edit.decay<0||edit.decay>1||edit.sustain<0||edit.sustain>1
+       ||edit.release<0||edit.release>1||edit.sourceBpm<40||edit.sourceBpm>240){
+        error="Reglages du kit hors limites.";return false;
+    }
+    return true;
+}
 }
 struct Engine::Impl {
     struct BankPad {
@@ -381,6 +427,68 @@ bool Engine::save(const std::string& path,std::string& error){
     for(int index=0;index<Sequences;++index){const auto& sequence=s.sequences[index];f<<"SEQ "<<index<<' '<<std::quoted(sequence.name)<<' '<<sequence.bars<<' '<<int(sequence.mode)<<' '<<sequence.sourcePad<<' '<<sequence.rootNote<<'\n'<<"TRACKS "<<Pads<<'\n';for(int track=0;track<Pads;++track){const auto& t=sequence.tracks[track];f<<"TRACK "<<track<<' '<<std::quoted(t.name)<<' '<<int(t.program)<<' '<<t.sourcePad<<' '<<t.level<<' '<<t.pan<<' '<<t.mute<<' '<<t.solo<<' '<<t.armed<<'\n';}f<<"DRUM";for(int p=0;p<Pads;++p){unsigned long long bits=0;for(int step=0;step<MaxSequenceSteps;++step)if(sequence.drum[p][step])bits|=1ull<<step;f<<' '<<bits;}f<<"\nMELO";for(int note:sequence.melody)f<<' '<<note;f<<'\n';}
     f<<"SONG "<<s.songLength<<'\n';for(int index=0;index<s.songLength;++index)f<<"STEP "<<s.song[index].sequence<<' '<<s.song[index].repeats<<'\n';
     if(!f){error="Erreur d'ecriture.";return false;}return true;
+}
+bool Engine::saveKit(const std::string& path,const std::string& sampleRoot,std::string& error){
+    std::array<std::string,Pads> paths;std::array<PadEdit,Pads> edits;int group=0;
+    {std::scoped_lock lock(impl->mutex,impl->metadataMutex);group=impl->state.group;for(int pad=0;pad<Pads;++pad){paths[pad]=impl->banks[group][pad].path;edits[pad]=impl->banks[group][pad].edit;}}
+    const auto root=std::filesystem::absolute(std::filesystem::u8path(sampleRoot)).lexically_normal();
+    std::ofstream file(std::filesystem::u8path(path),std::ios::trunc);if(!file){error="Impossible d'enregistrer le kit.";return false;}
+    file<<std::setprecision(17)<<"KICKKIT 1\n";
+    for(int pad=0;pad<Pads;++pad){
+        char location='E';std::string stored;
+        if(!paths[pad].empty()){
+            const auto absolute=std::filesystem::absolute(std::filesystem::u8path(paths[pad])).lexically_normal();
+            const auto relative=absolute.lexically_relative(root);
+            if(safeRelativePath(relative)){location='R';stored=relative.generic_u8string();}
+            else {location='A';stored=absolute.u8string();}
+        }
+        file<<"PAD "<<pad<<' '<<location<<' '<<std::quoted(stored);writePadSettings(file,edits[pad]);file<<'\n';
+    }
+    if(!file){error="Erreur d'ecriture du kit.";return false;}return true;
+}
+bool Engine::openKit(const std::string& path,const std::string& sampleRoot,std::string& error){
+    std::ifstream file(std::filesystem::u8path(path),std::ios::ate);
+    if(!file||file.tellg()>512*1024){error="Kit introuvable ou trop volumineux.";return false;}file.seekg(0);
+    std::string tag;int version=0;if(!(file>>tag>>version)||tag!="KICKKIT"||version!=1){error="Fichier KICKKIT invalide.";return false;}
+    const auto root=std::filesystem::absolute(std::filesystem::u8path(sampleRoot)).lexically_normal();
+    std::array<std::string,Pads> paths{};std::array<PadEdit,Pads> edits{};
+    for(int expected=0;expected<Pads;++expected){
+        int pad=-1;char location=0;std::string stored;
+        if(!(file>>tag>>pad>>location>>std::quoted(stored))||tag!="PAD"||pad!=expected||(location!='E'&&location!='R'&&location!='A')){error="Liste de pads KICKKIT invalide.";return false;}
+        if(location=='E'){if(!stored.empty()){error="Pad vide KICKKIT invalide.";return false;}}
+        else if(location=='R'){
+            const auto relative=std::filesystem::u8path(stored);
+            if(!safeRelativePath(relative)){error="Chemin relatif KICKKIT invalide.";return false;}
+            paths[pad]=(root/relative).lexically_normal().u8string();
+        }else{
+            const auto absolute=std::filesystem::u8path(stored);
+            if(!absolute.is_absolute()){error="Chemin absolu KICKKIT invalide.";return false;}
+            paths[pad]=absolute.lexically_normal().u8string();
+        }
+        if(!readPadSettings(file,edits[pad],error)){error="Pad "+std::to_string(pad+1)+" : "+error;return false;}
+    }
+    std::array<std::unique_ptr<AudioFile<float>>,Pads> clips;
+    std::array<Impl::BankPad,Pads> parsed;
+    for(int pad=0;pad<Pads;++pad){
+        auto& destination=parsed[pad];destination.path=paths[pad];destination.edit=edits[pad];
+        if(paths[pad].empty())continue;
+        try{
+            clips[pad]=decode(paths[pad]);destination.loaded=true;destination.name=std::filesystem::u8path(paths[pad]).stem().u8string();
+            destination.duration=double(clips[pad]->getNumSamplesPerChannel())/Rate;destination.waveform.assign(320,0.f);
+            const auto& audio=clips[pad]->samples[0];for(size_t sample=0;sample<audio.size();++sample){const size_t point=std::min<size_t>(319,sample*320/audio.size());destination.waveform[point]=std::max(destination.waveform[point],std::abs(audio[sample]));}
+        }catch(const std::exception& exception){error="Kit non charge, pad "+std::to_string(pad+1)+" ("+std::filesystem::u8path(paths[pad]).filename().u8string()+"): "+exception.what();return false;}
+    }
+    std::array<std::unique_ptr<PadEffects>,Pads> effects;for(int pad=0;pad<Pads;++pad)effects[pad]=std::make_unique<PadEffects>(edits[pad]);
+    std::array<std::unique_ptr<AudioFile<float>>,Pads> retired;
+    {std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);impl->cancelPreparedGroup();const int group=impl->state.group;
+        for(int pad=0;pad<Pads;++pad){
+            impl->players[pad]->stop();impl->pendingPitch[pad].store(1000);retired[pad]=impl->players[pad]->replaceFile(std::move(clips[pad]));impl->loaded[pad]=parsed[pad].loaded;
+            auto& bank=impl->banks[group][pad];bank.name=parsed[pad].name;bank.path=parsed[pad].path;bank.waveform=std::move(parsed[pad].waveform);bank.duration=parsed[pad].duration;bank.edit=parsed[pad].edit;bank.loaded=parsed[pad].loaded;bank.file.reset();bank.effects.reset();
+            impl->state.names[pad]=bank.name;impl->state.paths[pad]=bank.path;impl->state.waveforms[pad]=bank.waveform;impl->state.durations[pad]=bank.duration;impl->state.edits[pad]=bank.edit;impl->state.active[pad]=false;impl->state.progress[pad]=0;
+            impl->players[pad]->edit=bank.edit;impl->players[pad]->effects.swap(effects[pad]);impl->players[pad]->resetMix();
+        }
+    }
+    return true;
 }
 bool Engine::exportCurrentPatternWav(const std::string& path,std::string& error){
     const auto before=snapshot();

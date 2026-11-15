@@ -155,6 +155,11 @@ public:
     // Exactly Block stereo frames; UI waveform copies do not hold render locks.
     void render(float* interleaved);
     bool save(const std::string&,std::string& error);
+    // KICK Drum Program equivalent: saves or replaces only the sixteen pads
+    // of the active A-H block. Patterns, Song and global project state are not
+    // part of a kit. Paths inside sampleRoot are stored relatively.
+    bool saveKit(const std::string&,const std::string& sampleRoot,std::string& error);
+    bool openKit(const std::string&,const std::string& sampleRoot,std::string& error);
     // Renders exactly one cycle of the currently active sequence through the
     // real mixer and insert chain, as stereo 48 kHz / 24-bit PCM.
     bool exportCurrentPatternWav(const std::string&,std::string& error);
