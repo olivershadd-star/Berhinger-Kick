@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.14.0 complète le premier **Drum Program** fidèle au modèle publié de KICK : quatre couches par pad, sélection par vélocité/cycle/aléatoire, modes One Shot/Note On/Note Off, groupes Choke, lecture Reverse et dix-huit couleurs. Le Pad Edit possède cinq pages utilisables à la souris, au clavier et avec les Q-Links Maschine+. Les Programs restent séparés des Patterns et A–H s'enchaînent à la fin de la boucle.
+La version 0.15.0 porte la première couche complète **Events** du séquenceur publié de KICK. Chaque step rythmique ou mélodique possède désormais sa vélocité, sa probabilité, son ratchet et sa longueur. Le bouton EVENTS ouvre l'éditeur contextuel ; les pads choisissent le step et P1–P4 règlent ses quatre propriétés. La version 0.14.0 avait complété le premier **Drum Program** fidèle au modèle publié de KICK : quatre couches par pad, sélection par vélocité/cycle/aléatoire, modes One Shot/Note On/Note Off, groupes Choke, lecture Reverse et dix-huit couleurs.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -75,6 +75,7 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Chaque projet contient seize séquences de une à quatre mesures, en doubles croches. L'écran **Sequences** choisit la séquence, la mesure visible et la longueur.
 - Chaque séquence conserve ses pistes de batterie et une piste mélodique. **PAD MODE** choisit une piste de sample, **KEYBOARD** travaille les hauteurs et **STEP** affiche les seize pas sur les pads.
 - **REC** arme l'enregistrement. Une fois PLAY actif, chaque pad joué est écrit sur la séquence courante. FOLLOW / Grid alterne entre 1/4, 1/8 et 1/16 ; l'enregistrement rythmique et mélodique utilise exactement la même grille que Step. STOP coupe le transport et désarme REC.
+- **EVENTS** ouvre les propriétés du step sélectionné. Les seize pads choisissent le step sans le supprimer ; gauche/droite ou la rotation 4D avancent et reculent. **P1 Velocity** règle 1–127, **P2 Probability** 0–100 %, **P3 Ratchet** ×1–×8 et **P4 Length** 1–16 steps. Enter bascule l'événement. Les valeurs s'appliquent aussi aux notes Keyboard, et REC capture la vélocité MIDI réelle.
 - **NOTE REPEAT / Arp** répète le pad Drum tenu ou parcourt les notes MIDI maintenues en Keyboard. La répétition est calculée dans le moteur audio à 1/4, 1/8 ou 1/16 et ne dépend pas du rafraîchissement graphique. **CHORDS** construit une triade sur le pad choisi et la confie à ce même arpégiateur.
 - **Pad Notes / Keygroup** reprend la logique Pad Perform publiée dans KICK : modes chromatique, gamme majeure et gamme mineure, sample source et note racine. Un clic de pad, une touche AZERTY ou une note MIDI joue le même sample à une hauteur différente. La transposition change aussi la durée, sans time-stretch.
 - **Next Sequence** affecte les séquences 1–16 aux pads. À l'arrêt, le choix est immédiat ; pendant la lecture, la nouvelle séquence est mise en attente jusqu'à la fin complète de la séquence courante.
@@ -89,7 +90,7 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Les boutons A–H du template Maschine changent les pages de notes à l'intérieur du contrôleur : ils ne sélectionnent donc pas automatiquement les banques KICK. En Pad Mode, les pages apprises déclenchent les mêmes seize pads sans changer de banque. En Keyboard, toutes les notes MIDI reçues conservent leur hauteur, ce qui permet d'utiliser ces pages comme registres/octaves. Les banques KICK A–H restent sélectionnables à la souris ou par huit autres commandes MIDI apprises.
 - Dans le Mixer, la page physique 1 vise les pistes 1–8 et la page 2 les pistes 9–16 ; ailleurs, les Q-Links restent contextuels. Le profil `KICKMIDI 5` possède une copie portable dans `profiles/MaschinePlus.kickmidi` et relit les versions 1–4. La rotation 4D reste disponible en relatif `1/127`, `ABS` ou `63/65`.
 - Chaque apprentissage sauvegarde immédiatement le profil. `SETTINGS → Sauvegarder le profil MIDI maintenant` force l'écriture ; `SETTINGS → Ouvrir le dossier portable` montre le fichier. Dans MIDI Control, les touches contextuelles `SAVE MIDI` et `DOSSIER` fournissent les mêmes commandes. AppData n'est qu'une sauvegarde secondaire.
-- REC est actuellement un overdub monophonique pour Keyboard. La durée des notes, les accords polyphoniques, la vélocité expressive, le mode Replace, le compte à rebours, le retour LED et l'horloge MIDI restent à porter.
+- REC est actuellement un overdub monophonique pour Keyboard. La vélocité d'entrée est conservée ; la capture automatique de la durée Note Off, les accords polyphoniques, le mode Replace, le compte à rebours, le retour LED et l'horloge MIDI restent à porter.
 
 ## WAV et projets
 
@@ -105,7 +106,7 @@ L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la r
 
 **FILE → Exporter le pattern actif en WAV** rend exactement une boucle du pattern sélectionné avec son Program, à son tempo et sa longueur de une à quatre mesures. L'export est stéréo PCM 24 bits à 48 kHz et passe par le véritable moteur : pitch, enveloppes, niveaux, panoramiques, mutes/solos, Master et quatre inserts par pad sont inclus. Le transport est arrêté à la fin de l'export.
 
-Les projets **KICKLAB 1** à **KICKLAB 10** et les kits KICKKIT 1 restent lisibles. Les nouveaux projets utilisent **KICKLAB 11** et les nouveaux kits **KICKKIT 2** pour conserver les quatre couches et le comportement Drum. Ils ne s'ouvrent pas dans les anciennes versions. Ces formats appartiennent au portage Windows, pas à la machine KICK.
+Les projets **KICKLAB 1** à **KICKLAB 11** et les kits KICKKIT 1 restent lisibles. Les nouveaux projets utilisent **KICKLAB 12** pour conserver les Events et les nouveaux kits utilisent **KICKKIT 2** pour conserver les quatre couches et le comportement Drum. Ils ne s'ouvrent pas dans les anciennes versions. Ces formats appartiennent au portage Windows, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 
@@ -124,7 +125,7 @@ Les corrections de 0.1.1 et 0.1.2 sont conservées : ordre des buffers, attente 
 
 Sortie fixe : PCM stéréo 16 bits à 48 kHz via WinMM, quatre buffers de 1 024 trames (environ 85 ms de réserve, plus le pilote). Pas d'ASIO ni de VST3 pour l'instant. Le séquenceur est quantifié au bloc de 256 trames (environ 5,33 ms), sans dérive cumulative du compteur. Le Master affiche `DSP`, la part de ce budget consommée, et `RETARDS`, le nombre de blocs ayant dépassé leur délai.
 
-Le premier Keygroup et son enregistrement sont monophoniques : une nouvelle note remplace la précédente et les accords/progressions du Pad Perform KICK ne sont pas encore portés. Le Track Mixer agit réellement sur les seize lecteurs actuels, mais les événements note/durée/vélocité et les automations Track Mute restent à porter. Les `.kickkit` ne contiennent volontairement aucun média ; pas encore de synthétiseurs KICK ni de banque complète d'effets.
+Le premier Keygroup et son enregistrement sont monophoniques : une nouvelle note remplace la précédente et les accords/progressions du Pad Perform KICK ne sont pas encore portés. Velocity, Probability, Ratchet et Length sont portés, mais les automations Track Mute et l'édition polyphonique avancée restent à faire. Les `.kickkit` ne contiennent volontairement aucun média ; pas encore de synthétiseurs KICK ni de banque complète d'effets.
 
 ## Développer
 
@@ -145,7 +146,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, Reverse, les quatre couches Velocity/Cycle, les trois modes de déclenchement, Choke, les couleurs, la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, la séparation Program/Pattern, KICKLAB 11/KICKKIT 2 et leurs migrations, le mixage, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, Reverse, les quatre couches Velocity/Cycle, les trois modes de déclenchement, Choke, les couleurs, les Events Velocity/Probability/Ratchet/Length, la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, la séparation Program/Pattern, KICKLAB 12/KICKKIT 2 et leurs migrations, le mixage, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 

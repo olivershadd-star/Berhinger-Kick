@@ -90,8 +90,13 @@ int main(int argc,char**argv){try{
     e.setPerformanceMode(PerformanceMode::Major);check(e.performanceNote(7)==60,"major scale pad mapping is incorrect");e.setPerformanceMode(PerformanceMode::Chromatic);
     // Live REC writes the running playhead to the selected quantized grid.
     e.stop();e.selectSequence(15);e.clearPattern();e.setSequenceBars(1);e.setPerformanceMode(PerformanceMode::Drum);e.setPlaying(true);e.render(block);
-    check(e.recordHit(4,-1,16),"quantized drum recording was rejected");check(e.snapshot().sequences[15].drum[4][0],"quantized drum hit was not written");
-    e.setPerformanceMode(PerformanceMode::Chromatic);e.setMelodicSourcePad(12);e.setRootNote(48);check(e.recordHit(12,55,16),"quantized melodic recording was rejected");check(e.snapshot().sequences[15].melody[0]==55,"quantized melodic note was not written");e.stop();
+    check(e.recordHit(4,-1,16,83),"quantized drum recording was rejected");check(e.snapshot().sequences[15].drum[4][0]&&e.snapshot().sequences[15].drumEvents[4][0].velocity==83,"quantized drum hit or velocity was not written");
+    e.setPerformanceMode(PerformanceMode::Chromatic);e.setMelodicSourcePad(12);e.setRootNote(48);check(e.recordHit(12,55,16,61),"quantized melodic recording was rejected");check(e.snapshot().sequences[15].melody[0]==55&&e.snapshot().sequences[15].melodyEvents[0].velocity==61,"quantized melodic note or velocity was not written");e.stop();
+    // Original KICK Events metadata: every note stores velocity, probability,
+    // ratchet and length. Probability participates in playback and all four
+    // values survive a KICKLAB 12 round trip.
+    {Engine events;check(events.load(0,path("long.wav"),error),error.c_str());events.toggle(0,0);StepEvent event{72,0,4,3};events.setStepEvent(0,0,event);events.setPlaying(true);events.render(block);check(!events.snapshot().active[0],"zero-probability event was triggered");events.stop();event.probability=100;events.setStepEvent(0,0,event);events.setPlaying(true);events.render(block);check(events.snapshot().active[0],"enabled event was not triggered");events.stop();events.setPerformanceMode(PerformanceMode::Chromatic);events.setMelodicSourcePad(0);events.toggle(5,3);events.setStepEvent(0,3,StepEvent{49,64,2,6},true);check(events.save(path("events-v12.kicklab"),error),error.c_str());}
+    {Engine restoredEvents;check(restoredEvents.open(path("events-v12.kicklab"),error),error.c_str());const auto restored=restoredEvents.snapshot();const auto drumEvent=restored.sequences[0].drumEvents[0][0],melodicEvent=restored.sequences[0].melodyEvents[3];check(drumEvent.velocity==72&&drumEvent.probability==100&&drumEvent.ratchet==4&&drumEvent.length==3,"KICKLAB 12 did not retain drum Events");check(melodicEvent.velocity==49&&melodicEvent.probability==64&&melodicEvent.ratchet==2&&melodicEvent.length==6,"KICKLAB 12 did not retain melodic Events");}
     // Next Sequence waits for the complete sequence boundary.
     e.selectSequence(1);e.clearPattern();e.setSequenceBars(1);e.setPerformanceMode(PerformanceMode::Drum);e.toggle(0,0);
     e.selectSequence(2);e.clearPattern();e.setSequenceBars(1);e.setPerformanceMode(PerformanceMode::Drum);e.toggle(1,0);
@@ -208,7 +213,7 @@ int main(int argc,char**argv){try{
     e.setInsertEffect(0,2,InsertEffect::PurestDrive);e.setInsertParameter(0,2,0,.42);e.setInsertBypass(0,2,true);restored=e.snapshot().edits[0];check(restored.inserts[2].effect==InsertEffect::PurestDrive&&restored.inserts[2].parameters[0]==.42&&restored.inserts[2].bypass,"insert control API failed");
     e.resetProject();auto reset=e.snapshot();check(reset.paths[0].empty()&&!reset.pattern[0][0]&&reset.songLength==0&&reset.sequence==0,"new project reset retained musical data");
     std::cout<<"PASS: trim, Pad Perform pitch, ADSR, 31 Airwindows effects and four AudIO inserts\n";
-    std::cout<<"PASS: four-layer Drum Programs, KICKLAB 11, mixer, 16 sequences, Song and legacy compatibility\n";
+    std::cout<<"PASS: KICK Events, four-layer Drum Programs, KICKLAB 12, mixer, 16 sequences, Song and legacy compatibility\n";
     // Batched driver completions across the ring boundary must preserve time order.
     AudioQueue<4> queue;std::array<bool,4> ready={true,true,true,false};std::vector<int> submitted;
     auto submit=[&](size_t b){submitted.push_back(int(b));ready[b]=false;return true;};

@@ -140,6 +140,7 @@ enum class DisplayModule {
     PadPerform,
     NextSequence,
     Programs,
+    Events,
     Song,
     Tempo,
     MidiControl

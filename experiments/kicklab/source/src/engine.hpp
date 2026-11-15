@@ -76,6 +76,12 @@ struct PadLayerInfo {
     int velocityStart=1,velocityEnd=127;
     bool reverse=false,loaded=false;
 };
+struct StepEvent {
+    int velocity=127;
+    int probability=100;
+    int ratchet=1;
+    int length=1;
+};
 enum class PerformanceMode { Drum=0, Chromatic=1, Major=2, Minor=3 };
 struct SequenceData {
     std::string name;
@@ -88,6 +94,8 @@ struct SequenceData {
     int rootNote=48;
     std::array<std::array<bool,MaxSequenceSteps>,Pads> drum{};
     std::array<int,MaxSequenceSteps> melody{};
+    std::array<std::array<StepEvent,MaxSequenceSteps>,Pads> drumEvents{};
+    std::array<StepEvent,MaxSequenceSteps> melodyEvents{};
     std::array<TrackData,Pads> tracks{};
     SequenceData(){
         melody.fill(-1);
@@ -145,6 +153,7 @@ public:
     void setInsertsBypass(int pad,bool bypass);
     void setInsertParameter(int pad,int slot,int parameter,double value);
     void toggle(int pad,int step);
+    void setStepEvent(int track,int absoluteStep,const StepEvent& event,bool melodic=false);
     void clearPattern(); void demoPattern();
     void resetProject();
     void selectSequence(int sequence);
@@ -171,7 +180,7 @@ public:
     int performanceNote(int performancePad)const;
     // Records onto the running sequence, snapped to 1/4, 1/8 or 1/16.
     // note < 0 records a drum hit on pad; otherwise it records the MIDI note.
-    bool recordHit(int pad,int note,int quantizeDivision);
+    bool recordHit(int pad,int note,int quantizeDivision,int velocity=127);
     void addSongStep(int sequence,int repeats);
     void editSongStep(int position,int sequence,int repeats);
     void deleteSongStep(int position);

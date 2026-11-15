@@ -1,11 +1,13 @@
-KICK Lab 0.14.0 — Drum Program complet, quatre couches
+KICK Lab 0.15.0 — Events KICK par step
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; quatre Layers ; sélection Velocity et Cycle ; Reverse ; One Shot, Note On et Note Off ; Choke ; couleurs ; Loop Sync 130→120 BPM ; Note Repeat ; découpe et hauteur Pad Perform ; ADSR ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; mixage ; sauvegarde KICKLAB 11/KICKKIT 2 ; migrations anciennes ; continuité audio/graphique.
+Scénarios : lecture WAV et silence ; Events Velocity/Probability/Ratchet/Length ; capture de vélocité REC ; quatre Layers ; sélection Velocity et Cycle ; Reverse ; One Shot, Note On et Note Off ; Choke ; couleurs ; Loop Sync 130→120 BPM ; Note Repeat ; découpe et hauteur Pad Perform ; ADSR ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; mixage ; sauvegarde KICKLAB 12/KICKKIT 2 ; migrations anciennes ; continuité audio/graphique.
+
+0.15.0 porte les quatre propriétés MTNote du séquenceur original KICK : vélocité, probabilité, ratchet et longueur. EVENTS utilise les pads pour choisir le step sans modifier la grille, P1–P4 pour éditer ses propriétés et l'encodeur 4D pour avancer ou reculer. Le moteur applique ces valeurs aux événements Drum et mélodiques ; REC conserve la vélocité MIDI reçue. KICKLAB 12 persiste toutes les données et relit KICKLAB 1–11.
 
 0.14.0 porte le comportement Drum Program publié dans KICK. Chaque pad reçoit quatre couches WAV avec plages de vélocité et sélection Velocity, Cycle ou Random. One Shot ignore le relâchement, Note On suit le Note Off et Note Off déclenche au relâchement. Les groupes Choke coupent la voix précédente ; Reverse lit la couche depuis sa fin ; dix-huit couleurs distinguent les pads. Pad Edit possède cinq pages et les vélocités réelles des pads MIDI atteignent le moteur. KICKLAB 11 et KICKKIT 2 persistent l'ensemble et relisent les formats précédents.
 

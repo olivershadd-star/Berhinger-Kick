@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.14.0
+        default: 0.15.0
 
 permissions:
   contents: write
@@ -62,6 +62,13 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.15.0 ports the first complete KICK Events layer. Every
+            drum or melodic step now owns velocity, probability, ratchet and
+            note length. The EVENTS hardware command opens the contextual
+            editor; pads select a step and Q-Links P1-P4 edit its four values.
+            Live REC captures incoming MIDI velocity. KICKLAB 12 preserves the
+            data and still reads all previous KICKLAB projects.
 
             Version 0.14.0 completes the first KICK Drum Program playback model:
             four layers per pad, Velocity/Cycle/Random layer selection, One Shot,

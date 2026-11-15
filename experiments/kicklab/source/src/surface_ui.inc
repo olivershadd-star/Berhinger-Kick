@@ -87,6 +87,7 @@ int mixerTrackFor(int display,int control)const{
 
 void selectTrack(int track){
     stepTrack=std::clamp(track,0,lab::Pads-1);selected=stepTrack;surface.selectPad(selected);engine.selectTrack(stepTrack);
+    for(auto& binding:surface.displays)if(binding.module==lab::DisplayModule::Events)binding.pad=stepTrack;
 }
 
 void selectGroupBlock(int group){
@@ -177,6 +178,22 @@ void deleteSurfaceProgram(){
 
 void showSurfaceSong(int display){
     display=std::clamp(display,0,1);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::Song;binding.page=0;surface.focusDisplay(display);auto snapshot=engine.snapshot();songSelected=std::clamp(songSelected,0,std::max(0,snapshot.songLength-1));status=L"Song Editor — choisis une séquence avec les pads, règle Repeat puis ajoute-la.";
+}
+
+void showSurfaceEvents(int display){
+    display=std::clamp(display,0,1);padMode=3;auto& binding=surface.displays[display];binding.module=lab::DisplayModule::Events;binding.pad=stepTrack;binding.slot=eventStep;binding.page=0;binding.followsSelectedPad=false;surface.focusDisplay(display);status=L"Events KICK — choisis un step avec les pads, puis règle Velocity, Probability, Ratchet et Length avec P1–P4.";
+}
+
+lab::StepEvent surfaceStepEvent(const lab::Snapshot& snapshot,const lab::DisplayBinding& binding)const{
+    const auto& sequence=snapshot.sequences[snapshot.sequence];const int absolute=snapshot.viewBar*lab::Steps+std::clamp(binding.slot,0,lab::Steps-1);return sequence.mode==lab::PerformanceMode::Drum?sequence.drumEvents[std::clamp(binding.pad,0,lab::Pads-1)][absolute]:sequence.melodyEvents[absolute];
+}
+
+double surfaceEventRatio(const lab::StepEvent& event,int knob)const{
+    if(knob==0)return (event.velocity-1)/126.;if(knob==1)return event.probability/100.;if(knob==2)return (event.ratchet-1)/7.;return (event.length-1)/15.;
+}
+
+void setSurfaceEventRatio(int display,int knob,double ratio){
+    if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks)return;auto& binding=surface.displays[display];if(binding.module!=lab::DisplayModule::Events)return;auto snapshot=engine.snapshot();auto event=surfaceStepEvent(snapshot,binding);ratio=std::clamp(ratio,0.,1.);if(knob==0)event.velocity=1+int(std::lround(ratio*126));else if(knob==1)event.probability=int(std::lround(ratio*100));else if(knob==2)event.ratchet=1+int(std::lround(ratio*7));else event.length=1+int(std::lround(ratio*15));const bool melodic=snapshot.sequences[snapshot.sequence].mode!=lab::PerformanceMode::Drum;engine.setStepEvent(std::clamp(binding.pad,0,lab::Pads-1),snapshot.viewBar*lab::Steps+std::clamp(binding.slot,0,lab::Steps-1),event,melodic);markProjectDirty();
 }
 
 double surfaceProgramRatio(const lab::PadEdit& edit,int page,int knob)const{
@@ -285,6 +302,7 @@ void closeSurfaceModule(){
 void setSurfaceQLink(int display,int knob,double ratio){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks)return;
     auto& binding=surface.displays[display];ratio=std::clamp(ratio,0.,1.);if(binding.module==lab::DisplayModule::Sample){setSurfaceProgramRatio(display,knob,ratio);return;}
+    if(binding.module==lab::DisplayModule::Events){setSurfaceEventRatio(display,knob,ratio);return;}
     if(binding.module==lab::DisplayModule::Tempo){if(knob==0)engine.setTempo(40.+ratio*200.);else if(knob==1)engine.setTempo(std::round((40.+ratio*200.)*10.)/10.);return;}
     if(binding.module==lab::DisplayModule::Mixer){const int track=mixerTrackFor(display,knob);if(mixerParameter==0)engine.setTrackLevel(track,ratio);else engine.setTrackPan(track,ratio*2.-1.);return;}
     if(binding.module==lab::DisplayModule::PadPerform){auto snapshot=engine.snapshot();if(knob==0)engine.setPerformanceMode(lab::PerformanceMode(std::clamp(int(std::lround(ratio*3)),0,3)));else if(knob==1)engine.setMelodicSourcePad(std::clamp(int(std::lround(ratio*15)),0,15));else if(knob==2)engine.setRootNote(24+std::clamp(int(std::lround(ratio*60)),0,60));else engine.setViewBar(std::clamp(int(std::lround(ratio*(snapshot.sequences[snapshot.sequence].bars-1))),0,snapshot.sequences[snapshot.sequence].bars-1));return;}
@@ -299,6 +317,7 @@ void setSurfaceQLink(int display,int knob,double ratio){
 void turnSurfaceQLink(int display,int knob,int delta){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks||!delta)return;
     auto& binding=surface.displays[display];
+    if(binding.module==lab::DisplayModule::Events){auto snapshot=engine.snapshot();const auto event=surfaceStepEvent(snapshot,binding);const double step=knob==0?1./126.:knob==1?.01:knob==2?1./7.:1./15.;setSurfaceEventRatio(display,knob,surfaceEventRatio(event,knob)+delta*step);return;}
     if(binding.module==lab::DisplayModule::Mixer){auto snapshot=engine.snapshot();const int track=mixerTrackFor(display,knob);const auto& data=snapshot.sequences[snapshot.sequence].tracks[track];if(mixerParameter==0)engine.setTrackLevel(track,data.level+delta*.01);else engine.setTrackPan(track,data.pan+delta*.02);return;}
     if(binding.module==lab::DisplayModule::Sample){auto snapshot=engine.snapshot();const int pad=std::clamp(binding.pad,0,lab::Pads-1);const auto& edit=snapshot.edits[pad];double ratio=surfaceProgramRatio(edit,binding.page,knob),step=.01;if(binding.page==0&&knob==1)step=1./48.;else if(binding.page==2&&knob==1)step=1./200.;else if((binding.page==2&&knob==0)||binding.page==3)step=knob<2?.5:knob==2?1./16.:1./17.;else if(binding.page==4){const auto& item=snapshot.layers[pad][std::clamp(binding.slot,0,lab::PadLayers-1)];ratio=knob==0?binding.slot/double(lab::PadLayers-1):knob==1?(item.velocityStart-1)/126.:knob==2?(item.velocityEnd-1)/126.:item.reverse?1.:0.;step=knob==0?1./3.:knob==3?1.:1./126.;}setSurfaceProgramRatio(display,knob,ratio+delta*step);return;}
     if(binding.module==lab::DisplayModule::Tempo){auto snapshot=engine.snapshot();engine.setTempo(snapshot.tempo+delta*(knob==1?.1:1.));return;}
@@ -369,6 +388,7 @@ void moveSurfaceMenu(int dx,int dy){
     if(module==lab::DisplayModule::NextSequence){if(dx)turnSurfaceQLink(surface.focusedDisplay,0,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,dy);return;}
     if(module==lab::DisplayModule::PadPerform){if(dx)turnSurfaceQLink(surface.focusedDisplay,0,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,-dy);return;}
     if(module==lab::DisplayModule::Song){if(dx)turnSurfaceQLink(surface.focusedDisplay,1,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,2,dy);return;}
+    if(module==lab::DisplayModule::Events){auto& binding=surface.displays[surface.focusedDisplay];if(dx){eventStep=std::clamp(eventStep+(dx>0?1:-1),0,lab::Steps-1);binding.slot=eventStep;}if(dy){selectTrack(stepTrack+(dy>0?1:-1));binding.pad=stepTrack;}return;}
     if(module==lab::DisplayModule::MidiControl&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,midiControlPages()-1);return;}
     if(module==lab::DisplayModule::Sample&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,4);return;}
     if(module==lab::DisplayModule::Tempo){if(dx)turnSurfaceQLink(surface.focusedDisplay,0,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,1,-dy);return;}
@@ -390,6 +410,7 @@ void turnSurfaceMenu(int delta){
     if(module==lab::DisplayModule::NextSequence){turnSurfaceQLink(surface.focusedDisplay,0,delta);return;}
     if(module==lab::DisplayModule::PadPerform){turnSurfaceQLink(surface.focusedDisplay,2,delta);return;}
     if(module==lab::DisplayModule::Song){turnSurfaceQLink(surface.focusedDisplay,2,delta);return;}
+    if(module==lab::DisplayModule::Events){auto& binding=surface.displays[surface.focusedDisplay];eventStep=std::clamp(eventStep+(delta>0?1:-1),0,lab::Steps-1);binding.slot=eventStep;return;}
     if(module==lab::DisplayModule::Tempo){turnSurfaceQLink(surface.focusedDisplay,0,delta);return;}
     if(module==lab::DisplayModule::Inserts){const auto binding=surface.displays[surface.focusedDisplay];const int slot=(binding.slot+(delta>0?1:-1)+lab::InsertSlots)%lab::InsertSlots;selectedInsert=slot;arrangeSurfaceInsertPages(binding.pad,slot,surface.focusedDisplay);status=L"FX — rotation : slot "+number(slot+1)+L" sélectionné.";return;}
     if(module!=lab::DisplayModule::Menu)return;
@@ -403,6 +424,7 @@ void activateSurfaceMenu(){
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::TrackMute){toggleTrackMute(stepTrack);return;}
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Mixer){selectTrack(mixerTrackFor(surface.focusedDisplay,0));return;}
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Song){engine.addSongStep(songChoice,songRepeats);markProjectDirty();auto snapshot=engine.snapshot();songSelected=std::max(0,snapshot.songLength-1);return;}
+    if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Events){dispatch({lab::SurfaceAction::StepToggle,stepTrack,eventStep});return;}
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Inserts){auto& binding=surface.displays[surface.focusedDisplay];selectedInsert=binding.slot;insertMenu();binding.page=0;return;}
     if(surface.displays[surface.focusedDisplay].module!=lab::DisplayModule::Menu)return;
     const int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
@@ -561,6 +583,7 @@ bool maschineClick(int x,int y,bool right){
     }
     for(int command=0;command<9;++command)if(sideCommandBox(command).contains(x,y)){
         if(command==2){showSurfaceNextSequence(surface.focusedDisplay);status=L"Pattern / Clip — sélection des séquences KICK.";}
+        else if(command==3)showSurfaceEvents(surface.focusedDisplay);
         else if(command==5){duplicateSourceSequence=engine.snapshot().sequence;status=L"Duplicate armé — clique maintenant sur A–H pour choisir le bloc de destination.";}
         else if(command==6){selectLatch=!selectLatch;if(selectLatch)status=L"Select actif — choisis maintenant la piste avec un pad.";else status=L"Select relâché — piste "+number(stepTrack+1)+L".";}
         else if(command==7){soloLatch=!soloLatch;muteLatch=selectLatch=false;status=soloLatch?L"Solo actif — frappe un pad pour isoler sa piste.":L"Mode Solo relâché.";}
@@ -613,6 +636,7 @@ void paintSurfaceKnob(HDC dc,int display,int knob,const lab::Snapshot& snapshot)
     const auto& binding=surface.displays[display];
     if(binding.module==lab::DisplayModule::Mixer){const auto& track=snapshot.sequences[snapshot.sequence].tracks[mixerTrackFor(display,knob)];ratio=mixerParameter==0?track.level:(track.pan+1.)*.5;assigned=true;}
     else if(binding.module==lab::DisplayModule::Sample){const int pad=std::clamp(binding.pad,0,lab::Pads-1);if(binding.page==4){const auto& item=snapshot.layers[pad][std::clamp(binding.slot,0,lab::PadLayers-1)];ratio=knob==0?binding.slot/double(lab::PadLayers-1):knob==1?(item.velocityStart-1)/126.:knob==2?(item.velocityEnd-1)/126.:item.reverse?1.:0.;}else ratio=surfaceProgramRatio(snapshot.edits[pad],binding.page,knob);assigned=binding.page!=2||knob<2;}
+    else if(binding.module==lab::DisplayModule::Events){ratio=surfaceEventRatio(surfaceStepEvent(snapshot,binding),knob);assigned=true;}
     else if(binding.module==lab::DisplayModule::Tempo){ratio=(snapshot.tempo-40.)/200.;assigned=knob<2;}
     else if(binding.module==lab::DisplayModule::PadPerform){const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)ratio=int(sequence.mode)/3.;else if(knob==1)ratio=sequence.sourcePad/15.;else if(knob==2)ratio=(sequence.rootNote-24)/60.;else ratio=sequence.bars>1?double(snapshot.viewBar)/(sequence.bars-1):0;assigned=true;}
     else if(binding.module==lab::DisplayModule::NextSequence){const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)ratio=snapshot.sequence/15.;else if(knob==1)ratio=(sequence.bars-1)/3.;else if(knob==2)ratio=sequence.bars>1?double(snapshot.viewBar)/(sequence.bars-1):0;else ratio=int(sequence.mode)/3.;assigned=true;}
@@ -748,6 +772,13 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
         for(int knob=0;knob<4;++knob){const int y=box.y+94+knob*45;fill(dc,{box.x+14,y,box.w-28,38},knob%2?RGB(18,31,35):RGB(17,28,33));text(dc,{box.x+24,y,42,38},L"P"+number(display*4+knob+1),10,accent,FW_SEMIBOLD);text(dc,{box.x+68,y,220,38},surfaceProgramParameterName(binding.page,knob),11,ink);text(dc,{box.x+300,y,126,38},surfaceProgramParameterValue(edit,binding.page,knob,binding.page==4?&layer:nullptr,layerIndex),10,accent,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);}
         return;
     }
+    if(binding.module==lab::DisplayModule::Events){
+        const auto& sequence=snapshot.sequences[snapshot.sequence];const bool melodic=sequence.mode!=lab::PerformanceMode::Drum;const int step=std::clamp(binding.slot,0,lab::Steps-1),absolute=snapshot.viewBar*lab::Steps+step;const auto event=surfaceStepEvent(snapshot,binding);const bool present=melodic?sequence.melody[absolute]>=0:sequence.drum[std::clamp(binding.pad,0,lab::Pads-1)][absolute];
+        text(dc,{box.x+14,box.y+9,300,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  EVENTS  ·  STEP "+number(step+1),12,focused?accent:muted,FW_SEMIBOLD);fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
+        std::wstring eventTitle=present?L"EVENT ACTIF · ":L"EVENT VIDE · ";eventTitle+=melodic?L"NOTE "+noteName(sequence.melody[absolute]):L"TRACK "+padName(binding.pad);button(dc,surfaceProgramAuditionBox(display),eventTitle,present);
+        const std::array<std::wstring,4> names={L"Velocity",L"Probability",L"Ratchet",L"Length"};const std::array<std::wstring,4> values={number(event.velocity),number(event.probability)+L" %",L"×"+number(event.ratchet),number(event.length)+L" step"+(event.length>1?L"s":L"")};
+        for(int knob=0;knob<4;++knob){const int y=box.y+94+knob*45;fill(dc,{box.x+14,y,box.w-28,38},knob%2?RGB(18,31,35):RGB(17,28,33));text(dc,{box.x+24,y,42,38},L"P"+number(display*4+knob+1),10,accent,FW_SEMIBOLD);text(dc,{box.x+68,y,220,38},names[knob],11,ink);text(dc,{box.x+300,y,126,38},values[knob],10,accent,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);}return;
+    }
     text(dc,{box.x+14,box.y+9,250,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MENU KICK",12,focused?accent:muted,FW_SEMIBOLD);
     text(dc,{box.x+316,box.y+9,124,24},L"PAGE "+number(display+1)+L" / 2",9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
@@ -766,6 +797,7 @@ std::wstring surfaceSoftLabel(int display,int soft,const lab::Snapshot& snapshot
     if(module==lab::DisplayModule::Programs)return display==0?std::array<std::wstring,4>{L"ASSIGNER",L"NOUVEAU",L"DUPLIQUER",L"SUPPRIMER"}[soft]:std::array<std::wstring,4>{L"CHARGER KIT",L"SAUVER KIT",L"PAD EDIT",L"MENU"}[soft];
     if(module==lab::DisplayModule::Inserts)return L"SLOT "+number(soft+1);
     if(module==lab::DisplayModule::Sample)return std::array<std::wstring,4>{L"SAMPLE",L"ADSR",L"DRUM",L"LAYERS"}[soft];
+    if(module==lab::DisplayModule::Events)return std::array<std::wstring,4>{L"VELOCITY",L"PROBABILITY",L"RATCHET",L"LENGTH"}[soft];
     if(module==lab::DisplayModule::Tempo)return std::array<std::wstring,4>{L"−10",L"−1",L"+1",L"+10"}[soft];
     if(module==lab::DisplayModule::MidiControl)return std::array<std::wstring,4>{L"SAVE MIDI",L"DOSSIER",L"< PAGE",L"PAGE >"}[soft];
     if(module==lab::DisplayModule::Menu){static const std::array<int,8> items={0,1,2,3,4,11,12,15};return surfaceMenuLabels[items[display*4+soft]];}
@@ -827,7 +859,7 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
         {L"EVENTS",L""},{L"VARIATION",L""},{L"DUPLICATE",L"Double"},
         {L"SELECT",L""},{L"SOLO",L""},{L"MUTE",L"Choke"}
     }};
-    for(int i=0;i<9;++i){const bool available=i==2||i==5||i>=6;const bool active=i==5?duplicateSourceSequence>=0:i==6?selectLatch:i==7?soloLatch:i==8?muteLatch:false;hardwareButton(dc,sideCommandBox(i),commands[i].first,commands[i].second,active,available);}
+    for(int i=0;i<9;++i){const bool available=i==2||i==3||i==5||i>=6;const bool active=i==3?surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Events:i==5?duplicateSourceSequence>=0:i==6?selectLatch:i==7?soloLatch:i==8?muteLatch:false;hardwareButton(dc,sideCommandBox(i),commands[i].first,commands[i].second,active,available);}
 
     // Reserved symmetrically for the next KICK modules. They are deliberately
     // blank and have no hit handling yet.
@@ -836,11 +868,11 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     static const std::array<const wchar_t*,4> modes={L"PAD MODE",L"KEYBOARD",L"CHORDS",L"STEP"};
     for(int mode=0;mode<4;++mode)hardwareButton(dc,modeBox(mode),modes[mode],L"",mode==padMode,true);
 
-    const auto& sequence=snapshot.sequences[snapshot.sequence];const bool notes=padMode==1||padMode==2;const bool steps=padMode==3;const bool melodicSteps=steps&&sequence.mode!=lab::PerformanceMode::Drum;
+    const auto& sequence=snapshot.sequences[snapshot.sequence];const bool notes=padMode==1||padMode==2;const bool steps=padMode==3;const bool melodicSteps=steps&&sequence.mode!=lab::PerformanceMode::Drum;const bool editingEvents=surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Events;
     const bool playVisible=snapshot.playing&&snapshot.playBar==snapshot.viewBar;ULONGLONG now=GetTickCount64();
     for(int p=0;p<16;++p){
         const auto box=padBox(p);const bool active=steps?(melodicSteps?snapshot.melody[p]==engine.performanceNote(stepTrack):snapshot.pattern[stepTrack][p]):notes?false:snapshot.active[p];
-        const bool hot=now<flashed[p]||active||(steps&&playVisible&&snapshot.step==p);const COLORREF color=steps?RGB(241,184,88):programPadColor(snapshot.edits[p].color);
+        const bool hot=now<flashed[p]||active||(steps&&playVisible&&snapshot.step==p)||(editingEvents&&p==eventStep);const COLORREF color=steps?RGB(241,184,88):programPadColor(snapshot.edits[p].color);
         round(dc,box,hot?color:RGB(36,42,53),padMode==0&&p==selected?color:line);
         std::wstring title=steps?L"STEP "+number(p+1):notes?noteName(engine.performanceNote(p)):wide(snapshot.names[p]);
         std::wstring sub=steps?(melodicSteps?noteName(engine.performanceNote(stepTrack)):L"TRACK "+padName(stepTrack)):notes?(padMode==2?L"TRIADE ARP":L"PAD "+padName(sequence.sourcePad)):L"PAD "+padName(p);
