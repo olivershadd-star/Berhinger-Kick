@@ -1,4 +1,4 @@
-KICK Lab 0.21.0 — séquenceur graphique Drum et Keyboard
+KICK Lab 0.21.1 — séquenceur graphique Drum et Keyboard
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
@@ -6,6 +6,8 @@ Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
 Scénarios : gain Master réel ; surcharge de seize pistes ; limiteur −1 dBFS ; vumètres de pistes ; export WAV 24 bits sans échantillon écrêté ; lecture WAV et silence ; Copy Pad complet et indépendant ; Delete Pad sans altérer les patterns ; Erase Notes Drum/mélodique par plage ; Color Editor par Program et par kit ; List Edit avec insertion, déplacement protégé et suppression ; Pad Mixer Level/Pan ; Pad Mutes groupés ; Events Velocity/Probability/Ratchet/Length ; capture de vélocité REC ; quatre Layers ; sélection Velocity et Cycle ; Reverse ; One Shot, Note On et Note Off ; Choke ; Loop Sync 130→120 BPM ; Note Repeat ; découpe et hauteur Pad Perform ; ADSR ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; mixage ; sauvegarde KICKLAB 14/KICKKIT 4 ; migrations anciennes ; continuité audio/graphique.
+
+0.21.1 sécurise le routage global des clics Windows, borne toujours la conversion des coordonnées et transforme le smoke test en véritable test d'interaction : KICK, Pad Mode, deux pads, SÉQ, un step Drum, Keyboard, un step mélodique et le pattern B sont effectivement cliqués avant publication.
 
 0.21.0 remet le séquenceur graphique 16×16 dans la façade actuelle sans dupliquer le moteur. KICK et SÉQ remplacent uniquement la zone des pads, tandis que les deux écrans, les groupes A–H, le transport et les commandes restent communs. Drum affiche seize pistes de pads ; Keyboard affiche les seize notes mappées. Les clics et REC quantifié modifient la même séquence active. Chaque pattern conserve une à quatre mesures et la mesure d'édition peut être parcourue indépendamment de la tête de lecture. Aucun changement de format : KICKLAB 14 et KICKKIT 4 restent courants.
 

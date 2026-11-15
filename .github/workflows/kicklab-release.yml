@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.21.0
+        default: 0.21.1
 
 permissions:
   contents: write
@@ -62,6 +62,10 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.21.1 hardens the Windows mouse dispatcher and replaces
+            the former launch-only smoke check with real clicks across KICK,
+            Pad Mode, pads, SEQ, Drum/Keyboard steps and A-H patterns.
 
             Version 0.21.0 restores the full 16-track by 16-step sequencer as
             a second view of the same KICK surface. MENU, KICK and SEQ switch

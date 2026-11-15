@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.21.0 réintègre le **séquenceur graphique 16 pistes × 16 pas** comme seconde vue de la façade. Les boutons MENU, KICK et SÉQ basculent entre les mêmes écrans et les zones Pads/Séquenceur. Drum et Keyboard éditent directement le pattern A–H actif, sur une à quatre mesures, à la souris ou par REC quantifié.
+La version 0.21.1 sécurise les clics Windows et les valide désormais par un test d'interaction complet. Elle conserve le **séquenceur graphique 16 pistes × 16 pas** de la 0.21.0 comme seconde vue de la façade. Les boutons MENU, KICK et SÉQ basculent entre les mêmes écrans et les zones Pads/Séquenceur. Drum et Keyboard éditent directement le pattern A–H actif, sur une à quatre mesures, à la souris ou par REC quantifié.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 

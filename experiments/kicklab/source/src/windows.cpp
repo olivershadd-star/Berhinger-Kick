@@ -123,7 +123,7 @@ class App {
 public:
     lab::Engine engine;lab::SurfaceState surface;AudioOutput audio{engine};HWND window{};std::filesystem::path base,library,kitLibrary,midiProfile,portableMidiProfile,midiDeviceSettings,midiProfileSource,currentProject,appearanceDirectory,appearanceSettings,wallpaperPath;
     std::array<BrowserState,lab::SurfaceDisplays> browsers{};
-    int selected=0,tab=0;bool smoke=false;UINT audioId=WAVE_MAPPER;HMIDIIN midi{};int midiId=-1;
+    int selected=0,tab=0;bool smoke=false,smokeFailed=false;int smokeStep=0;ULONGLONG smokeDeadline=0;UINT audioId=WAVE_MAPPER;HMIDIIN midi{};int midiId=-1;
     int songChoice=0,songRepeats=1,songSelected=0,programSelected=0;
     std::array<lab::MidiCcBinding,lab::SurfaceMidiQLinks> midiQlinks{};std::array<lab::MidiPadBinding,lab::SurfaceMidiPads> midiPads{};std::array<lab::MidiCommandBinding,lab::MidiCommandCount> midiCommands{};int midiLearnTarget=-1,midiLearnPad=-1,midiLearnCommand=-1;unsigned midiLastPacked=0;unsigned midiMessageCount=0;bool midiProfileLoaded=false;double meterPeak=0;std::wstring preferredMidiDevice;
     std::wstring status=L"Clique sur un pad pour jouer. Clic droit pour charger un WAV.";
@@ -289,7 +289,7 @@ public:
     void load(const std::wstring& path){if(path.empty())return;std::string error;if(engine.load(selected,utf8(path),error)){markProjectDirty();status=L"WAV chargé sur le pad "+padName(selected)+L". Conversion à 48 kHz si nécessaire.";play(selected);}else MessageBoxW(window,wide(error).c_str(),L"Chargement WAV",MB_OK|MB_ICONINFORMATION);}
     void sampleMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,700,L"Factory Sample Library");AppendMenuW(menu,MF_STRING,701,L"Importer depuis l'ordinateur");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,702,L"Ouvrir le dossier de la bibliothèque");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice==700)load(choose(false,false,library));else if(choice==701)load(choose(false,false));else if(choice==702)ShellExecuteW(window,L"open",library.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
     void savePadToLibrary(){auto s=engine.snapshot();if(s.paths[selected].empty()){MessageBoxW(window,L"Charge d'abord un WAV sur ce pad.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}auto source=std::filesystem::u8path(s.paths[selected]);auto folder=browsers[surface.focusedDisplay].directory;if(folder.empty()||!std::filesystem::is_directory(folder))folder=library;auto destinationText=choose(true,false,folder,source.filename().wstring());if(destinationText.empty())return;auto destination=std::filesystem::path(destinationText);std::error_code ec;if(std::filesystem::exists(destination,ec)&&std::filesystem::equivalent(source,destination,ec)){status=L"Ce WAV est déjà dans la bibliothèque : "+destination.filename().wstring();return;}ec.clear();std::filesystem::copy_file(source,destination,std::filesystem::copy_options::overwrite_existing,ec);if(ec){MessageBoxW(window,(L"Copie impossible : "+wide(ec.message())).c_str(),L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}std::string loadError;if(engine.load(selected,destination.u8string(),loadError,true)){markProjectDirty();status=L"WAV ajouté à la bibliothèque : "+destination.filename().wstring();}else status=L"WAV copié, mais impossible de rattacher le pad : "+wide(loadError);}
-    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.21.0 — "+name+(projectDirty?L" *":L"")).c_str());}
+    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.21.1 — "+name+(projectDirty?L" *":L"")).c_str());}
     void markProjectDirty(){if(!projectDirty){projectDirty=true;updateProjectTitle();}}
     bool saveProjectAs(){
         const auto suggested=currentProject.empty()?L"Nouveau-projet.kicklab":currentProject.filename().wstring();auto p=choose(true,true,currentProject.parent_path(),suggested);if(p.empty())return false;
@@ -388,6 +388,29 @@ public:
         if(maschineClick(x,y,right))return;
         if(surfaceClick(x,y,right))return;
     }
+    void smokeClick(int designX,int designY){
+        const int clientX=std::clamp(designX*std::max(1,width)/DesignWidth,0,std::max(0,width-1));
+        const int clientY=std::clamp(designY*std::max(1,height)/DesignHeight,0,std::max(0,height-1));
+        PostMessageW(window,WM_LBUTTONDOWN,0,MAKELPARAM(clientX,clientY));
+    }
+    void advanceInteractionSmokeTest(){
+        // Exercise the real Win32 mouse route rather than merely opening the
+        // window. This catches regressions in hit testing, Pad/KICK switching,
+        // the graphical sequencer and its shared Drum/Keyboard data.
+        switch(smokeStep++){
+        case 0:smokeClick(136,345);break;              // KICK
+        case 1:smokeClick(832,436);break;              // Pad Mode
+        case 2:smokeClick(832,788);break;              // pad 1
+        case 3:smokeClick(216,345);break;              // SEQ
+        case 4:smokeClick(873,525);break;              // drum step
+        case 5:smokeClick(948,436);break;              // Keyboard
+        case 6:smokeClick(895,544);break;              // melodic step
+        case 7:smokeClick(128,626);break;              // pattern B
+        case 8:smokeClick(136,345);break;              // KICK again
+        case 9:smokeClick(948,696);break;              // another pad
+        default:break;
+        }
+    }
     void fill(HDC dc,Box b,COLORREF c){auto r=b.rect();HBRUSH brush=CreateSolidBrush(c);FillRect(dc,&r,brush);DeleteObject(brush);}
     void round(HDC dc,Box b,COLORREF c,COLORREF edge=line){HBRUSH brush=CreateSolidBrush(c);HPEN pen=CreatePen(PS_SOLID,1,edge);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,pen);RoundRect(dc,b.x,b.y,b.x+b.w,b.y+b.h,12,12);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(pen);}
     void text(HDC dc,Box b,const std::wstring& str,int size=15,COLORREF c=ink,int weight=FW_NORMAL,UINT format=DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS){HFONT font=CreateFontW(-size,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");auto old=SelectObject(dc,font);SetTextColor(dc,c);SetBkMode(dc,TRANSPARENT);auto r=b.rect();DrawTextW(dc,str.c_str(),int(str.size()),&r,format|DT_NOPREFIX);SelectObject(dc,old);DeleteObject(font);}
@@ -457,8 +480,8 @@ case WM_DPICHANGED:{
         SWP_NOZORDER|SWP_NOACTIVATE);
     return 0;
 }
-case WM_TIMER:if(app->smoke&&GetTickCount64()>app->flashed[0]){DestroyWindow(h);return 0;}InvalidateRect(h,nullptr,FALSE);return 0;
-case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:app->click(GET_X_LPARAM(l)*DesignWidth/app->width,GET_Y_LPARAM(l)*DesignHeight/app->height,msg==WM_RBUTTONDOWN);InvalidateRect(h,nullptr,FALSE);return 0;
+case WM_TIMER:if(app->smoke){if(app->smokeStep<10)app->advanceInteractionSmokeTest();if(GetTickCount64()>app->smokeDeadline){DestroyWindow(h);return 0;}}InvalidateRect(h,nullptr,FALSE);return 0;
+case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:try{app->click(GET_X_LPARAM(l)*DesignWidth/std::max(1,app->width),GET_Y_LPARAM(l)*DesignHeight/std::max(1,app->height),msg==WM_RBUTTONDOWN);}catch(const std::exception& error){app->status=L"Erreur de commande : "+wide(error.what());app->smokeFailed=app->smoke;}catch(...){app->status=L"Erreur de commande Windows inconnue.";app->smokeFailed=app->smoke;}InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_MOUSEMOVE:{int x=GET_X_LPARAM(l)*DesignWidth/app->width,y=GET_Y_LPARAM(l)*DesignHeight/app->height;if(app->surfaceDragDisplay>=0){app->surfacePointer(y);InvalidateRect(h,nullptr,FALSE);}else if(app->editorDrag){app->editorPointer(x,y);InvalidateRect(h,nullptr,FALSE);}return 0;}
 case WM_LBUTTONUP:if(app->editorDrag||app->surfaceDragDisplay>=0){app->editorDrag=0;app->surfaceDragDisplay=-1;app->surfaceDragKnob=-1;ReleaseCapture();}return 0;
 case WM_CAPTURECHANGED:app->editorDrag=0;app->surfaceDragDisplay=-1;app->surfaceDragKnob=-1;return 0;
@@ -469,7 +492,7 @@ case WM_CLOSE:if(app->confirmDiscard())DestroyWindow(h);return 0;
 case WM_DROPFILES:{HDROP drop=reinterpret_cast<HDROP>(w);wchar_t path[32768];POINT point{};DragQueryPoint(drop,&point);int x=point.x*DesignWidth/app->width,y=point.y*DesignHeight/app->height;if(app->tab==0&&!app->sequencerView){for(int p=0;p<16;++p)if(app->padBox(p).contains(x,y))app->selectPad(p);}else if(app->tab==1){for(int p=0;p<16;++p)if(Box{app->EditorOffsetX+28+p*71,110,65,42}.contains(x,y))app->selectPad(p);}if(DragQueryFileW(drop,0,path,32768))app->load(path);DragFinish(drop);InvalidateRect(h,nullptr,FALSE);return 0;}
 case SurfaceMessage:app->dispatch({static_cast<lab::SurfaceAction>(w),int(l)});InvalidateRect(h,nullptr,FALSE);return 0;
 case MidiMessage:app->midiData(unsigned(w));InvalidateRect(h,nullptr,FALSE);return 0;
-case WM_DESTROY:KillTimer(h,1);app->closeMidi();app->audio.stop();PostQuitMessage(0);return 0;
+case WM_DESTROY:KillTimer(h,1);app->closeMidi();app->audio.stop();PostQuitMessage(app->smokeFailed?2:0);return 0;
 }return DefWindowProcW(h,msg,w,l);}
 }
 int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
@@ -480,10 +503,10 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         auto setDpi=reinterpret_cast<SetDpiContext>(GetProcAddress(GetModuleHandleW(L"user32.dll"),"SetProcessDpiAwarenessContext"));
         if(!setDpi||!setDpi(reinterpret_cast<HANDLE>(static_cast<INT_PTR>(-4))))SetProcessDPIAware();
         App app;app.smoke=std::wstring(command).find(L"--smoke-test")!=std::wstring::npos;
-        if(app.smoke)app.flashed[0]=GetTickCount64()+2500;
+        if(app.smoke)app.smokeDeadline=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,DesignWidth,DesignHeight};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.21.0",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.21.1",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }
