@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.18.0 porte le **Color Editor** publié de KICK. Les dix-huit couleurs, l'affectation Single/All Pads et les modes Program Empty Pad, Pad Off et Pad On sont accessibles sur les deux écrans. Le menu reprend désormais les emplacements originaux : List Edit en position 5 et Color Editor en position 9. La version 0.17.0 avait porté la table List Edit.
+La version 0.19.0 termine le workflow d'édition autonome avec **Copy Pad**, **Delete Pad** et **Erase Notes**. ERASE ouvre les deux écrans ensemble ; Shift + Duplicate ouvre la même vue, tandis que Duplicate seul conserve son rôle de copie de pattern A–H. La version 0.18.0 avait porté le Color Editor publié de KICK.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -22,6 +22,7 @@ La version 0.18.0 porte le **Color Editor** publié de KICK. Les dix-huit couleu
 8. **MIXER** ouvre le Track Mixer du pattern : les deux pages physiques commandent les pistes 1–8 et 9–16. Haut/bas choisit Level ou Pan ; **SOLO** ou **MUTE**, puis un pad, applique l'état à cette piste. Shift + touche Soft arme la piste. **Shift + MIXER** ouvre le Pad Mixer du Program ; haut/bas choisit Level/Pan, les flèches de page passent de 1–8 à 9–16 et un clic droit coupe le pad. **Shift + MUTE** ouvre les seize Pad Mutes KICK.
 9. Le menu **List Edit** ou **Shift + EVENTS** ouvre la table globale du pattern. Tourner l'encodeur, utiliser les flèches ou cliquer une ligne choisit l'événement. P1 change Time, P2 le Pad/Note, P3 la ligne ; P5–P8 règlent Length, Velocity, Probability et Ratchet. Les touches contextuelles permettent Précédent, Suivant, Insérer et Supprimer.
 10. Le menu **Color Editor** ouvre l'éditeur du Program actif. Choisir l'une des dix-huit couleurs sur l'écran A puis cliquer un pad de l'écran B ou un pad physique. `Single/All Pads` choisit la portée ; Empty Pad, Pad Off et Pad On reproduisent les trois modes d'éclairage KICK.
+11. Appuyer sur **ERASE** ou **Shift + DUPLICATE** pour ouvrir l'édition finale KICK. L'écran A choisit un pad source et un pad destination : Copy duplique ses quatre couches, Pad Edit et FX ; Delete vide le pad choisi sans effacer les steps. L'écran B efface uniquement les notes d'une séquence, d'une piste Drum et d'une plage musicale. Pour une séquence mélodique, il cible sa voie de notes. Les soft keys, P1–P8, l'encodeur, les pads, le clavier et la souris restent équivalents.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 

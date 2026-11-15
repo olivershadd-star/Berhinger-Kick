@@ -183,6 +183,9 @@ public:
     bool renameProgram(int program,const std::string& name);
     bool deleteProgram(int program);
     bool assignProgramToSequence(int sequence,int program);
+    bool copyProgramPad(int sourcePad,int destinationPad,std::string& error);
+    bool deleteProgramPad(int pad);
+    int eraseNotes(int sequence,int track,int firstStep,int lastStep);
     void setProgramPadColor(int pad,int color,bool allPads=false);
     void resetProgramPadColors();
     void setProgramColorModes(EmptyPadColorMode emptyMode,PadOffColorMode offMode,PadOnColorMode onMode);

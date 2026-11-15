@@ -442,6 +442,29 @@ bool Engine::assignProgramToSequence(int sequence,int program){
     {std::lock_guard<std::mutex> lock(impl->mutex);if(!impl->state.programs[program].used)return false;impl->state.sequences[sequence].program=program;active=sequence==impl->state.sequence;}
     if(active)queueSequence(sequence);return true;
 }
+bool Engine::copyProgramPad(int sourcePad,int destinationPad,std::string& error){
+    if(sourcePad<0||sourcePad>=Pads||destinationPad<0||destinationPad>=Pads){error="Pad source ou destination invalide.";return false;}if(sourcePad==destinationPad)return true;
+    int program=0;PadEdit edit;std::array<PadLayerInfo,PadLayers> layers;
+    {std::scoped_lock lock(impl->mutex,impl->metadataMutex);program=impl->state.program;const auto& source=impl->banks[program][sourcePad];edit=source.edit;for(int layer=0;layer<PadLayers;++layer){const auto& item=source.layers[layer];layers[layer]={item.name,item.path,item.duration,item.velocityStart,item.velocityEnd,item.reverse,item.loaded};}}
+    Impl::BankPad parsed;parsed.edit=edit;parsed.effects=std::make_unique<PadEffects>(edit);
+    try{for(int layer=0;layer<PadLayers;++layer){const auto& source=layers[layer];auto& destination=parsed.layers[layer];destination.name=source.name;destination.path=source.path;destination.duration=source.duration;destination.velocityStart=source.velocityStart;destination.velocityEnd=source.velocityEnd;destination.reverse=source.reverse;if(source.path.empty())continue;destination.file=decode(source.path);destination.loaded=true;destination.duration=double(destination.file->getNumSamplesPerChannel())/Rate;destination.waveform.assign(320,0.f);const auto& audio=destination.file->samples[0];for(size_t sample=0;sample<audio.size();++sample){const size_t point=std::min<size_t>(319,sample*320/audio.size());destination.waveform[point]=std::max(destination.waveform[point],std::abs(audio[sample]));}}}
+    catch(const std::exception& exception){error=std::string("Copie du pad impossible : ")+exception.what();return false;}
+    Impl::BankPad retiredBank;std::unique_ptr<AudioFile<float>> retiredFile;std::unique_ptr<PadEffects> retiredEffects=std::move(parsed.effects);
+    {std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);if(impl->state.program!=program){error="Le Program actif a changé pendant la copie.";return false;}impl->players[destinationPad]->stop();impl->pendingPitch[destinationPad].store(1000);retiredBank=std::move(impl->banks[program][destinationPad]);parsed.activeLayer=0;retiredFile=impl->players[destinationPad]->replaceFile(std::move(parsed.layers[0].file));impl->loaded[destinationPad]=parsed.layers[0].loaded;impl->banks[program][destinationPad]=std::move(parsed);auto& bank=impl->banks[program][destinationPad];impl->players[destinationPad]->edit=bank.edit;impl->players[destinationPad]->effects.swap(retiredEffects);impl->players[destinationPad]->resetMix();const auto& primary=bank.layers[0];impl->state.names[destinationPad]=primary.name;impl->state.paths[destinationPad]=primary.path;impl->state.waveforms[destinationPad]=primary.waveform;impl->state.durations[destinationPad]=primary.duration;impl->state.edits[destinationPad]=bank.edit;impl->state.active[destinationPad]=false;impl->state.progress[destinationPad]=0;for(int layer=0;layer<PadLayers;++layer){const auto& item=bank.layers[layer];impl->state.layers[destinationPad][layer]={item.name,item.path,item.duration,item.velocityStart,item.velocityEnd,item.reverse,item.loaded};}}
+    return true;
+}
+bool Engine::deleteProgramPad(int pad){
+    if(pad<0||pad>=Pads)return false;Impl::BankPad empty,retiredBank;std::unique_ptr<AudioFile<float>> retiredFile;std::unique_ptr<PadEffects> retiredEffects;bool contained=false;
+    empty.edit.color=3;{std::lock_guard<std::mutex> lock(impl->mutex);for(const auto& layer:impl->state.layers[pad])contained=contained||layer.loaded;}empty.effects=std::make_unique<PadEffects>(empty.edit);retiredEffects=std::move(empty.effects);
+    {std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);const int program=impl->state.program;impl->players[pad]->stop();impl->pendingPitch[pad].store(1000);retiredBank=std::move(impl->banks[program][pad]);retiredFile=impl->players[pad]->replaceFile({});impl->loaded[pad]=false;impl->banks[program][pad]=std::move(empty);impl->players[pad]->edit=impl->banks[program][pad].edit;impl->players[pad]->effects.swap(retiredEffects);impl->players[pad]->resetMix();impl->state.names[pad]="Vide";impl->state.paths[pad].clear();impl->state.waveforms[pad].clear();impl->state.durations[pad]=0;impl->state.layers[pad]={};impl->state.edits[pad]=impl->banks[program][pad].edit;impl->state.active[pad]=false;impl->state.progress[pad]=0;}
+    return contained;
+}
+int Engine::eraseNotes(int sequenceIndex,int track,int firstStep,int lastStep){
+    if(sequenceIndex<0||sequenceIndex>=Sequences||track<0||track>=Pads)return 0;std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[sequenceIndex];const int total=sequence.bars*Steps;if(total<=0)return 0;firstStep=std::clamp(firstStep,0,total-1);lastStep=std::clamp(lastStep,0,total-1);if(firstStep>lastStep)std::swap(firstStep,lastStep);int erased=0;
+    if(sequence.mode==PerformanceMode::Drum){for(int step=firstStep;step<=lastStep;++step)if(sequence.drum[track][step]){sequence.drum[track][step]=false;sequence.drumEvents[track][step]={};++erased;}}
+    else for(int step=firstStep;step<=lastStep;++step)if(sequence.melody[step]>=0){sequence.melody[step]=-1;sequence.melodyEvents[step]={};++erased;}
+    return erased;
+}
 void Engine::setProgramPadColor(int pad,int color,bool allPads){
     if(pad<0||pad>=Pads||color<0||color>=PadColors)return;
     std::lock_guard<std::mutex> lock(impl->mutex);const int program=impl->state.program;

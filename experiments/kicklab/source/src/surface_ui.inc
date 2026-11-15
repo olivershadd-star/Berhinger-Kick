@@ -54,6 +54,7 @@ Box surfaceMixerTrackBox(int display,int row)const{return {surfaceX(display)+14,
 Box surfaceTrackMuteBox(int display,int local)const{return {surfaceX(display)+14+(local%2)*211,SurfaceY+48+(local/2)*56,199,46};}
 Box surfaceColorBox(int color)const{return {surfaceX(0)+14+(color%6)*68,SurfaceY+60+(color/6)*62,60,52};}
 Box surfaceColorPadBox(int pad)const{return {surfaceX(1)+14+(pad%4)*101,SurfaceY+58+(pad/4)*52,93,44};}
+Box surfaceEditPadBox(int pad)const{return {surfaceX(0)+14+(pad%4)*101,SurfaceY+58+(pad/4)*52,93,44};}
 
 Box shortcutBox(int index)const{return {20+(index%2)*120,38+(index/2)*48,112,38};}
 Box groupBox(int group)const{return {20+(group%4)*108,624+(group/4)*54,100,46};}
@@ -275,6 +276,48 @@ void applySurfaceColor(int pad){
     pad=std::clamp(pad,0,lab::Pads-1);selectPad(pad);engine.setProgramPadColor(pad,colorSelection,colorAllPads);markProjectDirty();status=colorAllPads?L"Color Editor — couleur appliquée aux seize pads.":L"Color Editor — couleur appliquée au pad "+padName(pad)+L".";
 }
 
+void showSurfaceEditOperations(){
+    const auto snapshot=engine.snapshot();editSourcePad=std::clamp(selected,0,lab::Pads-1);editDestinationPad=editSourcePad<lab::Pads-1?editSourcePad+1:0;editPadRole=0;
+    eraseSequence=snapshot.sequence;eraseTrack=std::clamp(stepTrack,0,lab::Pads-1);eraseStartStep=snapshot.viewBar*lab::Steps;eraseEndStep=std::min(snapshot.sequences[eraseSequence].bars*lab::Steps-1,eraseStartStep+lab::Steps-1);
+    for(int display=0;display<lab::SurfaceDisplays;++display){auto& binding=surface.displays[display];binding.module=lab::DisplayModule::EditOperations;binding.page=display;binding.followsSelectedPad=false;}
+    surface.focusDisplay(0);status=L"Édition KICK — écran A : Copy/Delete Pad · écran B : Erase Notes par séquence, piste et plage.";
+}
+
+void selectEditOperationPad(int pad){
+    pad=std::clamp(pad,0,lab::Pads-1);if(editPadRole==0)editSourcePad=pad;else editDestinationPad=pad;selectPad(pad);
+    status=L"Édition pad — "+std::wstring(editPadRole?L"destination ":L"source ")+padName(pad)+L" sélectionnée.";
+}
+
+double editOperationRatio(const lab::Snapshot& snapshot,int display,int knob)const{
+    if(display==0){if(knob==0)return editSourcePad/double(lab::Pads-1);if(knob==1)return editDestinationPad/double(lab::Pads-1);if(knob==2)return editPadRole?1.:0.;return 0.;}
+    const int sequence=std::clamp(eraseSequence,0,lab::Sequences-1),total=std::max(1,snapshot.sequences[sequence].bars*lab::Steps);
+    if(knob==0)return sequence/double(lab::Sequences-1);if(knob==1)return eraseTrack/double(lab::Pads-1);if(knob==2)return eraseStartStep/double(std::max(1,total-1));return eraseEndStep/double(std::max(1,total-1));
+}
+
+void setEditOperationRatio(int display,int knob,double ratio){
+    ratio=std::clamp(ratio,0.,1.);const auto snapshot=engine.snapshot();
+    if(display==0){if(knob==0)editSourcePad=std::clamp(int(std::lround(ratio*(lab::Pads-1))),0,lab::Pads-1);else if(knob==1)editDestinationPad=std::clamp(int(std::lround(ratio*(lab::Pads-1))),0,lab::Pads-1);else if(knob==2)editPadRole=ratio>=.5?1:0;selectPad(editPadRole?editDestinationPad:editSourcePad);return;}
+    if(knob==0)eraseSequence=std::clamp(int(std::lround(ratio*(lab::Sequences-1))),0,lab::Sequences-1);else if(knob==1)eraseTrack=std::clamp(int(std::lround(ratio*(lab::Pads-1))),0,lab::Pads-1);
+    const int total=std::max(1,snapshot.sequences[eraseSequence].bars*lab::Steps);eraseStartStep=std::clamp(eraseStartStep,0,total-1);eraseEndStep=std::clamp(eraseEndStep,eraseStartStep,total-1);
+    if(knob==2){eraseStartStep=std::clamp(int(std::lround(ratio*(total-1))),0,total-1);eraseEndStep=std::max(eraseEndStep,eraseStartStep);}else if(knob==3)eraseEndStep=std::clamp(int(std::lround(ratio*(total-1))),eraseStartStep,total-1);
+}
+
+void copyEditPad(){
+    if(editSourcePad==editDestinationPad){status=L"Copy Pad — la source et la destination sont identiques.";return;}const auto snapshot=engine.snapshot();
+    if(!snapshot.paths[editDestinationPad].empty()){const auto question=L"Le pad "+padName(editDestinationPad)+L" contient déjà un son.\n\nLe remplacer par une copie complète du pad "+padName(editSourcePad)+L" ?";if(MessageBoxW(window,question.c_str(),L"Copy Pad KICK",MB_YESNO|MB_ICONWARNING)!=IDYES)return;}
+    std::string error;if(!engine.copyProgramPad(editSourcePad,editDestinationPad,error)){MessageBoxW(window,wide(error).c_str(),L"Copy Pad KICK",MB_OK|MB_ICONINFORMATION);return;}markProjectDirty();selectPad(editDestinationPad);status=L"Copy Pad — "+padName(editSourcePad)+L" copié vers "+padName(editDestinationPad)+L" (samples, couches, Pad Edit et FX).";
+}
+
+void deleteEditPad(){
+    const int pad=editPadRole?editDestinationPad:editSourcePad;const auto question=L"Supprimer le contenu et les réglages du pad "+padName(pad)+L" ?\n\nLes steps du pattern ne seront pas modifiés.";if(MessageBoxW(window,question.c_str(),L"Delete Pad KICK",MB_YESNO|MB_ICONWARNING)!=IDYES)return;
+    if(engine.deleteProgramPad(pad)){markProjectDirty();status=L"Delete Pad — pad "+padName(pad)+L" vidé ; les patterns sont conservés.";}else status=L"Delete Pad — le pad "+padName(pad)+L" est déjà vide.";selectPad(pad);
+}
+
+void eraseEditNotes(){
+    const auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[eraseSequence];const bool melodic=sequence.mode!=lab::PerformanceMode::Drum;std::wstring scope=L"Séquence "+number(eraseSequence+1)+L" · "+(melodic?L"notes mélodiques":L"piste "+number(eraseTrack+1))+L"\nPlage "+listEditTimeText(eraseStartStep)+L" à "+listEditTimeText(eraseEndStep)+L"\n\nEffacer ces notes ?";
+    if(MessageBoxW(window,scope.c_str(),L"Erase Notes KICK",MB_YESNO|MB_ICONWARNING)!=IDYES)return;const int erased=engine.eraseNotes(eraseSequence,eraseTrack,eraseStartStep,eraseEndStep);if(erased)markProjectDirty();status=L"Erase Notes — "+number(erased)+L" événement(s) effacé(s), sons et réglages de pads conservés.";
+}
+
 double surfaceColorRatio(const lab::Snapshot& snapshot,int display,int knob)const{
     const auto& info=snapshot.programs[snapshot.program];
     if(display==0){if(knob==0)return colorSelection/double(lab::PadColors-1);if(knob==1)return colorAllPads?1.:0.;if(knob==2)return int(info.emptyPadColor);return int(info.padOffColor);}
@@ -406,6 +449,7 @@ void setSurfaceQLink(int display,int knob,double ratio){
     if(binding.module==lab::DisplayModule::Events){setSurfaceEventRatio(display,knob,ratio);return;}
     if(binding.module==lab::DisplayModule::ListEdit){setListEditRatio(display,knob,ratio);return;}
     if(binding.module==lab::DisplayModule::ColorEditor){setSurfaceColorRatio(display,knob,ratio);return;}
+    if(binding.module==lab::DisplayModule::EditOperations){setEditOperationRatio(display,knob,ratio);return;}
     if(binding.module==lab::DisplayModule::Tempo){if(knob==0)engine.setTempo(40.+ratio*200.);else if(knob==1)engine.setTempo(std::round((40.+ratio*200.)*10.)/10.);return;}
     if(binding.module==lab::DisplayModule::Mixer){const int track=mixerTrackFor(display,knob);if(mixerParameter==0)engine.setTrackLevel(track,ratio);else engine.setTrackPan(track,ratio*2.-1.);return;}
     if(binding.module==lab::DisplayModule::PadMixer){const int pad=padMixerPadFor(display,knob);if(padMixerParameter==0)engine.setPadLevel(pad,ratio*2.);else engine.setPadPan(pad,ratio*2.-1.);markProjectDirty();return;}
@@ -424,6 +468,7 @@ void turnSurfaceQLink(int display,int knob,int delta){
     if(binding.module==lab::DisplayModule::Events){auto snapshot=engine.snapshot();const auto event=surfaceStepEvent(snapshot,binding);const double step=knob==0?1./126.:knob==1?.01:knob==2?1./7.:1./15.;setSurfaceEventRatio(display,knob,surfaceEventRatio(event,knob)+delta*step);return;}
     if(binding.module==lab::DisplayModule::ListEdit){auto snapshot=engine.snapshot();ListEditItem item;if(!currentListEditItem(snapshot,item))return;double step=0.;if(display==0){if(knob==0)step=1./std::max(1,snapshot.sequences[snapshot.sequence].bars*lab::Steps-1);else if(knob==1)step=1./(item.melodic?127.:double(lab::Pads-1));else if(knob==2)step=1./std::max(1,int(listEditItems(snapshot).size())-1);}else step=knob==0?1./15.:knob==1?1./126.:knob==2?.01:1./7.;if(step>0)setListEditRatio(display,knob,listEditRatio(snapshot,display,knob)+delta*step);return;}
     if(binding.module==lab::DisplayModule::ColorEditor){auto snapshot=engine.snapshot();double step=1.;if(display==0&&knob==0)step=1./(lab::PadColors-1);else if(display==1&&knob==0)step=.5;else if(display==1&&knob==1)step=1./(lab::Pads-1);else if(display==1&&knob==2)step=1./(lab::PadColors-1);setSurfaceColorRatio(display,knob,surfaceColorRatio(snapshot,display,knob)+delta*step);return;}
+    if(binding.module==lab::DisplayModule::EditOperations){const auto snapshot=engine.snapshot();double step=1.;if(display==0&&(knob==0||knob==1))step=1./(lab::Pads-1);else if(display==1&&knob==0)step=1./(lab::Sequences-1);else if(display==1&&knob==1)step=1./(lab::Pads-1);else if(display==1){const int total=std::max(1,snapshot.sequences[eraseSequence].bars*lab::Steps);step=1./std::max(1,total-1);}setEditOperationRatio(display,knob,editOperationRatio(snapshot,display,knob)+delta*step);return;}
     if(binding.module==lab::DisplayModule::Mixer){auto snapshot=engine.snapshot();const int track=mixerTrackFor(display,knob);const auto& data=snapshot.sequences[snapshot.sequence].tracks[track];if(mixerParameter==0)engine.setTrackLevel(track,data.level+delta*.01);else engine.setTrackPan(track,data.pan+delta*.02);return;}
     if(binding.module==lab::DisplayModule::PadMixer){auto snapshot=engine.snapshot();const int pad=padMixerPadFor(display,knob);const auto& edit=snapshot.edits[pad];if(padMixerParameter==0)engine.setPadLevel(pad,edit.gain+delta*.02);else engine.setPadPan(pad,edit.pan+delta*.02);markProjectDirty();return;}
     if(binding.module==lab::DisplayModule::Sample){auto snapshot=engine.snapshot();const int pad=std::clamp(binding.pad,0,lab::Pads-1);const auto& edit=snapshot.edits[pad];double ratio=surfaceProgramRatio(edit,binding.page,knob),step=.01;if(binding.page==0&&knob==1)step=1./48.;else if(binding.page==2&&knob==1)step=1./200.;else if((binding.page==2&&knob==0)||binding.page==3)step=knob<2?.5:knob==2?1./16.:1./17.;else if(binding.page==4){const auto& item=snapshot.layers[pad][std::clamp(binding.slot,0,lab::PadLayers-1)];ratio=knob==0?binding.slot/double(lab::PadLayers-1):knob==1?(item.velocityStart-1)/126.:knob==2?(item.velocityEnd-1)/126.:item.reverse?1.:0.;step=knob==0?1./3.:knob==3?1.:1./126.;}setSurfaceProgramRatio(display,knob,ratio+delta*step);return;}
@@ -500,6 +545,7 @@ void moveSurfaceMenu(int dx,int dy){
     if(module==lab::DisplayModule::Events){auto& binding=surface.displays[surface.focusedDisplay];if(dx){eventStep=std::clamp(eventStep+(dx>0?1:-1),0,lab::Steps-1);binding.slot=eventStep;}if(dy){selectTrack(stepTrack+(dy>0?1:-1));binding.pad=stepTrack;}return;}
     if(module==lab::DisplayModule::ListEdit){if(dx||dy)moveListEditSelection(dx?dx:dy);return;}
     if(module==lab::DisplayModule::ColorEditor){if(dx)turnSurfaceQLink(0,0,dx);if(dy)turnSurfaceQLink(1,1,dy);return;}
+    if(module==lab::DisplayModule::EditOperations){if(surface.focusedDisplay==0){if(dx)turnSurfaceQLink(0,editPadRole,dx);if(dy)setEditOperationRatio(0,2,dy>0?1.:0.);}else {if(dx)turnSurfaceQLink(1,2,dx);if(dy)turnSurfaceQLink(1,1,dy);}return;}
     if(module==lab::DisplayModule::MidiControl&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,midiControlPages()-1);return;}
     if(module==lab::DisplayModule::Sample&&dx){auto& binding=surface.displays[surface.focusedDisplay];binding.page=std::clamp(binding.page+(dx>0?1:-1),0,4);return;}
     if(module==lab::DisplayModule::Tempo){if(dx)turnSurfaceQLink(surface.focusedDisplay,0,dx);if(dy)turnSurfaceQLink(surface.focusedDisplay,1,-dy);return;}
@@ -526,6 +572,7 @@ void turnSurfaceMenu(int delta){
     if(module==lab::DisplayModule::Events){auto& binding=surface.displays[surface.focusedDisplay];eventStep=std::clamp(eventStep+(delta>0?1:-1),0,lab::Steps-1);binding.slot=eventStep;return;}
     if(module==lab::DisplayModule::ListEdit){moveListEditSelection(delta);return;}
     if(module==lab::DisplayModule::ColorEditor){turnSurfaceQLink(0,0,delta);return;}
+    if(module==lab::DisplayModule::EditOperations){turnSurfaceQLink(surface.focusedDisplay,surface.focusedDisplay?2:editPadRole,delta);return;}
     if(module==lab::DisplayModule::Tempo){turnSurfaceQLink(surface.focusedDisplay,0,delta);return;}
     if(module==lab::DisplayModule::Inserts){const auto binding=surface.displays[surface.focusedDisplay];const int slot=(binding.slot+(delta>0?1:-1)+lab::InsertSlots)%lab::InsertSlots;selectedInsert=slot;arrangeSurfaceInsertPages(binding.pad,slot,surface.focusedDisplay);status=L"FX — rotation : slot "+number(slot+1)+L" sélectionné.";return;}
     if(module!=lab::DisplayModule::Menu)return;
@@ -544,6 +591,7 @@ void activateSurfaceMenu(){
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Events){dispatch({lab::SurfaceAction::StepToggle,stepTrack,eventStep});return;}
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::ListEdit){ListEditItem item;if(currentListEditItem(engine.snapshot(),item))status=L"List Edit — "+listEditTimeText(item.step)+L" · "+(item.melodic?L"Note "+noteName(item.note):L"Pad "+padName(item.track));return;}
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::ColorEditor){applySurfaceColor(selected);return;}
+    if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::EditOperations){if(surface.focusedDisplay==0)copyEditPad();else eraseEditNotes();return;}
     if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Inserts){auto& binding=surface.displays[surface.focusedDisplay];selectedInsert=binding.slot;insertMenu();binding.page=0;return;}
     if(surface.displays[surface.focusedDisplay].module!=lab::DisplayModule::Menu)return;
     const int item=surface.focusedDisplay*8+surface.menuSelections[surface.focusedDisplay];
@@ -574,6 +622,7 @@ bool surfaceWheel(int x,int y,int delta){
         else if(surface.displays[display].module==lab::DisplayModule::Browser)moveSurfaceBrowserSelection(display,-delta);
         else if(surface.displays[display].module==lab::DisplayModule::ListEdit)moveListEditSelection(-delta);
         else if(surface.displays[display].module==lab::DisplayModule::ColorEditor)turnSurfaceQLink(0,0,-delta);
+        else if(surface.displays[display].module==lab::DisplayModule::EditOperations)turnSurfaceQLink(display,display?2:editPadRole,-delta);
         else if(surface.displays[display].module==lab::DisplayModule::Programs)turnSurfaceMenu(delta);
         else if(surface.displays[display].module==lab::DisplayModule::PadMixer){padMixerBank=std::clamp(padMixerBank+(delta<0?1:-1),0,1);showSurfacePadMixer();}
         else if(surface.displays[display].module==lab::DisplayModule::PadMute){selectPad(std::clamp(selected+(delta<0?1:-1),0,lab::Pads-1));surface.focusDisplay(selected/8);}
@@ -587,7 +636,7 @@ bool surfaceClick(int x,int y,bool right){
         for(int knob=0;knob<4;++knob)if(surfaceKnobBox(display,knob).contains(x,y)){
             surface.focusDisplay(display);
             const auto module=surface.displays[display].module;
-            if(!right&&(module==lab::DisplayModule::Inserts||module==lab::DisplayModule::Sample||module==lab::DisplayModule::PadPerform||module==lab::DisplayModule::NextSequence||module==lab::DisplayModule::Song||module==lab::DisplayModule::Mixer||module==lab::DisplayModule::PadMixer||module==lab::DisplayModule::Tempo)){
+            if(!right&&(module==lab::DisplayModule::Inserts||module==lab::DisplayModule::Sample||module==lab::DisplayModule::PadPerform||module==lab::DisplayModule::NextSequence||module==lab::DisplayModule::Song||module==lab::DisplayModule::Mixer||module==lab::DisplayModule::PadMixer||module==lab::DisplayModule::Tempo||module==lab::DisplayModule::EditOperations)){
                 surfaceDragDisplay=display;surfaceDragKnob=knob;surfaceDragStartY=y;surfaceDragLastStep=0;SetCapture(window);
             }
             return true;
@@ -619,6 +668,10 @@ bool surfaceClick(int x,int y,bool right){
         if(binding.module==lab::DisplayModule::ColorEditor){
             if(display==0)for(int color=0;color<lab::PadColors;++color)if(surfaceColorBox(color).contains(x,y)){colorSelection=color;return true;}
             if(display==1)for(int pad=0;pad<lab::Pads;++pad)if(surfaceColorPadBox(pad).contains(x,y)){applySurfaceColor(pad);return true;}
+            return true;
+        }
+        if(binding.module==lab::DisplayModule::EditOperations){
+            if(display==0)for(int pad=0;pad<lab::Pads;++pad)if(surfaceEditPadBox(pad).contains(x,y)){selectEditOperationPad(pad);return true;}
             return true;
         }
         if(binding.module==lab::DisplayModule::Browser){
@@ -727,7 +780,7 @@ bool maschineClick(int x,int y,bool right){
     for(int command=0;command<9;++command)if(sideCommandBox(command).contains(x,y)){
         if(command==2){showSurfaceNextSequence(surface.focusedDisplay);status=L"Pattern / Clip — sélection des séquences KICK.";}
         else if(command==3){if(right||surface.shift)showSurfaceListEdit();else showSurfaceEvents(surface.focusedDisplay);}
-        else if(command==5){duplicateSourceSequence=engine.snapshot().sequence;status=L"Duplicate armé — clique maintenant sur A–H pour choisir le bloc de destination.";}
+        else if(command==5){if(right||surface.shift)showSurfaceEditOperations();else {duplicateSourceSequence=engine.snapshot().sequence;status=L"Duplicate armé — clique maintenant sur A–H pour choisir le bloc de destination.";}}
         else if(command==6){selectLatch=!selectLatch;if(selectLatch)status=L"Select actif — choisis maintenant la piste avec un pad.";else status=L"Select relâché — piste "+number(stepTrack+1)+L".";}
         else if(command==7){soloLatch=!soloLatch;muteLatch=selectLatch=false;status=soloLatch?L"Solo actif — frappe un pad pour isoler sa piste.":L"Mode Solo relâché.";}
         else if(command==8){if(right||surface.shift)showSurfacePadMute();else {muteLatch=!muteLatch;soloLatch=selectLatch=false;status=muteLatch?L"Mute actif — frappe un pad pour couper sa piste.":L"Mode Mute relâché.";}}
@@ -749,6 +802,7 @@ bool maschineClick(int x,int y,bool right){
     }
     for(int index=0;index<8;++index)if(transportBox(index).contains(x,y)){
         if(index==4)dispatch({lab::SurfaceAction::PlayPause});
+        else if(index==1)showSurfaceEditOperations();
         else if(index==3)cycleRecordQuantize();
         else if(index==5)toggleRecord();
         else if(index==6)dispatch({lab::SurfaceAction::Stop});
@@ -757,6 +811,7 @@ bool maschineClick(int x,int y,bool right){
         return true;
     }
     for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){
+        if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::EditOperations){selectEditOperationPad(p);return true;}
         if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::ColorEditor){applySurfaceColor(p);return true;}
         if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::ListEdit){selectListEditTrack(p);return true;}
         if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::PadMute){selectPad(p);toggleProgramPadMute(p);return true;}
@@ -787,6 +842,7 @@ void paintSurfaceKnob(HDC dc,int display,int knob,const lab::Snapshot& snapshot)
     else if(binding.module==lab::DisplayModule::Events){ratio=surfaceEventRatio(surfaceStepEvent(snapshot,binding),knob);assigned=true;}
     else if(binding.module==lab::DisplayModule::ListEdit){ratio=listEditRatio(snapshot,display,knob);assigned=display==1||knob<3;}
     else if(binding.module==lab::DisplayModule::ColorEditor){ratio=surfaceColorRatio(snapshot,display,knob);assigned=display==0||knob<3;}
+    else if(binding.module==lab::DisplayModule::EditOperations){ratio=editOperationRatio(snapshot,display,knob);assigned=display==1||knob<3;}
     else if(binding.module==lab::DisplayModule::Tempo){ratio=(snapshot.tempo-40.)/200.;assigned=knob<2;}
     else if(binding.module==lab::DisplayModule::PadPerform){const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)ratio=int(sequence.mode)/3.;else if(knob==1)ratio=sequence.sourcePad/15.;else if(knob==2)ratio=(sequence.rootNote-24)/60.;else ratio=sequence.bars>1?double(snapshot.viewBar)/(sequence.bars-1):0;assigned=true;}
     else if(binding.module==lab::DisplayModule::NextSequence){const auto& sequence=snapshot.sequences[snapshot.sequence];if(knob==0)ratio=snapshot.sequence/15.;else if(knob==1)ratio=(sequence.bars-1)/3.;else if(knob==2)ratio=sequence.bars>1?double(snapshot.viewBar)/(sequence.bars-1):0;else ratio=int(sequence.mode)/3.;assigned=true;}
@@ -945,6 +1001,13 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
         for(int pad=0;pad<lab::Pads;++pad){const auto b=surfaceColorPadBox(pad);const auto color=programPadColor(snapshot.edits[pad].color);round(dc,b,color,pad==selected?RGB(255,255,255):color);text(dc,{b.x+6,b.y+3,b.w-12,18},padName(pad)+L"  C"+number(snapshot.edits[pad].color+1),9,RGB(20,25,32),FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);text(dc,{b.x+6,b.y+22,b.w-12,16},snapshot.paths[pad].empty()?L"EMPTY":wide(snapshot.names[pad]),7,RGB(35,42,50),FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}
         const std::wstring on=info.padOnColor==lab::PadOnColorMode::Off?L"OFF":info.padOnColor==lab::PadOnColorMode::Velocity?L"VELOCITY":L"FULL";text(dc,{box.x+14,box.y+270,box.w-28,16},L"P5 PAD ON "+on+L"  ·  P6 PAD  ·  P7 COLOR",8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return;
     }
+    if(binding.module==lab::DisplayModule::EditOperations){
+        if(display==0){text(dc,{box.x+14,box.y+9,292,24},L"ÉCRAN A  ·  COPY / DELETE PAD",12,focused?accent:muted,FW_SEMIBOLD);text(dc,{box.x+304,box.y+9,136,24},L"PROGRAM "+number(snapshot.program+1),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
+            for(int pad=0;pad<lab::Pads;++pad){const auto b=surfaceEditPadBox(pad);const bool source=pad==editSourcePad,destination=pad==editDestinationPad,active=pad==(editPadRole?editDestinationPad:editSourcePad);auto fillColor=active?accent:(source?RGB(38,76,85):destination?RGB(89,54,34):RGB(18,31,35));round(dc,b,fillColor,active?RGB(255,255,255):(source?accent:destination?RGB(241,148,88):line));text(dc,{b.x+5,b.y+2,b.w-10,18},padName(pad)+(source?L"  SRC":L"")+(destination?L"  DST":L""),8,active?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);text(dc,{b.x+5,b.y+21,b.w-10,17},snapshot.paths[pad].empty()?L"EMPTY":wide(snapshot.names[pad]),7,active?bg:muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}
+            text(dc,{box.x+14,box.y+270,box.w-28,16},L"P1 SOURCE "+padName(editSourcePad)+L" · P2 DEST "+padName(editDestinationPad)+L" · P3 "+(editPadRole?L"DEST":L"SOURCE"),8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return;}
+        const auto& sequence=snapshot.sequences[eraseSequence];const bool melodic=sequence.mode!=lab::PerformanceMode::Drum;const std::array<std::wstring,4> names={L"Séquence",L"Piste",L"Début",L"Fin"};const std::array<std::wstring,4> values={number(eraseSequence+1)+L" · "+wide(sequence.name),melodic?L"MÉLODIQUE":L"TRACK "+number(eraseTrack+1)+L" · "+padName(eraseTrack),listEditTimeText(eraseStartStep),listEditTimeText(eraseEndStep)};
+        text(dc,{box.x+14,box.y+9,292,24},L"ÉCRAN B  ·  ERASE NOTES",12,focused?accent:muted,FW_SEMIBOLD);text(dc,{box.x+304,box.y+9,136,24},performanceModeName(sequence.mode),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));for(int knob=0;knob<4;++knob){const int y=box.y+52+knob*51;fill(dc,{box.x+14,y,box.w-28,43},knob%2?RGB(18,31,35):RGB(17,28,33));text(dc,{box.x+24,y,42,43},L"P"+number(5+knob),10,accent,FW_SEMIBOLD);text(dc,{box.x+68,y,180,43},names[knob],11,ink);text(dc,{box.x+248,y,178,43},values[knob],10,accent,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}text(dc,{box.x+14,box.y+265,box.w-28,18},L"ENTER / ERASE : confirmer l'effacement de cette plage",8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return;
+    }
     if(binding.module==lab::DisplayModule::ListEdit){
         const auto items=listEditItems(snapshot);const bool has=!items.empty();const int selectedRow=has?std::clamp(listEditRow,0,int(items.size())-1):0;
         if(display==0){
@@ -986,6 +1049,7 @@ std::wstring surfaceSoftLabel(int display,int soft,const lab::Snapshot& snapshot
     if(module==lab::DisplayModule::Events)return std::array<std::wstring,4>{L"VELOCITY",L"PROBABILITY",L"RATCHET",L"LENGTH"}[soft];
     if(module==lab::DisplayModule::ListEdit)return display==0?std::array<std::wstring,4>{L"PRÉC.",L"SUIV.",L"INSÉRER",L"SUPPRIMER"}[soft]:std::array<std::wstring,4>{L"LENGTH",L"VELOCITY",L"PROB.",L"RATCHET"}[soft];
     if(module==lab::DisplayModule::ColorEditor)return display==0?std::array<std::wstring,4>{L"COLOR",colorAllPads?L"ALL PADS":L"SINGLE",L"EMPTY",L"PAD OFF"}[soft]:std::array<std::wstring,4>{L"PAD ON",L"NEXT PAD",L"APPLY",L"DEFAULT"}[soft];
+    if(module==lab::DisplayModule::EditOperations)return display==0?std::array<std::wstring,4>{L"SOURCE",L"DEST.",L"COPY",L"DELETE"}[soft]:std::array<std::wstring,4>{L"CURRENT",L"FULL TRACK",L"BAR",L"ERASE"}[soft];
     if(module==lab::DisplayModule::Tempo)return std::array<std::wstring,4>{L"−10",L"−1",L"+1",L"+10"}[soft];
     if(module==lab::DisplayModule::MidiControl)return std::array<std::wstring,4>{L"SAVE MIDI",L"DOSSIER",L"< PAGE",L"PAGE >"}[soft];
     if(module==lab::DisplayModule::Menu){static const std::array<int,8> items={0,1,2,3,4,11,12,15};return surfaceMenuLabels[items[display*4+soft]];}
@@ -1004,6 +1068,7 @@ void activateSurfaceSoft(int display,int soft,int bank=-1){
     if(module==lab::DisplayModule::Sample){surface.displays[display].page=soft<2?soft:soft==2?3:4;return;}
     if(module==lab::DisplayModule::ListEdit){if(display==0){if(soft==0)moveListEditSelection(-1);else if(soft==1)moveListEditSelection(1);else if(soft==2)insertListEditEvent();else deleteListEditEvent();}return;}
     if(module==lab::DisplayModule::ColorEditor){auto snapshot=engine.snapshot();if(display==0){if(soft==0)turnSurfaceQLink(0,0,1);else if(soft==1){colorAllPads=!colorAllPads;}else if(soft==2)setSurfaceColorRatio(0,2,snapshot.programs[snapshot.program].emptyPadColor==lab::EmptyPadColorMode::Dim?0.:1.);else setSurfaceColorRatio(0,3,snapshot.programs[snapshot.program].padOffColor==lab::PadOffColorMode::Dim?0.:1.);}else {if(soft==0)turnSurfaceQLink(1,0,1);else if(soft==1){selectPad((selected+1)%lab::Pads);}else if(soft==2)applySurfaceColor(selected);else {engine.resetProgramPadColors();colorSelection=3;markProjectDirty();status=L"Color Editor — couleur KICK par défaut appliquée aux seize pads.";}}return;}
+    if(module==lab::DisplayModule::EditOperations){if(display==0){if(soft==0){editPadRole=0;selectPad(editSourcePad);}else if(soft==1){editPadRole=1;selectPad(editDestinationPad);}else if(soft==2)copyEditPad();else deleteEditPad();}else {auto snapshot=engine.snapshot();if(soft==0){eraseSequence=snapshot.sequence;eraseTrack=stepTrack;const int total=snapshot.sequences[eraseSequence].bars*lab::Steps;eraseStartStep=std::clamp(eraseStartStep,0,total-1);eraseEndStep=std::clamp(eraseEndStep,eraseStartStep,total-1);}else if(soft==1){eraseStartStep=0;eraseEndStep=snapshot.sequences[eraseSequence].bars*lab::Steps-1;}else if(soft==2){eraseSequence=snapshot.sequence;eraseStartStep=snapshot.viewBar*lab::Steps;eraseEndStep=std::min(snapshot.sequences[eraseSequence].bars*lab::Steps-1,eraseStartStep+lab::Steps-1);}else eraseEditNotes();}return;}
     if(module==lab::DisplayModule::Tempo){static const int changes[4]={-10,-1,1,10};engine.setTempo(engine.snapshot().tempo+changes[soft]);markProjectDirty();return;}
     if(module==lab::DisplayModule::MidiControl){auto& binding=surface.displays[display];if(soft==0){const bool saved=saveMidiProfile();status=saved?L"Profil MIDI sauvegardé : "+portableMidiProfile.wstring():L"Impossible de sauvegarder le profil MIDI.";}else if(soft==1)ShellExecuteW(window,L"open",portableMidiProfile.parent_path().c_str(),nullptr,nullptr,SW_SHOWNORMAL);else if(soft==2)binding.page=std::max(0,binding.page-1);else binding.page=std::min(midiControlPages()-1,binding.page+1);return;}
     if(module==lab::DisplayModule::Menu){static const std::array<int,8> items={0,1,2,3,4,11,12,15};selectSurfaceMenu(items[display*4+soft]);activateSurfaceMenu();return;}
@@ -1051,7 +1116,7 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
         {L"EVENTS",L""},{L"VARIATION",L""},{L"DUPLICATE",L"Double"},
         {L"SELECT",L""},{L"SOLO",L""},{L"MUTE",L"Choke"}
     }};
-    for(int i=0;i<9;++i){const bool available=i==2||i==3||i==5||i>=6;const auto focused=surface.displays[surface.focusedDisplay].module;const bool active=i==3?(focused==lab::DisplayModule::Events||focused==lab::DisplayModule::ListEdit):i==5?duplicateSourceSequence>=0:i==6?selectLatch:i==7?soloLatch:i==8?muteLatch:false;hardwareButton(dc,sideCommandBox(i),commands[i].first,commands[i].second,active,available);}
+    for(int i=0;i<9;++i){const bool available=i==2||i==3||i==5||i>=6;const auto focused=surface.displays[surface.focusedDisplay].module;const bool active=i==3?(focused==lab::DisplayModule::Events||focused==lab::DisplayModule::ListEdit):i==5?(duplicateSourceSequence>=0||focused==lab::DisplayModule::EditOperations):i==6?selectLatch:i==7?soloLatch:i==8?muteLatch:false;hardwareButton(dc,sideCommandBox(i),commands[i].first,commands[i].second,active,available);}
 
     // Reserved symmetrically for the next KICK modules. They are deliberately
     // blank and have no hit handling yet.
@@ -1060,21 +1125,21 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     static const std::array<const wchar_t*,4> modes={L"PAD MODE",L"KEYBOARD",L"CHORDS",L"STEP"};
     for(int mode=0;mode<4;++mode)hardwareButton(dc,modeBox(mode),modes[mode],L"",mode==padMode,true);
 
-    const auto& sequence=snapshot.sequences[snapshot.sequence];const bool notes=padMode==1||padMode==2;const bool steps=padMode==3;const bool melodicSteps=steps&&sequence.mode!=lab::PerformanceMode::Drum;const auto focusedModule=surface.displays[surface.focusedDisplay].module;const bool editingEvents=focusedModule==lab::DisplayModule::Events;const bool editingColors=focusedModule==lab::DisplayModule::ColorEditor;const bool editingPadMix=focusedModule==lab::DisplayModule::PadMixer||focusedModule==lab::DisplayModule::PadMute;
+    const auto& sequence=snapshot.sequences[snapshot.sequence];const bool notes=padMode==1||padMode==2;const bool steps=padMode==3;const bool melodicSteps=steps&&sequence.mode!=lab::PerformanceMode::Drum;const auto focusedModule=surface.displays[surface.focusedDisplay].module;const bool editingEvents=focusedModule==lab::DisplayModule::Events;const bool editingColors=focusedModule==lab::DisplayModule::ColorEditor;const bool editingPads=focusedModule==lab::DisplayModule::EditOperations;const bool editingPadMix=focusedModule==lab::DisplayModule::PadMixer||focusedModule==lab::DisplayModule::PadMute;
     const bool playVisible=snapshot.playing&&snapshot.playBar==snapshot.viewBar;ULONGLONG now=GetTickCount64();
     for(int p=0;p<16;++p){
         const auto box=padBox(p);const bool active=editingPadMix?snapshot.edits[p].mute:steps?(melodicSteps?snapshot.melody[p]==engine.performanceNote(stepTrack):snapshot.pattern[stepTrack][p]):notes?false:snapshot.active[p];
-        const bool hot=now<flashed[p]||active||(steps&&playVisible&&snapshot.step==p)||(editingEvents&&p==eventStep)||(editingPadMix&&p==selected);const COLORREF color=editingPadMix&&snapshot.edits[p].mute?RGB(225,92,78):steps?RGB(241,184,88):programPadColor(snapshot.edits[p].color);COLORREF face=RGB(36,42,53);const auto& colorMode=snapshot.programs[snapshot.program];
+        const bool hot=now<flashed[p]||active||(steps&&playVisible&&snapshot.step==p)||(editingEvents&&p==eventStep)||(editingPadMix&&p==selected)||(editingPads&&(p==editSourcePad||p==editDestinationPad));const COLORREF color=editingPadMix&&snapshot.edits[p].mute?RGB(225,92,78):editingPads&&p==editDestinationPad?RGB(241,148,88):steps?RGB(241,184,88):programPadColor(snapshot.edits[p].color);COLORREF face=RGB(36,42,53);const auto& colorMode=snapshot.programs[snapshot.program];
         if(editingColors)face=color;else if(hot&&colorMode.padOnColor!=lab::PadOnColorMode::Off)face=color;else if(snapshot.paths[p].empty()&&colorMode.emptyPadColor==lab::EmptyPadColorMode::Dim)face=dimColor(color,.22);else if(!snapshot.paths[p].empty()&&colorMode.padOffColor==lab::PadOffColorMode::Dim)face=dimColor(color,.28);
         round(dc,box,face,(padMode==0&&p==selected)||editingColors&&p==selected?color:line);
         std::wstring title=editingPadMix?wide(snapshot.names[p]):steps?L"STEP "+number(p+1):notes?noteName(engine.performanceNote(p)):wide(snapshot.names[p]);
-        std::wstring sub=editingPadMix?(snapshot.edits[p].mute?L"PAD MUTE":L"PAD ACTIF"):steps?(melodicSteps?noteName(engine.performanceNote(stepTrack)):L"TRACK "+padName(stepTrack)):notes?(padMode==2?L"TRIADE ARP":L"PAD "+padName(sequence.sourcePad)):L"PAD "+padName(p);
+        std::wstring sub=editingPads?(p==editSourcePad?L"SOURCE":p==editDestinationPad?L"DESTINATION":L"PAD "+padName(p)):editingPadMix?(snapshot.edits[p].mute?L"PAD MUTE":L"PAD ACTIF"):steps?(melodicSteps?noteName(engine.performanceNote(stepTrack)):L"TRACK "+padName(stepTrack)):notes?(padMode==2?L"TRIADE ARP":L"PAD "+padName(sequence.sourcePad)):L"PAD "+padName(p);
         text(dc,{box.x+8,box.y+7,box.w-16,25},title,12,hot||editingColors?bg:ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         text(dc,{box.x+8,box.y+52,box.w-16,18},sub,9,hot||editingColors?RGB(40,46,50):muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
 
     hardwareButton(dc,transportBox(0),L"RESTART",L"Loop",false,false);
-    hardwareButton(dc,transportBox(1),L"ERASE",L"Replace",false,false);
+    hardwareButton(dc,transportBox(1),L"ERASE",L"Replace",focusedModule==lab::DisplayModule::EditOperations,true);
     hardwareButton(dc,transportBox(2),L"TAP",L"Metro",false,false);
     hardwareButton(dc,transportBox(3),L"FOLLOW",L"Grid "+recordQuantizeName(),false,true);
     hardwareButton(dc,transportBox(4),snapshot.playing?L"PAUSE":L"PLAY",L"",snapshot.playing);
