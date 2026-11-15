@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.12.0 conserve les seize pistes, la sauvegarde MIDI portable et les packs imbriqués. A–H sont huit blocs kit/pattern autonomes dont l'enchaînement attend la fin du pattern. Un kit de seize pads peut maintenant être sauvegardé ou chargé indépendamment de la pattern, sans incorporer les WAV. Les loops suivent le tempo du projet, Tempo possède un véritable écran bidirectionnel, Note Repeat est généré par l'horloge audio et Keyboard/Chords disposent d'un arpégiateur. `Duplicate`, puis A–H, copie le pattern courant. Le bloc actif peut être exporté en WAV avec son mixage et ses effets.
+La version 0.13.0 introduit le véritable modèle **Program → Pattern** de KICK. Un Drum Program contient les seize samples et leurs réglages ; un Pattern contient les steps et référence explicitement un Program réutilisable. Les seize Programs se gèrent dans les deux écrans avec création, duplication, assignation et suppression. Les anciens projets migrent automatiquement : les anciennes banques A–H deviennent Drum Program A–H sans perdre leurs sons ni leurs patterns. A–H sélectionne désormais huit patterns indépendants et leur enchaînement attend toujours la fin de la boucle.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -14,9 +14,9 @@ La version 0.12.0 conserve les seize pistes, la sauvegarde MIDI portable et les 
 
 1. Extraire entièrement le ZIP dans un dossier accessible en écriture.
 2. Ouvrir **KickLab.exe**, en gardant le dossier **demo-kit** à côté. Les dossiers externes **samples** et **kits/User** sont créés automatiquement.
-3. Les groupes **A–H** sont huit banques indépendantes de seize pads. A contient le kit de démonstration ; B–H commencent vides. Un clic droit sur un pad charge un WAV dans le groupe actif.
+3. Les boutons **A–H** sélectionnent huit patterns indépendants. Au premier lancement, chacun référence son Drum Program A–H ; A contient le kit de démonstration et B–H commencent vides. Un clic droit sur un pad charge un WAV dans le Program du pattern actif.
 4. **PAD MODE** joue les seize samples. Le dernier pad joué devient automatiquement la piste lorsque l'on passe sur **STEP**. **KEYBOARD** répartit le sample sélectionné sur seize hauteurs. **CHORDS** produit des triades majeures ou mineures arpégées ; **NOTE REPEAT / Arp** active et coupe la répétition, et **FOLLOW / Grid** choisit 1/4, 1/8 ou 1/16. `Select + pad` ou `Shift + pad` choisit explicitement une piste Step.
-5. Cliquer sur l'écran A ou B, puis sur **PLUG-IN / Instance** ou **PERFORM / FX** affiche les inserts. Choisir un slot et régler ses paramètres avec P1–P4 ou P5–P8. Les flèches `<` et `>` changent de page.
+5. **PLUG-IN / Instance** ouvre le **Program Manager** : seize Programs sur les deux écrans, assignables au pattern courant. **PERFORM / FX** affiche les inserts. Choisir un slot et régler ses paramètres avec P1–P4 ou P5–P8. Les flèches `<` et `>` changent de page.
 6. **SAMPLING** ouvre l'éditeur détaillé. **PITCH / PAD EDIT** ouvre directement volume, pitch, découpe et ADSR dans l'écran actif. **BROWSER** parcourt toute l'arborescence du dossier `samples`.
 7. Armer **REC**, lancer **PLAY**, puis jouer les pads. **FOLLOW / Grid** choisit la correction à l'enregistrement : 1/4, 1/8 ou 1/16. **4 Sequences** sélectionne une séquence ; **8 Songs** construit l'arrangement.
 8. **MIXER** ouvre huit pistes à la fois. Les deux pages physiques commandent respectivement les pistes 1–8 et 9–16. Haut/bas choisit Level ou Pan ; **SOLO** ou **MUTE**, puis un pad, applique l'état à cette piste. Shift + touche Soft arme la piste.
@@ -61,6 +61,15 @@ La découpe, l'accordage, les fondus et l'enveloppe sont appliqués au prochain 
 
 Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la voix de ce pad ; les autres pads continuent. Un nouveau déclenchement relance le sample : cette version n'a qu'une voix par pad.
 
+## Programs et patterns
+
+- **PLUG-IN / Instance** ou le menu **Programs** ouvre seize slots de Programs répartis sur les deux écrans. L'encodeur, les flèches, la souris et Enter fonctionnent sans contrôleur obligatoire.
+- **Assigner** relie le Program sélectionné au pattern courant. Plusieurs patterns peuvent donc partager exactement le même kit et les mêmes réglages de pads.
+- **Nouveau** crée un Drum Program vide et l'assigne au pattern. **Dupliquer** copie les seize samples et réglages vers un nouveau Program. **Supprimer** refuse toute suppression si un pattern le référence encore.
+- Copier un pattern avec **Duplicate**, puis A–H, copie seulement ses événements et réglages de séquence. Le Program déjà assigné à la destination est conservé ; c'est la distinction essentielle entre une variation de pattern et une copie de kit.
+- **Charger/Sauver kit** agit sur le Program actif. Un fichier `.kickkit` reste un échange léger de sons et réglages, jamais un pattern.
+- Les projets KICKLAB 1–9 sont migrés à l'ouverture. Dans un ancien projet, chaque ancienne banque A–H devient un Program distinct et chaque pattern A–H garde le lien correspondant.
+
 ## Pad Perform, séquences et Song
 
 - Chaque projet contient seize séquences de une à quatre mesures, en doubles croches. L'écran **Sequences** choisit la séquence, la mesure visible et la longueur.
@@ -90,13 +99,13 @@ WAV PCM 16/24/32 bits, flottant 32 bits et WAV Extensible PCM/flottant, mono/st�
 
 L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la rotation 4D parcourt les éléments, droite ou Enter ouvre un dossier, gauche remonte au parent et Enter charge un WAV. Les dossiers sont affichés avant les fichiers. La préécoute `AUD OFF/AUTO/MAN` ignore les dossiers, joue le WAV une fois et ne remplace pas le sample du pad.
 
-**FILE → Enregistrer/Ouvrir** sauvegarde les huit groupes A–H, leurs 128 références de samples et réglages, les seize séquences, leurs pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo et le volume dans un fichier `.kicklab`. Les samples restent référencés par leur chemin absolu et ne sont pas incorporés : conserver les WAV à leur emplacement.
+**FILE → Enregistrer/Ouvrir** sauvegarde les seize Programs et leurs liens avec les seize patterns, les références de samples et réglages de pads, les pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo et le volume dans un fichier `.kicklab`. Les samples restent référencés par leur chemin et ne sont pas incorporés : conserver les WAV à leur emplacement.
 
-**FILE → Sauvegarder/Charger un kit de pads** utilise un fichier `.kickkit` indépendant du projet. Il contient seulement les références et réglages des seize pads du bloc A–H actif : découpe, volume, pitch, ADSR, Loop Sync et quatre inserts. Il ne contient ni WAV, ni steps, ni tempo, ni Song. Les WAV placés sous `samples` sont référencés relativement afin que l'ensemble portable puisse être déplacé ; les WAV extérieurs gardent leur chemin absolu. Un kit invalide ou dont un WAV manque est refusé sans modifier le kit déjà chargé. Le dossier `kits/User` reste extérieur à l'exécutable et peut être rempli librement par l'utilisateur.
+**FILE → Sauvegarder/Charger un kit de pads** utilise un fichier `.kickkit` indépendant du projet. Il contient seulement les références et réglages des seize pads du Program actif : découpe, volume, pitch, ADSR, Loop Sync et quatre inserts. Il ne contient ni WAV, ni pattern, ni tempo, ni Song. Les WAV placés sous `samples` sont référencés relativement afin que l'ensemble portable puisse être déplacé ; les WAV extérieurs gardent leur chemin absolu. Un kit invalide ou dont un WAV manque est refusé sans modifier le Program déjà chargé. Le dossier `kits/User` reste extérieur à l'exécutable et peut être rempli librement par l'utilisateur.
 
-**FILE → Exporter le bloc actif en WAV** rend exactement une boucle du bloc A–H sélectionné à son tempo et sa longueur de une à quatre mesures. L'export est stéréo PCM 24 bits à 48 kHz et passe par le véritable moteur : pitch, enveloppes, niveaux, panoramiques, mutes/solos, Master et quatre inserts par pad sont inclus. Le transport est arrêté à la fin de l'export.
+**FILE → Exporter le pattern actif en WAV** rend exactement une boucle du pattern sélectionné avec son Program, à son tempo et sa longueur de une à quatre mesures. L'export est stéréo PCM 24 bits à 48 kHz et passe par le véritable moteur : pitch, enveloppes, niveaux, panoramiques, mutes/solos, Master et quatre inserts par pad sont inclus. Le transport est arrêté à la fin de l'export.
 
-Les projets **KICKLAB 1** à **KICKLAB 8** restent lisibles. Les nouveaux projets utilisent **KICKLAB 9** pour conserver en plus Loop Sync et le BPM source de chaque pad. Ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
+Les projets **KICKLAB 1** à **KICKLAB 9** restent lisibles. Les nouveaux projets utilisent **KICKLAB 10** pour séparer les Programs des patterns et conserver leurs liens. Ils ne s'ouvrent pas dans les anciennes versions. Ce format est propre au portage Windows, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 
@@ -136,7 +145,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, les groupes A–H, les kits séparés des patterns, les chemins portables, le niveau/pan/mute des pistes, la persistance KICKLAB 9, les migrations anciennes, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, la séparation Program/Pattern, les kits légers, les chemins portables, le niveau/pan/mute des pistes, la persistance KICKLAB 10, les migrations anciennes, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 

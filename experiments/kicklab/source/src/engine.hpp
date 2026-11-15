@@ -8,9 +8,14 @@
 #include <vector>
 
 namespace lab {
-constexpr int Pads=16, Groups=8, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
+constexpr int Pads=16, Groups=8, Programs=16, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
 constexpr int Sequences=16, MaxBars=4, MaxSequenceSteps=Steps*MaxBars, MaxSongSteps=32;
 enum class ProgramType { Drum=0, Keygroup=1 };
+struct ProgramInfo {
+    std::string name;
+    ProgramType type=ProgramType::Drum;
+    bool used=false;
+};
 struct TrackData {
     std::string name;
     ProgramType program=ProgramType::Drum;
@@ -62,6 +67,9 @@ struct PadEdit {
 enum class PerformanceMode { Drum=0, Chromatic=1, Major=2, Minor=3 };
 struct SequenceData {
     std::string name;
+    // A pattern contains events only. Its sounds and pad settings live in the
+    // independently reusable Program referenced here.
+    int program=0;
     int bars=1;
     PerformanceMode mode=PerformanceMode::Drum;
     int sourcePad=12;
@@ -87,6 +95,7 @@ struct Snapshot {
     std::array<std::array<bool,Steps>,Pads> pattern{};
     std::array<int,Steps> melody{};
     std::array<SequenceData,Sequences> sequences{};
+    std::array<ProgramInfo,Programs> programs{};
     std::array<SongStep,MaxSongSteps> song{};
     std::array<std::vector<float>,Pads> waveforms{};
     std::array<bool,Pads> active{};
@@ -96,6 +105,7 @@ struct Snapshot {
     bool playing=false,songPlaying=false,noteRepeat=false,arpeggiator=false;
     int repeatDivision=16;
     int step=-1,playBar=0,viewBar=0,sequence=0,queuedSequence=-1,group=0,queuedGroup=-1;
+    int program=0,queuedProgram=-1;
     int selectedTrack=0;
     int songLength=0,songPosition=-1,songRepeat=0;
     float peak=0;
@@ -123,6 +133,11 @@ public:
     void selectSequence(int sequence);
     void queueSequence(int sequence);
     void copySequence(int source,int destination);
+    int createProgram(const std::string& name,ProgramType type=ProgramType::Drum);
+    int duplicateProgram(int source,const std::string& name="");
+    bool renameProgram(int program,const std::string& name);
+    bool deleteProgram(int program);
+    bool assignProgramToSequence(int sequence,int program);
     void setSequenceBars(int bars);
     void setViewBar(int bar);
     void setGroup(int group);
@@ -155,9 +170,9 @@ public:
     // Exactly Block stereo frames; UI waveform copies do not hold render locks.
     void render(float* interleaved);
     bool save(const std::string&,std::string& error);
-    // KICK Drum Program equivalent: saves or replaces only the sixteen pads
-    // of the active A-H block. Patterns, Song and global project state are not
-    // part of a kit. Paths inside sampleRoot are stored relatively.
+    // Saves or replaces only the sixteen pads of the active Drum Program.
+    // Patterns, Song and global project state are not part of a kit. Paths
+    // inside sampleRoot are stored relatively.
     bool saveKit(const std::string&,const std::string& sampleRoot,std::string& error);
     bool openKit(const std::string&,const std::string& sampleRoot,std::string& error);
     // Renders exactly one cycle of the currently active sequence through the

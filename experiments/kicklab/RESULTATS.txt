@@ -1,11 +1,13 @@
-KICK Lab 0.12.0 — Kits de pads séparés des patterns
+KICK Lab 0.13.0 — Programs séparés des patterns
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; Loop Sync 130→120 BPM ; Note Repeat cadencé par l'audio ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 31 effets ; quatre inserts ; groupes A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; niveau/pan/mute/solo ; sauvegarde KICKLAB 9 ; migration KICKLAB 1 à 8 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV et silence ; Loop Sync 130→120 BPM ; Note Repeat cadencé par l'audio ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; copie de pattern sans copie du Program ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; niveau/pan/mute/solo ; sauvegarde KICKLAB 10 ; migration KICKLAB 1 à 9 ; remise en file des buffers ; continuité sous activité graphique.
+
+0.13.0 remplace le couplage implicite kit/pattern par le modèle Program de KICK. Seize Drum Programs indépendants possèdent les samples et tous les réglages de pads. Chaque pattern conserve un identifiant de Program explicite ; plusieurs patterns peuvent partager le même kit. Le Program Manager occupe les deux écrans et permet assignation, création, duplication et suppression protégée. PLUG-IN / Instance ouvre ce gestionnaire, tandis que PERFORM / FX reste le raccourci des inserts. KICKLAB 10 persiste les Programs et migre automatiquement les anciens groupes A–H.
 
 0.12.0 ajoute le format léger KICKKIT 1. Il sauvegarde et recharge les seize références de samples et tous les réglages des pads du bloc A–H actif sans modifier sa pattern, le tempo, le Song ou les autres blocs. Aucun WAV n'est incorporé : les samples sous le dossier portable samples utilisent des chemins relatifs. Un fichier manquant annule le chargement sans toucher au kit déjà actif. Le dossier externe kits/User est créé vide.
 

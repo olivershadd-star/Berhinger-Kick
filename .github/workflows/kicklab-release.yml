@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.12.0
+        default: 0.13.0
 
 permissions:
   contents: write
@@ -62,6 +62,13 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.13.0 introduces the KICK Program model. Sixteen reusable
+            Drum Programs own samples and pad settings while patterns only own
+            musical events and reference a Program. The dual-screen Program
+            Manager creates, duplicates, assigns and safely deletes Programs.
+            KICKLAB 10 stores those links and migrates KICKLAB 1-9 projects.
+            Pattern duplication preserves the destination Program.
 
             Version 0.12.0 adds standalone KICKKIT 1 Drum Program files. FILE
             can save or load the sixteen pads of the active A-H block without
