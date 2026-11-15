@@ -33,7 +33,10 @@ if(MSVC)
     # The exhaustive single-process test keeps several large Snapshot values in
     # one frame. KICKLAB 12 adds per-step event metadata, so reserve enough test
     # stack for MSVC's non-reused fixture locals.
-    target_link_options(KickLab-Test PRIVATE /STACK:33554432)
+    # Gain-stage tests keep additional complete Snapshot values alive in main.
+    # MSVC reserves all of those large fixtures in one frame, so keep this
+    # exhaustive test executable comfortably above that frame size.
+    target_link_options(KickLab-Test PRIVATE /STACK:67108864)
 endif()
 if(MINGW)
     target_link_options(KickLab-Test PRIVATE -static)
