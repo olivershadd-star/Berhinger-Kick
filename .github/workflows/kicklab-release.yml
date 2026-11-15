@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.17.0
+        default: 0.18.0
 
 permissions:
   contents: write
@@ -63,13 +63,21 @@ jobs:
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
 
+            Version 0.18.0 ports KICK's original Color Editor as Program data.
+            The two-screen editor assigns any of the eighteen KICK colours to
+            one pad or all sixteen pads, and exposes the original Empty Pad,
+            Pad Off and Pad On (Off/Velocity/Full) display modes. Menu item 5
+            is restored to List Edit and menu item 9 opens Color Editor, as in
+            the published KICK menu. KICKLAB 14 and KICKKIT 4 preserve the
+            Program colour modes; every older project and kit remains readable.
+
             Version 0.17.0 ports the original KICK List Edit note table onto
             the dual-screen Windows surface. Screen A lists every drum and
             melodic event in musical time and edits Time, Pad/Note and row
             selection. Screen B edits Length, Velocity, Probability and
             Ratchet. Events can be inserted, deleted and moved without losing
             their metadata; occupied destinations are protected. List Edit is
-            available from menu item 9 or Shift + Events and uses the existing
+            available from menu item 5 or Shift + Events and uses the existing
             KICKLAB 13 event data without another format break.
 
             Version 0.16.0 ports the original KICK Program-level Pad Mixer and

@@ -1,11 +1,13 @@
-KICK Lab 0.17.0 — List Edit KICK
+KICK Lab 0.18.0 — Color Editor KICK
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; List Edit Drum/mélodique avec insertion, déplacement protégé et suppression ; Pad Mixer Level/Pan ; Pad Mutes groupés ; Events Velocity/Probability/Ratchet/Length ; capture de vélocité REC ; quatre Layers ; sélection Velocity et Cycle ; Reverse ; One Shot, Note On et Note Off ; Choke ; couleurs ; Loop Sync 130→120 BPM ; Note Repeat ; découpe et hauteur Pad Perform ; ADSR ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; mixage ; sauvegarde KICKLAB 13/KICKKIT 3 ; migrations anciennes ; continuité audio/graphique.
+Scénarios : lecture WAV et silence ; Color Editor par Program et par kit ; List Edit Drum/mélodique avec insertion, déplacement protégé et suppression ; Pad Mixer Level/Pan ; Pad Mutes groupés ; Events Velocity/Probability/Ratchet/Length ; capture de vélocité REC ; quatre Layers ; sélection Velocity et Cycle ; Reverse ; One Shot, Note On et Note Off ; Choke ; Loop Sync 130→120 BPM ; Note Repeat ; découpe et hauteur Pad Perform ; ADSR ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; mixage ; sauvegarde KICKLAB 14/KICKKIT 4 ; migrations anciennes ; continuité audio/graphique.
+
+0.18.0 porte le Color Editor publié de KICK. L'écran A propose les dix-huit couleurs et les modes Single/All Pads, Empty Pad et Pad Off ; l'écran B affiche les seize pads et le mode Pad On Off/Velocity/Full. Les couleurs et ces trois modes appartiennent au Program, suivent sa duplication et sont conservés dans KICKLAB 14 et KICKKIT 4. Les projets KICKLAB 1–13 et kits KICKKIT 1–3 restent lisibles. Le menu respecte de nouveau l'ordre original : List Edit en position 5 et Color Editor en position 9.
 
 0.17.0 porte le List Edit publié de KICK sur la surface Windows à deux écrans. Tous les événements Drum et mélodiques sont triés par temps ; P1/P2 modifient Time et Pad/Note, P3 parcourt les lignes et P5–P8 règlent Length, Velocity, Probability et Ratchet. Les touches contextuelles insèrent et suppriment les événements. Un déplacement conserve toutes les propriétés et refuse une destination occupée. Les données utilisent le format KICKLAB 13 existant, qui reste compatible avec les projets précédents.
 

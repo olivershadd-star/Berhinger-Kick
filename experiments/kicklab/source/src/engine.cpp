@@ -431,7 +431,7 @@ int Engine::duplicateProgram(int source,const std::string& requestedName){
     std::array<Impl::BankPad,Pads> parsed;
     try{for(int p=0;p<Pads;++p){auto& pad=parsed[p];pad.edit=edits[p];pad.effects=std::make_unique<PadEffects>(pad.edit);for(int l=0;l<PadLayers;++l){auto& to=pad.layers[l];const auto& from=layers[p][l];to.name=from.name;to.path=from.path;to.duration=from.duration;to.velocityStart=from.velocityStart;to.velocityEnd=from.velocityEnd;to.reverse=from.reverse;to.loaded=from.loaded;if(from.path.empty())continue;to.file=decode(from.path);to.loaded=true;to.waveform.assign(320,0.f);const auto& audio=to.file->samples[0];for(size_t n=0;n<audio.size();++n){const size_t j=std::min<size_t>(319,n*320/audio.size());to.waveform[j]=std::max(to.waveform[j],std::abs(audio[n]));}}}}
     catch(...){std::scoped_lock lock(impl->mutex,impl->metadataMutex);impl->banks[destination]={};impl->state.programs[destination]={};return -1;}
-    {std::scoped_lock lock(impl->mutex,impl->metadataMutex);impl->banks[destination]=std::move(parsed);}return destination;
+    {std::scoped_lock lock(impl->mutex,impl->metadataMutex);impl->banks[destination]=std::move(parsed);impl->state.programs[destination].emptyPadColor=info.emptyPadColor;impl->state.programs[destination].padOffColor=info.padOffColor;impl->state.programs[destination].padOnColor=info.padOnColor;}return destination;
 }
 bool Engine::renameProgram(int program,const std::string& requestedName){if(program<0||program>=Programs||requestedName.empty()||requestedName.size()>64)return false;std::lock_guard<std::mutex> lock(impl->mutex);if(!impl->state.programs[program].used)return false;impl->state.programs[program].name=requestedName;return true;}
 bool Engine::deleteProgram(int program){
@@ -441,6 +441,16 @@ bool Engine::assignProgramToSequence(int sequence,int program){
     if(sequence<0||sequence>=Sequences||program<0||program>=Programs)return false;bool active=false;
     {std::lock_guard<std::mutex> lock(impl->mutex);if(!impl->state.programs[program].used)return false;impl->state.sequences[sequence].program=program;active=sequence==impl->state.sequence;}
     if(active)queueSequence(sequence);return true;
+}
+void Engine::setProgramPadColor(int pad,int color,bool allPads){
+    if(pad<0||pad>=Pads||color<0||color>=PadColors)return;
+    std::lock_guard<std::mutex> lock(impl->mutex);const int program=impl->state.program;
+    for(int candidate=0;candidate<Pads;++candidate){if(!allPads&&candidate!=pad)continue;impl->banks[program][candidate].edit.color=color;impl->state.edits[candidate].color=color;}
+}
+void Engine::resetProgramPadColors(){setProgramPadColor(0,3,true);}
+void Engine::setProgramColorModes(EmptyPadColorMode emptyMode,PadOffColorMode offMode,PadOnColorMode onMode){
+    if(int(emptyMode)<0||int(emptyMode)>int(EmptyPadColorMode::Dim)||int(offMode)<0||int(offMode)>int(PadOffColorMode::Dim)||int(onMode)<0||int(onMode)>int(PadOnColorMode::Full))return;
+    std::lock_guard<std::mutex> lock(impl->mutex);auto& program=impl->state.programs[impl->state.program];program.emptyPadColor=emptyMode;program.padOffColor=offMode;program.padOnColor=onMode;
 }
 void Engine::setSequenceBars(int bars){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;auto& sequence=s.sequences[s.sequence];sequence.bars=std::clamp(bars,1,MaxBars);s.viewBar=std::min(s.viewBar,sequence.bars-1);if(impl->nextStep>=sequence.bars*Steps)impl->nextStep=0;}
 void Engine::setViewBar(int bar){std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;s.viewBar=std::clamp(bar,0,s.sequences[s.sequence].bars-1);}
@@ -541,19 +551,20 @@ void Engine::render(float* out){
 bool Engine::save(const std::string& path,std::string& error){
     auto s=snapshot();std::array<std::array<std::array<PadLayerInfo,PadLayers>,Pads>,Programs> layers;std::array<std::array<PadEdit,Pads>,Programs> edits;
     {std::scoped_lock lock(impl->mutex,impl->metadataMutex);for(int program=0;program<Programs;++program)for(int pad=0;pad<Pads;++pad){const auto& bank=impl->banks[program][pad];edits[program][pad]=bank.edit;for(int layer=0;layer<PadLayers;++layer){const auto& source=bank.layers[layer];layers[program][pad][layer]={source.name,source.path,source.duration,source.velocityStart,source.velocityEnd,source.reverse,source.loaded};}}}
-    std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 13\n"<<s.tempo<<' '<<s.volume<<' '<<s.group<<' '<<s.selectedTrack<<'\n';
-    f<<"PROGRAMS "<<Programs<<'\n';for(int program=0;program<Programs;++program){const auto& info=s.programs[program];f<<"PROGRAM "<<program<<' '<<info.used<<' '<<int(info.type)<<' '<<std::quoted(info.name)<<'\n';for(int p=0;p<Pads;++p){const auto& e=edits[program][p];f<<"PAD "<<p<<' '<<int(e.samplePlay)<<' '<<int(e.layerPlay)<<' '<<e.chokeGroup<<' '<<e.color;writePadSettings(f,e);f<<' '<<e.pan<<' '<<e.mute<<'\n';for(int layer=0;layer<PadLayers;++layer){const auto& item=layers[program][p][layer];f<<"LAYER "<<layer<<' '<<std::quoted(item.path)<<' '<<item.velocityStart<<' '<<item.velocityEnd<<' '<<item.reverse<<'\n';}}}
+    std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 14\n"<<s.tempo<<' '<<s.volume<<' '<<s.group<<' '<<s.selectedTrack<<'\n';
+    f<<"PROGRAMS "<<Programs<<'\n';for(int program=0;program<Programs;++program){const auto& info=s.programs[program];f<<"PROGRAM "<<program<<' '<<info.used<<' '<<int(info.type)<<' '<<std::quoted(info.name)<<' '<<int(info.emptyPadColor)<<' '<<int(info.padOffColor)<<' '<<int(info.padOnColor)<<'\n';for(int p=0;p<Pads;++p){const auto& e=edits[program][p];f<<"PAD "<<p<<' '<<int(e.samplePlay)<<' '<<int(e.layerPlay)<<' '<<e.chokeGroup<<' '<<e.color;writePadSettings(f,e);f<<' '<<e.pan<<' '<<e.mute<<'\n';for(int layer=0;layer<PadLayers;++layer){const auto& item=layers[program][p][layer];f<<"LAYER "<<layer<<' '<<std::quoted(item.path)<<' '<<item.velocityStart<<' '<<item.velocityEnd<<' '<<item.reverse<<'\n';}}}
     f<<"SEQUENCES "<<Sequences<<' '<<s.sequence<<' '<<s.viewBar<<'\n';
     for(int index=0;index<Sequences;++index){const auto& sequence=s.sequences[index];f<<"SEQ "<<index<<' '<<std::quoted(sequence.name)<<' '<<sequence.bars<<' '<<int(sequence.mode)<<' '<<sequence.sourcePad<<' '<<sequence.rootNote<<' '<<sequence.program<<'\n'<<"TRACKS "<<Pads<<'\n';for(int track=0;track<Pads;++track){const auto& t=sequence.tracks[track];f<<"TRACK "<<track<<' '<<std::quoted(t.name)<<' '<<int(t.program)<<' '<<t.sourcePad<<' '<<t.level<<' '<<t.pan<<' '<<t.mute<<' '<<t.solo<<' '<<t.armed<<'\n';}f<<"DRUM";for(int p=0;p<Pads;++p){unsigned long long bits=0;for(int step=0;step<MaxSequenceSteps;++step)if(sequence.drum[p][step])bits|=1ull<<step;f<<' '<<bits;}f<<"\nMELO";for(int note:sequence.melody)f<<' '<<note;f<<"\nEVENTS\n";for(int p=0;p<Pads;++p){f<<"DEVT "<<p;for(const auto& event:sequence.drumEvents[p])f<<' '<<event.velocity<<' '<<event.probability<<' '<<event.ratchet<<' '<<event.length;f<<'\n';}f<<"MEVT";for(const auto& event:sequence.melodyEvents)f<<' '<<event.velocity<<' '<<event.probability<<' '<<event.ratchet<<' '<<event.length;f<<'\n';}
     f<<"SONG "<<s.songLength<<'\n';for(int index=0;index<s.songLength;++index)f<<"STEP "<<s.song[index].sequence<<' '<<s.song[index].repeats<<'\n';
     if(!f){error="Erreur d'ecriture.";return false;}return true;
 }
 bool Engine::saveKit(const std::string& path,const std::string& sampleRoot,std::string& error){
-    std::array<std::array<PadLayerInfo,PadLayers>,Pads> layers;std::array<PadEdit,Pads> edits;int program=0;
-    {std::scoped_lock lock(impl->mutex,impl->metadataMutex);program=impl->state.program;for(int pad=0;pad<Pads;++pad){const auto& bank=impl->banks[program][pad];edits[pad]=bank.edit;for(int layer=0;layer<PadLayers;++layer){const auto& source=bank.layers[layer];layers[pad][layer]={source.name,source.path,source.duration,source.velocityStart,source.velocityEnd,source.reverse,source.loaded};}}}
+    std::array<std::array<PadLayerInfo,PadLayers>,Pads> layers;std::array<PadEdit,Pads> edits;int program=0;ProgramInfo programInfo;
+    {std::scoped_lock lock(impl->mutex,impl->metadataMutex);program=impl->state.program;programInfo=impl->state.programs[program];for(int pad=0;pad<Pads;++pad){const auto& bank=impl->banks[program][pad];edits[pad]=bank.edit;for(int layer=0;layer<PadLayers;++layer){const auto& source=bank.layers[layer];layers[pad][layer]={source.name,source.path,source.duration,source.velocityStart,source.velocityEnd,source.reverse,source.loaded};}}}
     const auto root=std::filesystem::absolute(std::filesystem::u8path(sampleRoot)).lexically_normal();
     std::ofstream file(std::filesystem::u8path(path),std::ios::trunc);if(!file){error="Impossible d'enregistrer le kit.";return false;}
-    file<<std::setprecision(17)<<"KICKKIT 3\n";
+    file<<std::setprecision(17)<<"KICKKIT 4\n";
+    file<<"COLOURS "<<int(programInfo.emptyPadColor)<<' '<<int(programInfo.padOffColor)<<' '<<int(programInfo.padOnColor)<<'\n';
     for(int pad=0;pad<Pads;++pad){
         const auto& edit=edits[pad];file<<"PAD "<<pad<<' '<<int(edit.samplePlay)<<' '<<int(edit.layerPlay)<<' '<<edit.chokeGroup<<' '<<edit.color;writePadSettings(file,edit);file<<' '<<edit.pan<<' '<<edit.mute<<'\n';
         for(int layer=0;layer<PadLayers;++layer){char location='E';std::string stored;const auto& source=layers[pad][layer];if(!source.path.empty()){const auto absolute=std::filesystem::absolute(std::filesystem::u8path(source.path)).lexically_normal();const auto relative=absolute.lexically_relative(root);if(safeRelativePath(relative)){location='R';stored=relative.generic_u8string();}else{location='A';stored=absolute.u8string();}}file<<"LAYER "<<layer<<' '<<location<<' '<<std::quoted(stored)<<' '<<source.velocityStart<<' '<<source.velocityEnd<<' '<<source.reverse<<'\n';}
@@ -563,8 +574,10 @@ bool Engine::saveKit(const std::string& path,const std::string& sampleRoot,std::
 bool Engine::openKit(const std::string& path,const std::string& sampleRoot,std::string& error){
     std::ifstream file(std::filesystem::u8path(path),std::ios::ate);
     if(!file||file.tellg()>512*1024){error="Kit introuvable ou trop volumineux.";return false;}file.seekg(0);
-    std::string tag;int version=0;if(!(file>>tag>>version)||tag!="KICKKIT"||(version<1||version>3)){error="Fichier KICKKIT invalide.";return false;}
+    std::string tag;int version=0;if(!(file>>tag>>version)||tag!="KICKKIT"||(version<1||version>4)){error="Fichier KICKKIT invalide.";return false;}
     const auto root=std::filesystem::absolute(std::filesystem::u8path(sampleRoot)).lexically_normal();
+    EmptyPadColorMode emptyMode=EmptyPadColorMode::Off;PadOffColorMode offMode=PadOffColorMode::Dim;PadOnColorMode onMode=PadOnColorMode::Velocity;
+    if(version>=4){int empty=0,off=0,on=0;if(!(file>>tag>>empty>>off>>on)||tag!="COLOURS"||empty<0||empty>1||off<0||off>1||on<0||on>2){error="Modes de couleur KICKKIT invalides.";return false;}emptyMode=EmptyPadColorMode(empty);offMode=PadOffColorMode(off);onMode=PadOnColorMode(on);}
     std::array<std::array<std::string,PadLayers>,Pads> paths{};std::array<PadEdit,Pads> edits{};std::array<std::array<int,PadLayers>,Pads> velocityStart{},velocityEnd{};std::array<std::array<bool,PadLayers>,Pads> reverse{};
     for(auto& row:velocityStart)row.fill(1);for(auto& row:velocityEnd)row.fill(127);
     for(int expected=0;expected<Pads;++expected){
@@ -577,6 +590,7 @@ bool Engine::openKit(const std::string& path,const std::string& sampleRoot,std::
     std::array<std::unique_ptr<PadEffects>,Pads> effects;for(int pad=0;pad<Pads;++pad)effects[pad]=std::make_unique<PadEffects>(edits[pad]);
     std::array<std::unique_ptr<AudioFile<float>>,Pads> retired;
     {std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);impl->cancelPreparedProgram();const int program=impl->state.program;
+        impl->state.programs[program].emptyPadColor=emptyMode;impl->state.programs[program].padOffColor=offMode;impl->state.programs[program].padOnColor=onMode;
         for(int pad=0;pad<Pads;++pad){
             impl->players[pad]->stop();impl->pendingPitch[pad].store(1000);auto& incoming=parsed[pad];incoming.activeLayer=0;retired[pad]=impl->players[pad]->replaceFile(std::move(incoming.layers[0].file));impl->loaded[pad]=incoming.layers[0].loaded;
             auto& bank=impl->banks[program][pad];bank=std::move(incoming);bank.effects.reset();const auto& primary=bank.layers[0];
@@ -623,14 +637,14 @@ bool Engine::open(const std::string& path,std::string& error){
     std::string tag;int version;Snapshot s;
     for(int index=0;index<Programs;++index){s.programs[index].name=index<Groups?"Drum Program "+std::string(1,char('A'+index)):"Program "+std::to_string(index+1);s.programs[index].used=index<Groups;}
     for(int index=0;index<Sequences;++index){s.sequences[index].name="Sequence "+std::to_string(index+1);s.sequences[index].program=index<Groups?index:0;}
-    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>13)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
+    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>14)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
     std::array<std::array<std::array<std::string,PadLayers>,Pads>,Programs> bankPaths{};std::array<std::array<PadEdit,Pads>,Programs> bankEdits{};
     std::array<std::array<std::array<int,PadLayers>,Pads>,Programs> velocityStart{},velocityEnd{};std::array<std::array<std::array<bool,PadLayers>,Pads>,Programs> reverse{};
     for(auto& program:velocityStart)for(auto& pad:program)pad.fill(1);for(auto& program:velocityEnd)for(auto& pad:program)pad.fill(127);
     if(version>=10){
         if(!(f>>s.group>>s.selectedTrack)||s.group<0||s.group>=Groups||s.selectedTrack<0||s.selectedTrack>=Pads){error="État actif invalide.";return false;}
         int programCount=0;if(!(f>>tag>>programCount)||tag!="PROGRAMS"||programCount!=Programs){error="Liste de Programs invalide.";return false;}
-        for(int program=0;program<Programs;++program){int parsed=-1,type=0;bool used=false;if(!(f>>tag>>parsed>>used>>type>>std::quoted(s.programs[program].name))||tag!="PROGRAM"||parsed!=program||type<0||type>int(ProgramType::Keygroup)||s.programs[program].name.size()>64){error="Program invalide.";return false;}s.programs[program].used=used;s.programs[program].type=ProgramType(type);
+        for(int program=0;program<Programs;++program){int parsed=-1,type=0;bool used=false;if(!(f>>tag>>parsed>>used>>type>>std::quoted(s.programs[program].name))||tag!="PROGRAM"||parsed!=program||type<0||type>int(ProgramType::Keygroup)||s.programs[program].name.size()>64){error="Program invalide.";return false;}s.programs[program].used=used;s.programs[program].type=ProgramType(type);if(version>=14){int empty=0,off=0,on=0;if(!(f>>empty>>off>>on)||empty<0||empty>1||off<0||off>1||on<0||on>2){error="Modes de couleur de Program invalides.";return false;}s.programs[program].emptyPadColor=EmptyPadColorMode(empty);s.programs[program].padOffColor=PadOffColorMode(off);s.programs[program].padOnColor=PadOnColorMode(on);}
             for(int p=0;p<Pads;++p){int parsedPad=-1;if(!(f>>tag>>parsedPad)||tag!="PAD"||parsedPad!=p){error="Pad de Program invalide.";return false;}auto& edit=bankEdits[program][p];if(version==10){if(!(f>>std::quoted(bankPaths[program][p][0]))){error="Chemin de pad invalide.";return false;}}else{int samplePlay=0,layerPlay=0;if(!(f>>samplePlay>>layerPlay>>edit.chokeGroup>>edit.color)||samplePlay<0||samplePlay>2||layerPlay<0||layerPlay>2||edit.chokeGroup< -1||edit.chokeGroup>15||edit.color<0||edit.color>=PadColors){error="Comportement de pad invalide.";return false;}edit.samplePlay=SamplePlayType(samplePlay);edit.layerPlay=LayerPlayType(layerPlay);}if(!readPadSettings(f,edit,error)){error="Program "+std::to_string(program+1)+", pad "+std::to_string(p+1)+" : "+error;return false;}if(version>=13&&(!(f>>edit.pan>>edit.mute)||!std::isfinite(edit.pan)||edit.pan< -1||edit.pan>1)){error="Mixage de pad de Program invalide.";return false;}if(version>=11)for(int expectedLayer=0;expectedLayer<PadLayers;++expectedLayer){int layer=-1,start=1,end=127;bool backwards=false;std::string layerPath;if(!(f>>tag>>layer>>std::quoted(layerPath)>>start>>end>>backwards)||tag!="LAYER"||layer!=expectedLayer||start<1||end>127||start>end){error="Couche de Program invalide.";return false;}bankPaths[program][p][layer]=std::move(layerPath);velocityStart[program][p][layer]=start;velocityEnd[program][p][layer]=end;reverse[program][p][layer]=backwards;}}
         }
     }else if(version>=6){if(!(f>>s.group)||s.group<0||s.group>=Groups){error="Groupe actif invalide.";return false;}if(version>=7&&(!(f>>s.selectedTrack)||s.selectedTrack<0||s.selectedTrack>=Pads)){error="Piste sélectionnée invalide.";return false;}

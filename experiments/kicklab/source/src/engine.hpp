@@ -11,12 +11,20 @@ namespace lab {
 constexpr int Pads=16, Groups=8, Programs=16, PadLayers=4, PadColors=18, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
 constexpr int Sequences=16, MaxBars=4, MaxSequenceSteps=Steps*MaxBars, MaxSongSteps=32;
 enum class ProgramType { Drum=0, Keygroup=1 };
+enum class EmptyPadColorMode { Off=0, Dim=1 };
+enum class PadOffColorMode { Off=0, Dim=1 };
+enum class PadOnColorMode { Off=0, Velocity=1, Full=2 };
 enum class SamplePlayType { OneShot=0, NoteOff=1, NoteOn=2 };
 enum class LayerPlayType { Cycle=0, Velocity=1, Random=2 };
 struct ProgramInfo {
     std::string name;
     ProgramType type=ProgramType::Drum;
     bool used=false;
+    // These are the three independent controls exposed by KICK's Color
+    // Editor. They belong to the Program just like the individual pad colors.
+    EmptyPadColorMode emptyPadColor=EmptyPadColorMode::Off;
+    PadOffColorMode padOffColor=PadOffColorMode::Dim;
+    PadOnColorMode padOnColor=PadOnColorMode::Velocity;
 };
 struct TrackData {
     std::string name;
@@ -175,6 +183,9 @@ public:
     bool renameProgram(int program,const std::string& name);
     bool deleteProgram(int program);
     bool assignProgramToSequence(int sequence,int program);
+    void setProgramPadColor(int pad,int color,bool allPads=false);
+    void resetProgramPadColors();
+    void setProgramColorModes(EmptyPadColorMode emptyMode,PadOffColorMode offMode,PadOnColorMode onMode);
     void setSequenceBars(int bars);
     void setViewBar(int bar);
     void setGroup(int group);

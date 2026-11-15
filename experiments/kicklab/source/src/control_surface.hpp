@@ -144,6 +144,7 @@ enum class DisplayModule {
     Programs,
     Events,
     ListEdit,
+    ColorEditor,
     Song,
     Tempo,
     MidiControl

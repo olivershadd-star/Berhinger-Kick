@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.17.0 porte le **List Edit** publié de KICK sur les deux écrans Windows. L'écran A regroupe tous les événements Drum et mélodiques du pattern avec leur position et leur Pad/Note ; l'écran B édite Length, Velocity, Probability et Ratchet. Insertion, suppression et déplacement conservent les propriétés de la note. La version 0.16.0 avait porté le Pad Mixer et les Pad Mutes au niveau du Program.
+La version 0.18.0 porte le **Color Editor** publié de KICK. Les dix-huit couleurs, l'affectation Single/All Pads et les modes Program Empty Pad, Pad Off et Pad On sont accessibles sur les deux écrans. Le menu reprend désormais les emplacements originaux : List Edit en position 5 et Color Editor en position 9. La version 0.17.0 avait porté la table List Edit.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -21,6 +21,7 @@ La version 0.17.0 porte le **List Edit** publié de KICK sur les deux écrans Wi
 7. Armer **REC**, lancer **PLAY**, puis jouer les pads. **FOLLOW / Grid** choisit la correction à l'enregistrement : 1/4, 1/8 ou 1/16. **4 Sequences** sélectionne une séquence ; **8 Songs** construit l'arrangement.
 8. **MIXER** ouvre le Track Mixer du pattern : les deux pages physiques commandent les pistes 1–8 et 9–16. Haut/bas choisit Level ou Pan ; **SOLO** ou **MUTE**, puis un pad, applique l'état à cette piste. Shift + touche Soft arme la piste. **Shift + MIXER** ouvre le Pad Mixer du Program ; haut/bas choisit Level/Pan, les flèches de page passent de 1–8 à 9–16 et un clic droit coupe le pad. **Shift + MUTE** ouvre les seize Pad Mutes KICK.
 9. Le menu **List Edit** ou **Shift + EVENTS** ouvre la table globale du pattern. Tourner l'encodeur, utiliser les flèches ou cliquer une ligne choisit l'événement. P1 change Time, P2 le Pad/Note, P3 la ligne ; P5–P8 règlent Length, Velocity, Probability et Ratchet. Les touches contextuelles permettent Précédent, Suivant, Insérer et Supprimer.
+10. Le menu **Color Editor** ouvre l'éditeur du Program actif. Choisir l'une des dix-huit couleurs sur l'écran A puis cliquer un pad de l'écran B ou un pad physique. `Single/All Pads` choisit la portée ; Empty Pad, Pad Off et Pad On reproduisent les trois modes d'éclairage KICK.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
@@ -64,11 +65,11 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 
 ## Programs et patterns
 
-- **PLUG-IN / Instance** ou le menu **Programs** ouvre seize slots de Programs répartis sur les deux écrans. L'encodeur, les flèches, la souris et Enter fonctionnent sans contrôleur obligatoire.
+- **PLUG-IN / Instance** ouvre seize slots de Programs répartis sur les deux écrans. L'encodeur, les flèches, la souris et Enter fonctionnent sans contrôleur obligatoire.
 - **Assigner** relie le Program sélectionné au pattern courant. Plusieurs patterns peuvent donc partager exactement le même kit et les mêmes réglages de pads.
 - **Nouveau** crée un Drum Program vide et l'assigne au pattern. **Dupliquer** copie les seize samples et réglages vers un nouveau Program. **Supprimer** refuse toute suppression si un pattern le référence encore.
 - Copier un pattern avec **Duplicate**, puis A–H, copie seulement ses événements et réglages de séquence. Le Program déjà assigné à la destination est conservé ; c'est la distinction essentielle entre une variation de pattern et une copie de kit.
-- **Charger/Sauver kit** agit sur le Program actif. KICKKIT 3 conserve les quatre couches, leur comportement et le Pad Mixer Level/Pan/Mute ; le fichier reste un échange léger de références et réglages, jamais un pattern ni des WAV incorporés.
+- **Charger/Sauver kit** agit sur le Program actif. KICKKIT 4 conserve les quatre couches, leur comportement, le Pad Mixer Level/Pan/Mute et les modes du Color Editor ; le fichier reste un échange léger de références et réglages, jamais un pattern ni des WAV incorporés.
 - Les projets KICKLAB 1–9 sont migrés à l'ouverture. Dans un ancien projet, chaque ancienne banque A–H devient un Program distinct et chaque pattern A–H garde le lien correspondant.
 
 ## Pad Perform, séquences et Song
@@ -77,7 +78,7 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - Chaque séquence conserve ses pistes de batterie et une piste mélodique. **PAD MODE** choisit une piste de sample, **KEYBOARD** travaille les hauteurs et **STEP** affiche les seize pas sur les pads.
 - **REC** arme l'enregistrement. Une fois PLAY actif, chaque pad joué est écrit sur la séquence courante. FOLLOW / Grid alterne entre 1/4, 1/8 et 1/16 ; l'enregistrement rythmique et mélodique utilise exactement la même grille que Step. STOP coupe le transport et désarme REC.
 - **EVENTS** ouvre les propriétés du step sélectionné. Les seize pads choisissent le step sans le supprimer ; gauche/droite ou la rotation 4D avancent et reculent. **P1 Velocity** règle 1–127, **P2 Probability** 0–100 %, **P3 Ratchet** ×1–×8 et **P4 Length** 1–16 steps. Enter bascule l'événement. Les valeurs s'appliquent aussi aux notes Keyboard, et REC capture la vélocité MIDI réelle.
-- **List Edit** reprend la table de notes du firmware KICK : événements triés par Time, Pad/Note, Length, Velocity, Probability et Ratchet. Un événement peut être déplacé vers un autre step ou un autre pad/note en conservant ses données. Une destination déjà occupée est protégée. Le menu 9 et Shift + EVENTS ouvrent cette vue sans modifier le mode de lecture du pattern.
+- **List Edit** reprend la table de notes du firmware KICK : événements triés par Time, Pad/Note, Length, Velocity, Probability et Ratchet. Un événement peut être déplacé vers un autre step ou un autre pad/note en conservant ses données. Une destination déjà occupée est protégée. Le menu 5 et Shift + EVENTS ouvrent cette vue sans modifier le mode de lecture du pattern.
 - **NOTE REPEAT / Arp** répète le pad Drum tenu ou parcourt les notes MIDI maintenues en Keyboard. La répétition est calculée dans le moteur audio à 1/4, 1/8 ou 1/16 et ne dépend pas du rafraîchissement graphique. **CHORDS** construit une triade sur le pad choisi et la confie à ce même arpégiateur.
 - **Pad Notes / Keygroup** reprend la logique Pad Perform publiée dans KICK : modes chromatique, gamme majeure et gamme mineure, sample source et note racine. Un clic de pad, une touche AZERTY ou une note MIDI joue le même sample à une hauteur différente. La transposition change aussi la durée, sans time-stretch.
 - **Next Sequence** affecte les séquences 1–16 aux pads. À l'arrêt, le choix est immédiat ; pendant la lecture, la nouvelle séquence est mise en attente jusqu'à la fin complète de la séquence courante.
@@ -104,11 +105,11 @@ L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la r
 
 **FILE → Enregistrer/Ouvrir** sauvegarde les seize Programs et leurs liens avec les seize patterns, les références de samples et réglages de pads, les pistes rythmiques et mélodiques, les longueurs, les modes Pad Perform, l'arrangement Song, le tempo et le volume dans un fichier `.kicklab`. Les samples restent référencés par leur chemin et ne sont pas incorporés : conserver les WAV à leur emplacement.
 
-**FILE → Sauvegarder/Charger un kit de pads** utilise un fichier `.kickkit` indépendant du projet. Il contient seulement les références et réglages des seize pads du Program actif : découpe, volume, pitch, ADSR, Loop Sync, quatre inserts et Pad Mixer Level/Pan/Mute. Il ne contient ni WAV, ni pattern, ni tempo, ni Song. Les WAV placés sous `samples` sont référencés relativement afin que l'ensemble portable puisse être déplacé ; les WAV extérieurs gardent leur chemin absolu. Un kit invalide ou dont un WAV manque est refusé sans modifier le Program déjà chargé. Le dossier `kits/User` reste extérieur à l'exécutable et peut être rempli librement par l'utilisateur.
+**FILE → Sauvegarder/Charger un kit de pads** utilise un fichier `.kickkit` indépendant du projet. Il contient seulement les références et réglages des seize pads du Program actif : découpe, volume, pitch, ADSR, Loop Sync, quatre inserts, Pad Mixer Level/Pan/Mute et Color Editor. Il ne contient ni WAV, ni pattern, ni tempo, ni Song. Les WAV placés sous `samples` sont référencés relativement afin que l'ensemble portable puisse être déplacé ; les WAV extérieurs gardent leur chemin absolu. Un kit invalide ou dont un WAV manque est refusé sans modifier le Program déjà chargé. Le dossier `kits/User` reste extérieur à l'exécutable et peut être rempli librement par l'utilisateur.
 
 **FILE → Exporter le pattern actif en WAV** rend exactement une boucle du pattern sélectionné avec son Program, à son tempo et sa longueur de une à quatre mesures. L'export est stéréo PCM 24 bits à 48 kHz et passe par le véritable moteur : pitch, enveloppes, niveaux, panoramiques, mutes/solos, Master et quatre inserts par pad sont inclus. Le transport est arrêté à la fin de l'export.
 
-Les projets **KICKLAB 1** à **KICKLAB 12** et les kits **KICKKIT 1–2** restent lisibles. Les nouveaux projets utilisent **KICKLAB 13** et les nouveaux kits **KICKKIT 3** pour conserver le Pad Mixer et les Pad Mutes en plus des Events et des quatre couches. Ils ne s'ouvrent pas dans les anciennes versions. Ces formats appartiennent au portage Windows, pas à la machine KICK.
+Les projets **KICKLAB 1** à **KICKLAB 13** et les kits **KICKKIT 1–3** restent lisibles. Les nouveaux projets utilisent **KICKLAB 14** et les nouveaux kits **KICKKIT 4** pour conserver les modes Program du Color Editor en plus des Events, couches et Pad Mixer. Ils ne s'ouvrent pas dans les anciennes versions. Ces formats appartiennent au portage Windows, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 
@@ -148,7 +149,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, Reverse, les quatre couches Velocity/Cycle, les trois modes de déclenchement, Choke, les couleurs, Events et List Edit (insertion/déplacement/suppression), la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, la séparation Program/Pattern, Pad Mixer/Mutes, KICKLAB 13/KICKKIT 3 et leurs migrations, le mixage, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, Reverse, les quatre couches Velocity/Cycle, les trois modes de déclenchement, Choke, Color Editor, Events et List Edit (insertion/déplacement/suppression), la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, la séparation Program/Pattern, Pad Mixer/Mutes, KICKLAB 14/KICKKIT 4 et leurs migrations, le mixage, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 
