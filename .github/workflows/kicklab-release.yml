@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.21.1
+        default: 0.21.2
 
 permissions:
   contents: write
@@ -62,6 +62,15 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.21.2 corrects and verifies the complete meter path. Track
+            Mixer restores exact 0-100% control values and displays a separate
+            measured peak in dB with a fluid meter and a true 0 dB marker.
+            Master now distinguishes MIX before its fader, PRE before the
+            limiter and final OUT, while showing its setting as percentage and
+            dB. Red means strictly above 0 dB, never exactly 0 dB. The hidden
+            AudIO design-output startup ramp is forced to unity before playback,
+            so the bus and track meters agree from the first hit.
 
             Version 0.21.1 hardens the Windows mouse dispatcher and replaces
             the former launch-only smoke check with real clicks across KICK,

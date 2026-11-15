@@ -2,10 +2,10 @@
 <html lang="fr">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width">
-<title>KICK Lab 0.21.1 — séquenceur graphique</title>
+<title>KICK Lab 0.21.2 — mixage et séquenceur</title>
 <style>body{background:#0e1117;color:#e9eff8;font:17px/1.65 system-ui,sans-serif;margin:0}main{max-width:1000px;margin:auto;padding:48px 26px}small{color:#4cd9b8;letter-spacing:.12em}h1{font-size:44px;margin:.3em 0}a{color:#4cd9b8}section{background:#171c25;border:1px solid #2b3544;border-radius:16px;padding:24px;margin:24px 0}li{margin:10px 0}code{background:#242c38;padding:3px 7px;border-radius:4px}.note{color:#a5b3c7}</style>
 <main>
-<small>VERSION 0.21.1 / WINDOWS PORTABLE</small>
+<small>VERSION 0.21.2 / WINDOWS PORTABLE</small>
 <h1>KICK / LAB</h1>
 <p>Cette version repart de la base audio stable et applique la disposition Maschine+ demandée : <strong>deux écrans KICK, huit knobs, huit groupes A–H, modes Pad/Keyboard/Step et commandes physiques</strong>. Souris et clavier restent toujours utilisables sans contrôleur.</p>
 <section><h2>Test musical conseillé</h2><ol>
@@ -17,7 +17,7 @@
 <li>Ouvrir <strong>List Edit</strong> dans le menu 5 ou avec <strong>Shift + EVENTS</strong>. L'écran A parcourt Time et Pad/Note ; l'écran B édite Length, Velocity, Probability et Ratchet. Précédent/Suivant/Insérer/Supprimer sont disponibles au-dessus de l'écran A.</li>
 <li>Ouvrir <strong>Color Editor</strong> dans le menu 9. Choisir une des dix-huit couleurs sur l'écran A, puis un pad sur l'écran B ou la surface. Single/All Pads et les modes Empty, Pad Off et Pad On suivent le Program actif.</li>
 <li>Appuyer sur <strong>ERASE</strong> ou <strong>Shift + DUPLICATE</strong>. L'écran A copie ou vide un pad du Program sans toucher aux patterns ; l'écran B efface uniquement les notes de la séquence, piste et plage musicale choisies. Duplicate seul continue à copier un pattern vers A–H.</li>
-<li>Ouvrir <strong>TRACK MIXER</strong> : chaque piste montre maintenant son fader et son pic avant Master. Le Master va réellement jusqu'à 0 dB et affiche OUT ainsi que la réduction GR. Le limiteur de sécurité plafonne l'écoute et l'export WAV à −1 dBFS ; une forte réduction GR indique qu'il faut baisser les pistes concernées.</li>
+<li>Ouvrir <strong>TRACK MIXER</strong> : LEVEL redonne le réglage exact de 0 à 100 %, tandis que PK et la barre mesurent le vrai pic en dB. Le trait blanc marque 0 dB et le rouge signifie strictement un dépassement. Le Master sépare MIX avant fader, PRE avant limiteur et OUT protégé, avec la réduction GR. Le limiteur de sécurité plafonne l'écoute et l'export WAV à −1 dBFS.</li>
 <li>Ouvrir <strong>4 Sequences</strong>. Pendant Play, un pad met la séquence choisie en attente jusqu'à la fin de la boucle courante.</li>
 <li>Ouvrir <strong>8 Songs</strong>, choisir une séquence avec les pads, régler ses répétitions avec P2, cliquer sur Ajouter, puis Lire.</li>
 <li><strong>PLUG-IN / Instance</strong> ouvre les seize Programs : assigner, créer ou dupliquer un kit sans copier les steps. <strong>PITCH / PAD EDIT</strong> expose ensuite Sample, ADSR, Loop Sync, Drum et Layers : quatre couches, vélocité, Cycle/Random, Choke et Reverse.</li>

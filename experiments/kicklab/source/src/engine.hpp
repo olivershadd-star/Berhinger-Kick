@@ -143,7 +143,9 @@ struct Snapshot {
     int program=0,queuedProgram=-1;
     int selectedTrack=0;
     int songLength=0,songPosition=-1,songRepeat=0;
-    float peak=0,preLimiterPeak=0,limiterReductionDb=0;
+    // mixPeak is the summed floating-point bus before the Master fader;
+    // preLimiterPeak is after that fader; peak is the final limited output.
+    float mixPeak=0,peak=0,preLimiterPeak=0,limiterReductionDb=0;
 };
 class Engine {
 public:
