@@ -1116,14 +1116,14 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     hardwareButton(dc,utilityButtonBox(0),L"MENU",L"Écrans A + B",false,true);
     hardwareButton(dc,utilityButtonBox(1),L"RÉSERVE",L"",false,false);
 
-    static const std::array<std::pair<const wchar_t*,const wchar_t*>,5> small={{
+    static const std::array<std::pair<const wchar_t*,const wchar_t*>,5> smallButtons={{
         {L"VOLUME",L"Velocity"},{L"NOTE REPEAT",L"Arp"},{L"SWING",L"Position"},{L"LOCK",L"Ext Lock"},{L"TEMPO",L"Tune"}
     }};
-    hardwareButton(dc,smallControlBox(0,0),small[0].first,small[0].second);
-    hardwareButton(dc,smallControlBox(1,0),small[1].first,small[1].second,snapshot.noteRepeat,true);
-    hardwareButton(dc,smallControlBox(0,1),small[2].first,small[2].second,false,false);
-    hardwareButton(dc,smallControlBox(1,1),small[3].first,small[3].second,false,false);
-    hardwareButton(dc,smallControlBox(0,2),small[4].first,small[4].second,surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Tempo);
+    hardwareButton(dc,smallControlBox(0,0),smallButtons[0].first,smallButtons[0].second);
+    hardwareButton(dc,smallControlBox(1,0),smallButtons[1].first,smallButtons[1].second,snapshot.noteRepeat,true);
+    hardwareButton(dc,smallControlBox(0,1),smallButtons[2].first,smallButtons[2].second,false,false);
+    hardwareButton(dc,smallControlBox(1,1),smallButtons[3].first,smallButtons[3].second,false,false);
+    hardwareButton(dc,smallControlBox(0,2),smallButtons[4].first,smallButtons[4].second,surface.displays[surface.focusedDisplay].module==lab::DisplayModule::Tempo);
     text(dc,smallControlBox(1,2),number(int(snapshot.tempo))+L" BPM",15,accent,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     static const std::array<const wchar_t*,4> performance={L"PITCH / PAD EDIT",L"MOD",L"PERFORM / FX",L"NOTES"};
