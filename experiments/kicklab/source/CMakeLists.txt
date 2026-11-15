@@ -21,6 +21,10 @@ if(MSVC)
     target_compile_definitions(kicklab_engine PRIVATE _CRT_SECURE_NO_WARNINGS)
     if(TARGET KickLab)
         target_compile_options(KickLab PRIVATE /utf-8)
+        # Snapshot contains all 16 sequences and their per-step metadata. UI
+        # command handlers keep some snapshots by value, so the 1 MiB default
+        # Windows GUI stack can overflow as soon as a mouse click is routed.
+        target_link_options(KickLab PRIVATE /STACK:8388608)
     endif()
 endif()
 add_executable(KickLab-Test tests/engine_test.cpp)

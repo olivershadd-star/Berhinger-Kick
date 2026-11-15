@@ -776,6 +776,13 @@ bool sequencerGridClick(int x,int y,bool right){
     return true;
 }
 
+void showSequencerView(){
+    sequencerView=true;const auto snapshot=engine.snapshot();
+    const auto& sequence=snapshot.sequences[snapshot.sequence];
+    sequencerBar=std::clamp(snapshot.viewBar,0,std::max(0,sequence.bars-1));
+    status=L"Vue Séquenceur — pattern "+number(snapshot.sequence+1)+L", mesure "+number(sequencerBar+1)+L".";
+}
+
 bool maschineClick(int x,int y,bool right){
     for(int display=0;display<2;++display)for(int soft=0;soft<4;++soft)if(surfaceSoftButtonBox(display,soft).contains(x,y)){
         activateSurfaceSoft(display,soft,mixerBank);return true;
@@ -800,7 +807,7 @@ bool maschineClick(int x,int y,bool right){
     for(int column=0;column<3;++column)if(utilityButtonBox(column).contains(x,y)){
         if(column==0)showSurfaceHome();
         else if(column==1){sequencerView=false;status=L"Vue KICK — matrice de pads active.";}
-        else {sequencerView=true;auto snapshot=engine.snapshot();sequencerBar=std::clamp(snapshot.viewBar,0,snapshot.sequences[snapshot.sequence].bars-1);status=L"Vue Séquenceur — pattern "+number(snapshot.sequence+1)+L", mesure "+number(sequencerBar+1)+L".";}
+        else showSequencerView();
         return true;
     }
     for(int group=0;group<8;++group)if(groupBox(group).contains(x,y)){
