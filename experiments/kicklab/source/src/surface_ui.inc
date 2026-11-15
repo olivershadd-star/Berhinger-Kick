@@ -56,7 +56,7 @@ Box surfaceColorPadBox(int pad)const{return {surfaceX(1)+14+(pad%4)*130,SurfaceY
 Box surfaceEditPadBox(int pad)const{return {surfaceX(0)+14+(pad%4)*130,SurfaceY+58+(pad/4)*52,122,44};}
 
 Box shortcutBox(int index)const{return {20+(index%2)*120,38+(index/2)*48,112,38};}
-Box utilityButtonBox(int column)const{return {20+column*120,326,112,38};}
+Box utilityButtonBox(int column)const{return {20+column*80,326,72,38};}
 Box groupBox(int group)const{return {20+(group%4)*108,604+(group/4)*54,100,46};}
 Box modeBox(int mode)const{return {778+mode*116,420,108,32};}
 Box sideCommandBox(int command)const{return {650,466+command*41,112,34};}
@@ -70,6 +70,13 @@ Box brandControlBox()const{return {1418,138,164,494};}
 Box brandMacroBox(int macro)const{return {1427+(macro%2)*76,154+(macro/2)*67,66,58};}
 Box brandPushBox(int buttonIndex)const{return {1427+(buttonIndex%2)*76,438+(buttonIndex/2)*69,66,54};}
 Box brandMasterBox()const{return {1418,650,164,234};}
+Box sequencerPanelBox()const{return {778,466,456,368};}
+Box sequencerPreviousBarBox()const{return {938,476,26,28};}
+Box sequencerNextBarBox()const{return {1038,476,26,28};}
+Box sequencerBarLabelBox()const{return {968,476,66,28};}
+Box sequencerLengthBox(int bars)const{return {1072+(bars-1)*38,476,34,28};}
+Box sequencerRowLabelBox(int row)const{return {788,516+row*19,72,17};}
+Box sequencerCellBox(int row,int step)const{return {864+step*22,517+row*19,18,14};}
 
 int surfaceDragDisplay=-1,surfaceDragKnob=-1,surfaceDragStartY=0,surfaceDragLastStep=0;
 
@@ -99,7 +106,7 @@ void selectTrack(int track){
 void selectGroupBlock(int group){
     group=std::clamp(group,0,lab::Groups-1);const auto before=engine.snapshot();std::wstring prefix;
     if(duplicateSourceSequence>=0){engine.copySequence(duplicateSourceSequence,group);markProjectDirty();prefix=L"Pattern "+number(duplicateSourceSequence+1)+L" copié vers "+std::wstring(1,wchar_t(L'A'+group))+L". ";duplicateSourceSequence=-1;}
-    engine.setGroup(group);markProjectDirty();const auto after=engine.snapshot();padGroup=after.group;programSelected=after.sequences[group].program;selectPad(0);stepTrack=0;
+    engine.setGroup(group);markProjectDirty();const auto after=engine.snapshot();padGroup=after.group;programSelected=after.sequences[group].program;selectPad(0);stepTrack=sequencerBar=0;
     if(before.playing&&after.group!=group)status=prefix+L"Bloc "+std::wstring(1,wchar_t(L'A'+group))+L" en attente — changement à la fin du pattern courant.";
     else status=prefix+L"Pattern "+std::wstring(1,wchar_t(L'A'+group))+L" actif — Program : "+wide(after.programs[after.program].name)+L".";
 }
@@ -616,6 +623,7 @@ void activateSurfaceMenu(){
 
 bool surfaceWheel(int x,int y,int delta){
     if(tab!=0)return false;
+    if(sequencerView&&sequencerPanelBox().contains(x,y)){const auto snapshot=engine.snapshot();const int bars=snapshot.sequences[snapshot.sequence].bars;sequencerBar=std::clamp(sequencerBar+(delta<0?1:-1),0,bars-1);return true;}
     for(int display=0;display<2;++display)for(int knob=0;knob<4;++knob)if(surfaceKnobBox(display,knob).contains(x,y)){
         surface.focusDisplay(display);dispatch({lab::SurfaceAction::QLinkTurn,knob,delta>0?1:-1,display});return true;
     }
@@ -748,6 +756,26 @@ bool surfaceClick(int x,int y,bool right){
     return false;
 }
 
+bool sequencerGridClick(int x,int y,bool right){
+    if(!sequencerView||!sequencerPanelBox().contains(x,y))return false;
+    auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[snapshot.sequence];sequencerBar=std::clamp(sequencerBar,0,sequence.bars-1);
+    if(sequencerPreviousBarBox().contains(x,y)){sequencerBar=std::max(0,sequencerBar-1);return true;}
+    if(sequencerNextBarBox().contains(x,y)){sequencerBar=std::min(sequence.bars-1,sequencerBar+1);return true;}
+    for(int bars=1;bars<=lab::MaxBars;++bars)if(sequencerLengthBox(bars).contains(x,y)){engine.setSequenceBars(bars);sequencerBar=std::min(sequencerBar,bars-1);markProjectDirty();status=L"Séquence "+number(snapshot.sequence+1)+L" : "+number(bars)+L" mesure(s).";return true;}
+    const bool melodic=sequence.mode!=lab::PerformanceMode::Drum;
+    for(int row=0;row<lab::Pads;++row){
+        const int pad=melodic?lab::Pads-1-row:row;
+        if(sequencerRowLabelBox(row).contains(x,y)){selectTrack(pad);if(!melodic)selectPad(pad);status=melodic?L"Ligne mélodique "+noteName(engine.performanceNote(pad))+L" sélectionnée.":L"Piste "+number(pad+1)+L" sélectionnée.";return true;}
+        for(int step=0;step<lab::Steps;++step)if(sequencerCellBox(row,step).contains(x,y)){
+            const int absolute=sequencerBar*lab::Steps+step;
+            if(melodic){const int note=engine.performanceNote(pad),current=sequence.melody[absolute];if(current==note)engine.deleteStepEvent(sequence.sourcePad,absolute,true);else{if(current>=0)engine.deleteStepEvent(sequence.sourcePad,absolute,true);engine.insertStepEvent(note,absolute,true);}stepTrack=pad;}
+            else {if(sequence.drum[pad][absolute])engine.deleteStepEvent(pad,absolute,false);else engine.insertStepEvent(pad,absolute,false);selectPad(pad);}
+            markProjectDirty();status=L"Pattern "+number(snapshot.sequence+1)+L" · mesure "+number(sequencerBar+1)+L" · step "+number(step+1)+(right?L" (clic droit)":L"");return true;
+        }
+    }
+    return true;
+}
+
 bool maschineClick(int x,int y,bool right){
     for(int display=0;display<2;++display)for(int soft=0;soft<4;++soft)if(surfaceSoftButtonBox(display,soft).contains(x,y)){
         activateSurfaceSoft(display,soft,mixerBank);return true;
@@ -769,9 +797,10 @@ bool maschineClick(int x,int y,bool right){
         }
         return true;
     }
-    for(int column=0;column<2;++column)if(utilityButtonBox(column).contains(x,y)){
+    for(int column=0;column<3;++column)if(utilityButtonBox(column).contains(x,y)){
         if(column==0)showSurfaceHome();
-        else status=L"Bouton réservé — aucune fonction assignée pour le moment.";
+        else if(column==1){sequencerView=false;status=L"Vue KICK — matrice de pads active.";}
+        else {sequencerView=true;auto snapshot=engine.snapshot();sequencerBar=std::clamp(snapshot.viewBar,0,snapshot.sequences[snapshot.sequence].bars-1);status=L"Vue Séquenceur — pattern "+number(snapshot.sequence+1)+L", mesure "+number(sequencerBar+1)+L".";}
         return true;
     }
     for(int group=0;group<8;++group)if(groupBox(group).contains(x,y)){
@@ -818,7 +847,8 @@ bool maschineClick(int x,int y,bool right){
         else status=L"Commande transport visible ; fonction KICK pas encore portée.";
         return true;
     }
-    for(int p=0;p<16;++p)if(padBox(p).contains(x,y)){
+    if(sequencerGridClick(x,y,right))return true;
+    for(int p=0;p<16&&!sequencerView;++p)if(padBox(p).contains(x,y)){
         if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::EditOperations){selectEditOperationPad(p);return true;}
         if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::ColorEditor){applySurfaceColor(p);return true;}
         if(surface.displays[surface.focusedDisplay].module==lab::DisplayModule::ListEdit){selectListEditTrack(p);return true;}
@@ -1105,6 +1135,23 @@ void hardwareButton(HDC dc,Box box,const std::wstring& primary,const std::wstrin
     if(!shifted.empty())text(dc,{box.x+6,box.y+19,box.w-12,box.h-21},shifted,8,on?RGB(24,55,51):muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 
+void paintSequencerGrid(HDC dc,const lab::Snapshot& snapshot){
+    const auto panelBox=sequencerPanelBox();const auto& sequence=snapshot.sequences[snapshot.sequence];sequencerBar=std::clamp(sequencerBar,0,sequence.bars-1);const bool melodic=sequence.mode!=lab::PerformanceMode::Drum;
+    round(dc,panelBox,panel,RGB(42,69,88));
+    const std::wstring pattern=snapshot.sequence<8?std::wstring(1,wchar_t(L'A'+snapshot.sequence)):number(snapshot.sequence+1);
+    std::wstring title=L"SEQ "+pattern+L" · "+(melodic?L"KEYBOARD":L"DRUM");if(recordArmed)title+=L" · REC "+recordQuantizeName();
+    text(dc,{788,476,144,28},title,9,recordArmed?RGB(255,95,90):ink,FW_SEMIBOLD,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    button(dc,sequencerPreviousBarBox(),L"<");text(dc,sequencerBarLabelBox(),L"BAR "+number(sequencerBar+1)+L"/"+number(sequence.bars),9,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);button(dc,sequencerNextBarBox(),L">");
+    for(int bars=1;bars<=lab::MaxBars;++bars)button(dc,sequencerLengthBox(bars),number(bars),sequence.bars==bars);
+    const bool playVisible=snapshot.playing&&snapshot.playBar==sequencerBar;
+    for(int row=0;row<lab::Pads;++row){
+        const int pad=melodic?lab::Pads-1-row:row,note=melodic?engine.performanceNote(pad):-1;const auto labelBox=sequencerRowLabelBox(row);const bool selectedRow=pad==stepTrack;
+        if(selectedRow)round(dc,{labelBox.x-3,labelBox.y-1,438,labelBox.h+2},RGB(31,50,60),RGB(45,74,88));
+        const auto color=melodic?accent:programPadColor(snapshot.edits[pad].color);text(dc,labelBox,melodic?noteName(note):number(pad+1)+L" "+wide(snapshot.names[pad]),8,color,FW_SEMIBOLD,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        for(int step=0;step<lab::Steps;++step){const int absolute=sequencerBar*lab::Steps+step;const bool active=melodic?sequence.melody[absolute]==note:sequence.drum[pad][absolute];const auto cell=sequencerCellBox(row,step);COLORREF face=active?color:((step/4)%2?RGB(38,46,59):RGB(29,36,47));if(playVisible&&snapshot.step==step&&!active)face=RGB(58,76,84);round(dc,cell,face,playVisible&&snapshot.step==step?ink:(active?color:RGB(45,54,67)));}
+    }
+}
+
 void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     static const std::array<std::pair<const wchar_t*,const wchar_t*>,12> shortcuts={{
         {L"CHANNEL",L"MIDI"},{L"PLUG-IN",L"Instance"},{L"IDEAS",L"Song"},{L"MIXER",L""},
@@ -1113,8 +1160,9 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     }};
     for(int i=0;i<12;++i){const bool available=i!=10;const auto module=surface.displays[0].module;hardwareButton(dc,shortcutBox(i),shortcuts[i].first,shortcuts[i].second,i==3&&(module==lab::DisplayModule::Mixer||module==lab::DisplayModule::PadMixer),available);}
 
-    hardwareButton(dc,utilityButtonBox(0),L"MENU",L"Écrans A + B",false,true);
-    hardwareButton(dc,utilityButtonBox(1),L"RÉSERVE",L"",false,false);
+    hardwareButton(dc,utilityButtonBox(0),L"MENU",L"A + B",false,true);
+    hardwareButton(dc,utilityButtonBox(1),L"KICK",L"Pads",!sequencerView,true);
+    hardwareButton(dc,utilityButtonBox(2),L"SÉQ",L"16 × 16",sequencerView,true);
 
     static const std::array<std::pair<const wchar_t*,const wchar_t*>,5> smallButtons={{
         {L"VOLUME",L"Velocity"},{L"NOTE REPEAT",L"Arp"},{L"SWING",L"Position"},{L"LOCK",L"Ext Lock"},{L"TEMPO",L"Tune"}
@@ -1147,7 +1195,7 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
 
     const auto& sequence=snapshot.sequences[snapshot.sequence];const bool notes=padMode==1||padMode==2;const bool steps=padMode==3;const bool melodicSteps=steps&&sequence.mode!=lab::PerformanceMode::Drum;const auto focusedModule=surface.displays[surface.focusedDisplay].module;const bool editingEvents=focusedModule==lab::DisplayModule::Events;const bool editingColors=focusedModule==lab::DisplayModule::ColorEditor;const bool editingPads=focusedModule==lab::DisplayModule::EditOperations;const bool editingPadMix=focusedModule==lab::DisplayModule::PadMixer||focusedModule==lab::DisplayModule::PadMute;
     const bool playVisible=snapshot.playing&&snapshot.playBar==snapshot.viewBar;ULONGLONG now=GetTickCount64();
-    for(int p=0;p<16;++p){
+    if(sequencerView)paintSequencerGrid(dc,snapshot);else for(int p=0;p<16;++p){
         const auto box=padBox(p);const bool active=editingPadMix?snapshot.edits[p].mute:steps?(melodicSteps?snapshot.melody[p]==engine.performanceNote(stepTrack):snapshot.pattern[stepTrack][p]):notes?false:snapshot.active[p];
         const bool hot=now<flashed[p]||active||(steps&&playVisible&&snapshot.step==p)||(editingEvents&&p==eventStep)||(editingPadMix&&p==selected)||(editingPads&&(p==editSourcePad||p==editDestinationPad));const COLORREF color=editingPadMix&&snapshot.edits[p].mute?RGB(225,92,78):editingPads&&p==editDestinationPad?RGB(241,148,88):steps?RGB(241,184,88):programPadColor(snapshot.edits[p].color);COLORREF face=dimColor(themePads,.28);const auto& colorMode=snapshot.programs[snapshot.program];
         if(editingColors)face=color;else if(hot&&colorMode.padOnColor!=lab::PadOnColorMode::Off)face=color;else if(snapshot.paths[p].empty()&&colorMode.emptyPadColor==lab::EmptyPadColorMode::Dim)face=dimColor(color,.22);else if(!snapshot.paths[p].empty()&&colorMode.padOffColor==lab::PadOffColorMode::Dim)face=dimColor(color,.28);
@@ -1196,7 +1244,7 @@ void paintBrandPanel(HDC dc,const lab::Snapshot& snapshot){
     round(dc,identity,RGB(11,17,27),RGB(42,69,88));fill(dc,{identity.x+8,identity.y+7,identity.w-16,2},accent);
     text(dc,{identity.x+8,identity.y+12,identity.w-16,52},L"KICK",36,ink,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     text(dc,{identity.x+8,identity.y+62,identity.w-16,18},L"ANKS Labs",12,accent,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.20.0",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.21.0",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     round(dc,controls,RGB(11,17,27),RGB(42,69,88));
     for(int macro=0;macro<8;++macro){const auto box=brandMacroBox(macro);const int cx=box.x+box.w/2,cy=box.y+23;HBRUSH brush=CreateSolidBrush(themeButtons);HPEN edge=CreatePen(PS_SOLID,2,line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-15,cy-15,cx+15,cy+15);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);HPEN marker=CreatePen(PS_SOLID,2,muted);oldP=SelectObject(dc,marker);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx,cy-10);SelectObject(dc,oldP);DeleteObject(marker);text(dc,{box.x,box.y+40,box.w,14},L"M"+number(macro+1),8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}

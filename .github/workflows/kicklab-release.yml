@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.20.0
+        default: 0.21.0
 
 permissions:
   contents: write
@@ -62,6 +62,15 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.21.0 restores the full 16-track by 16-step sequencer as
+            a second view of the same KICK surface. MENU, KICK and SEQ switch
+            between the shared displays and the normal pad or sequencer area.
+            Drum rows edit the sixteen pad tracks; Keyboard rows edit the
+            sixteen mapped notes. Mouse edits, quantized live REC, Maschine+
+            pads and the computer keyboard all write the same active A-H
+            pattern. Patterns can contain one to four bars, with an independent
+            edit-page selector that remains usable during play and pause.
 
             Version 0.20.0 widens and balances the two independent KICK displays,
             adds a dedicated MENU key that restores both displays, and rebuilds

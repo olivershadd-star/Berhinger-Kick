@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.20.0 élargit et équilibre les deux écrans KICK, ajoute le raccourci **MENU**, réserve huit macros et quatre poussoirs, et rend l'apparence portable : image PNG/JPG/BMP et couleurs RGB du fond, des boutons et des pads au repos. La version 0.19.1 avait corrigé le **gain staging**, le Master, le limiteur et les vumètres des seize pistes.
+La version 0.21.0 réintègre le **séquenceur graphique 16 pistes × 16 pas** comme seconde vue de la façade. Les boutons MENU, KICK et SÉQ basculent entre les mêmes écrans et les zones Pads/Séquenceur. Drum et Keyboard éditent directement le pattern A–H actif, sur une à quatre mesures, à la souris ou par REC quantifié.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -25,6 +25,7 @@ La version 0.20.0 élargit et équilibre les deux écrans KICK, ajoute le raccou
 11. Appuyer sur **ERASE** ou **Shift + DUPLICATE** pour ouvrir l'édition finale KICK. L'écran A choisit un pad source et un pad destination : Copy duplique ses quatre couches, Pad Edit et FX ; Delete vide le pad choisi sans effacer les steps. L'écran B efface uniquement les notes d'une séquence, d'une piste Drum et d'une plage musicale. Pour une séquence mélodique, il cible sa voie de notes. Les soft keys, P1–P8, l'encodeur, les pads, le clavier et la souris restent équivalents.
 12. Dans **TRACK MIXER**, chaque piste possède maintenant un fader et un vumètre pré-Master. Orange indique l'approche de 0 dBFS et rouge un dépassement interne : réduire cette piste avec son knob. Le Master affiche son gain réel en dB, le niveau OUT et la réduction `GR` du limiteur. Une forte valeur GR signifie que le mix doit être abaissé piste par piste.
 13. Le nouveau bouton **MENU** ramène simultanément les écrans A et B au menu KICK. **SETTINGS → Apparence et fond d'écran** charge une image et ouvre les sélecteurs RGB. Les réglages sont conservés dans le dossier portable `appearance`, sans installation ; huit macros et quatre poussoirs de la colonne KICK restent volontairement sans assignation dans cette version.
+14. **KICK** affiche les seize pads ; **SÉQ** remplace seulement cette matrice par seize pistes de seize doubles croches. Les boutons `1–4` règlent la longueur du pattern et `< BAR >`, les flèches gauche/droite ou la molette changent la mesure affichée, y compris pendant Play. En Drum, chaque ligne correspond à un pad. En Keyboard, les lignes correspondent aux seize notes mappées. Armer **REC**, lancer **PLAY** et jouer pour enregistrer avec la quantification FOLLOW/Grid ; un clic dans la grille ajoute ou retire directement une note.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
