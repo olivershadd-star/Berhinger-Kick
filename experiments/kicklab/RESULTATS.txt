@@ -1,11 +1,13 @@
-KICK Lab 0.15.0 — Events KICK par step
+KICK Lab 0.16.0 — Pad Mixer et Pad Mutes KICK
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; Events Velocity/Probability/Ratchet/Length ; capture de vélocité REC ; quatre Layers ; sélection Velocity et Cycle ; Reverse ; One Shot, Note On et Note Off ; Choke ; couleurs ; Loop Sync 130→120 BPM ; Note Repeat ; découpe et hauteur Pad Perform ; ADSR ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; mixage ; sauvegarde KICKLAB 12/KICKKIT 2 ; migrations anciennes ; continuité audio/graphique.
+Scénarios : lecture WAV et silence ; Pad Mixer Level/Pan ; Pad Mutes groupés ; Events Velocity/Probability/Ratchet/Length ; capture de vélocité REC ; quatre Layers ; sélection Velocity et Cycle ; Reverse ; One Shot, Note On et Note Off ; Choke ; couleurs ; Loop Sync 130→120 BPM ; Note Repeat ; découpe et hauteur Pad Perform ; ADSR ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; mixage ; sauvegarde KICKLAB 13/KICKKIT 3 ; migrations anciennes ; continuité audio/graphique.
+
+0.16.0 porte le Pad Mixer et les Pad Mutes des Programs publiés de KICK, séparément du Track Mixer des séquences. Shift + MIXER ouvre Level/Pan sur les pads 1–8 puis 9–16 ; Shift + MUTE ouvre les seize mutes. Les pads d'un même groupe Choke/mute basculent ensemble, conformément au modèle original. Les réglages sont audibles en direct et dans l'export WAV, suivent le Program lorsqu'il est réutilisé et sont conservés par KICKLAB 13/KICKKIT 3, avec lecture des anciens formats.
 
 0.15.0 porte les quatre propriétés MTNote du séquenceur original KICK : vélocité, probabilité, ratchet et longueur. EVENTS utilise les pads pour choisir le step sans modifier la grille, P1–P4 pour éditer ses propriétés et l'encodeur 4D pour avancer ou reculer. Le moteur applique ces valeurs aux événements Drum et mélodiques ; REC conserve la vélocité MIDI reçue. KICKLAB 12 persiste toutes les données et relit KICKLAB 1–11.
 

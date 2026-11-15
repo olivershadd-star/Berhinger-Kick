@@ -57,6 +57,10 @@ const std::array<InsertEffectInfo,31>& insertEffectCatalog();
 InsertState defaultInsertState(InsertEffect effect);
 struct PadEdit {
     double start=0, end=1, gain=1, semitones=0, fadeMs=2;
+    // Program-level mixer values. These belong to the pad sound, independently
+    // of the sequence Track Mixer.
+    double pan=0;
+    bool mute=false;
     double attack=0, decay=0, sustain=1, release=0;
     // Loop Sync changes playback speed so a loop recorded at sourceBpm follows
     // the project tempo. It remains opt-in for ordinary one-shots.
@@ -148,6 +152,10 @@ public:
     void setEdit(int pad, const PadEdit& edit);
     void setLayerVelocityRange(int pad,int layer,int start,int end);
     void setLayerReverse(int pad,int layer,bool reverse);
+    void setPadLevel(int pad,double level);
+    void setPadPan(int pad,double pan);
+    void setPadMute(int pad,bool mute);
+    void togglePadMute(int pad);
     void setInsertEffect(int pad,int slot,InsertEffect effect);
     void setInsertBypass(int pad,int slot,bool bypass);
     void setInsertsBypass(int pad,bool bypass);

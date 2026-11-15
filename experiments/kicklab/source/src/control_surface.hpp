@@ -136,6 +136,8 @@ enum class DisplayModule {
     Browser,
     Mixer,
     TrackMute,
+    PadMixer,
+    PadMute,
     Sequencer,
     PadPerform,
     NextSequence,

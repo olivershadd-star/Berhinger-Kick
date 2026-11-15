@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.15.0
+        default: 0.16.0
 
 permissions:
   contents: write
@@ -62,6 +62,14 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.16.0 ports the original KICK Program-level Pad Mixer and
+            Pad Mutes as a separate layer from the sequence Track Mixer. Shift
+            + Mixer opens pad Level/Pan across pages 1-8 and 9-16; Shift + Mute
+            opens the sixteen Program mutes. Pads in the same KICK mute/choke
+            group follow together. The state belongs to the reusable Program,
+            is audible in live playback and WAV export, and is preserved by
+            KICKLAB 13 and KICKKIT 3 while all older formats remain readable.
 
             Version 0.15.0 ports the first complete KICK Events layer. Every
             drum or melodic step now owns velocity, probability, ratchet and
