@@ -72,7 +72,7 @@ int main(int argc,char**argv){try{
     check(e.load(0,path("mono.wav"),error,true),error.c_str());auto preservedState=e.snapshot().edits[0];
     check(preservedState.gain==.37&&preservedState.semitones==-5&&preservedState.inserts[2].effect==InsertEffect::Chorus,"confirmed browser load reset pad editing");
     e.trigger(0);e.setVolume(0);e.render(block);for(float v:block)check(v==0,"master mute failed");e.setVolume(.65);e.stop();
-    for(int p=0;p<Pads;++p)check(e.load(p,path("long.wav"),error),error.c_str());for(int p=0;p<Pads;++p)e.trigger(p);e.render(block);for(float v:block)check(std::isfinite(v)&&std::abs(v)<=.98f,"mixing overflow");
+    for(int p=0;p<Pads;++p)check(e.load(p,path("long.wav"),error),error.c_str());for(int p=0;p<Pads;++p)e.trigger(p);e.render(block);for(float v:block)check(std::isfinite(v)&&std::abs(v)<=MasterCeiling+1e-6f,"master limiter exceeded its -1 dBFS ceiling");auto gainStage=e.snapshot();check(gainStage.preLimiterPeak>MasterCeiling&&gainStage.peak<=MasterCeiling+1e-6f&&gainStage.limiterReductionDb>0&&gainStage.trackPeaks[1]>0,"master gain staging or per-track meter did not detect the summed overload");
     e.stop();e.demoPattern();e.setTempo(120);e.setPlaying(true);e.render(block);e.setPlaying(false);int paused=e.snapshot().step;for(int b=0;b<30;++b)e.render(block);check(e.snapshot().step==paused,"pause advances sequencer");e.stop();e.setPlaying(true);std::ofstream raw(std::filesystem::u8path(path("demo.f32")),std::ios::binary);
     int transitions=0,last=-1;double sum=0;for(int b=0;b<375;++b){e.render(block);raw.write(reinterpret_cast<const char*>(block),sizeof(block));for(float v:block)sum+=v*v;int s=e.snapshot().step;if(s!=last){++transitions;last=s;}}check(transitions==16,"sequencer timing failed");check(sum>1,"sequencer is silent");e.stop();
     // Export renders the active pattern through the real engine at an exact
@@ -80,7 +80,7 @@ int main(int argc,char**argv){try{
     const auto exportedPath=path("pattern-export.wav");check(e.exportCurrentPatternWav(exportedPath,error),error.c_str());
     std::ifstream exported(std::filesystem::u8path(exportedPath),std::ios::binary|std::ios::ate);check(bool(exported),"exported WAV was not created");
     check(uint64_t(exported.tellg())==44ull+96000ull*6ull,"exported WAV duration or 24-bit frame size is incorrect");exported.seekg(0);std::vector<char> exportedBytes(size_t(44+96000*6));exported.read(exportedBytes.data(),std::streamsize(exportedBytes.size()));
-    check(!std::memcmp(exportedBytes.data(),"RIFF",4)&&!std::memcmp(exportedBytes.data()+8,"WAVE",4)&&!std::memcmp(exportedBytes.data()+36,"data",4),"exported WAV header is invalid");bool exportedSignal=false;for(size_t byte=44;byte<exportedBytes.size();++byte)exportedSignal=exportedSignal||exportedBytes[byte]!=0;check(exportedSignal,"exported WAV is silent");check(!e.snapshot().playing,"WAV export left transport running");
+    check(!std::memcmp(exportedBytes.data(),"RIFF",4)&&!std::memcmp(exportedBytes.data()+8,"WAVE",4)&&!std::memcmp(exportedBytes.data()+36,"data",4),"exported WAV header is invalid");bool exportedSignal=false;int32_t exportedPeak=0;for(size_t byte=44;byte+2<exportedBytes.size();byte+=3){exportedSignal=exportedSignal||exportedBytes[byte]!=0||exportedBytes[byte+1]!=0||exportedBytes[byte+2]!=0;int32_t sample=uint8_t(exportedBytes[byte])|(int32_t(uint8_t(exportedBytes[byte+1]))<<8)|(int32_t(uint8_t(exportedBytes[byte+2]))<<16);if(sample&0x800000)sample|=~0xffffff;exportedPeak=std::max(exportedPeak,std::abs(sample));}check(exportedSignal,"exported WAV is silent");check(exportedPeak<=int32_t(std::ceil(MasterCeiling*8388607.)),"exported 24-bit WAV exceeded the -1 dBFS ceiling");check(!e.snapshot().playing,"WAV export left transport running");
     // KICK Pad Perform / Keygroup: one sample can be played and sequenced chromatically.
     e.selectSequence(0);e.setSequenceBars(2);e.setViewBar(1);e.setPerformanceMode(PerformanceMode::Chromatic);e.setMelodicSourcePad(12);e.setRootNote(48);e.toggle(7,3);
     auto arrangement=e.snapshot();
@@ -223,7 +223,7 @@ int main(int argc,char**argv){try{
     e.setInsertEffect(0,2,InsertEffect::PurestDrive);e.setInsertParameter(0,2,0,.42);e.setInsertBypass(0,2,true);restored=e.snapshot().edits[0];check(restored.inserts[2].effect==InsertEffect::PurestDrive&&restored.inserts[2].parameters[0]==.42&&restored.inserts[2].bypass,"insert control API failed");
     e.resetProject();auto reset=e.snapshot();check(reset.paths[0].empty()&&!reset.pattern[0][0]&&reset.songLength==0&&reset.sequence==0,"new project reset retained musical data");
     std::cout<<"PASS: trim, Pad Perform pitch, ADSR, 31 Airwindows effects and four AudIO inserts\n";
-    std::cout<<"PASS: KICK Copy/Delete Pad, Erase Notes, Color Editor, Events/List Edit, KICKLAB 14 and KICKKIT 4\n";
+    std::cout<<"PASS: -1 dBFS master limiter, track meters, Copy/Delete Pad, Erase Notes, KICKLAB 14 and KICKKIT 4\n";
     // Batched driver completions across the ring boundary must preserve time order.
     AudioQueue<4> queue;std::array<bool,4> ready={true,true,true,false};std::vector<int> submitted;
     auto submit=[&](size_t b){submitted.push_back(int(b));ready[b]=false;return true;};

@@ -212,6 +212,7 @@ struct Engine::Impl {
     std::mutex mutex, metadataMutex, audioMutex;
     std::array<bool,Pads> loaded{};
     float currentVolume=.65f;
+    float limiterGain=1.f;
     double untilStep=0;
     int nextStep=0;
     int preparedProgram=-1;
@@ -513,7 +514,7 @@ void Engine::playSong(){
     selectSequence(first);std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;s.songPlaying=true;s.songPosition=0;s.songRepeat=0;s.playing=true;
 }
 void Engine::setPlaying(bool b){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.playing=b;}
-void Engine::stop(){std::scoped_lock lock(impl->mutex,impl->audioMutex);auto& s=impl->state;impl->cancelPreparedProgram();s.playing=false;s.songPlaying=false;s.noteRepeat=false;s.arpeggiator=false;s.songPosition=-1;s.songRepeat=0;s.queuedSequence=-1;s.queuedGroup=-1;s.step=-1;s.playBar=0;impl->untilStep=impl->untilRepeat=0;impl->nextStep=0;impl->repeatPad=-1;impl->arpHeld.fill(false);impl->arpIndex=-1;impl->ratchetRemaining.fill(0);impl->gateRemaining.fill(0);for(int p=0;p<Pads;++p){impl->players[p]->stop();impl->pendingPitch[p].store(1000);}impl->previewPlayer->stop();}
+void Engine::stop(){std::scoped_lock lock(impl->mutex,impl->audioMutex);auto& s=impl->state;impl->cancelPreparedProgram();s.playing=false;s.songPlaying=false;s.noteRepeat=false;s.arpeggiator=false;s.songPosition=-1;s.songRepeat=0;s.queuedSequence=-1;s.queuedGroup=-1;s.step=-1;s.playBar=0;s.peak=s.preLimiterPeak=s.limiterReductionDb=0;s.trackPeaks={};impl->limiterGain=1;impl->untilStep=impl->untilRepeat=0;impl->nextStep=0;impl->repeatPad=-1;impl->arpHeld.fill(false);impl->arpIndex=-1;impl->ratchetRemaining.fill(0);impl->gateRemaining.fill(0);for(int p=0;p<Pads;++p){impl->players[p]->stop();impl->pendingPitch[p].store(1000);}impl->previewPlayer->stop();}
 void Engine::setTempo(double t){if(!std::isfinite(t))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.tempo=std::clamp(t,40.,240.);}
 void Engine::setVolume(double v){if(!std::isfinite(v))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.volume=std::clamp(v,0.,1.);}
 void Engine::setNoteRepeat(bool enabled,bool arpeggiator){std::scoped_lock lock(impl->mutex,impl->audioMutex);impl->state.noteRepeat=enabled;impl->state.arpeggiator=enabled&&arpeggiator;impl->untilRepeat=0;if(!enabled){impl->repeatPad=-1;impl->arpHeld.fill(false);impl->arpIndex=-1;}}
@@ -523,7 +524,7 @@ void Engine::holdArpeggioNote(int sourcePad,int note,bool held){if(sourcePad<0||
 Snapshot Engine::snapshot(){
     Snapshot result;
     {std::lock_guard<std::mutex> lock(impl->mutex);const auto& state=impl->state;result.active=state.active;result.edits=state.edits;result.progress=state.progress;result.sequences=state.sequences;result.programs=state.programs;result.song=state.song;
-     result.tempo=state.tempo;result.volume=state.volume;result.playing=state.playing;result.songPlaying=state.songPlaying;result.noteRepeat=state.noteRepeat;result.arpeggiator=state.arpeggiator;result.repeatDivision=state.repeatDivision;result.step=state.step;result.playBar=state.playBar;result.viewBar=state.viewBar;result.sequence=state.sequence;result.queuedSequence=state.queuedSequence;result.group=state.group;result.queuedGroup=state.queuedGroup;result.program=state.program;result.queuedProgram=state.queuedProgram;result.selectedTrack=state.selectedTrack;result.songLength=state.songLength;result.songPosition=state.songPosition;result.songRepeat=state.songRepeat;result.peak=state.peak;
+     result.tempo=state.tempo;result.volume=state.volume;result.playing=state.playing;result.songPlaying=state.songPlaying;result.noteRepeat=state.noteRepeat;result.arpeggiator=state.arpeggiator;result.repeatDivision=state.repeatDivision;result.step=state.step;result.playBar=state.playBar;result.viewBar=state.viewBar;result.sequence=state.sequence;result.queuedSequence=state.queuedSequence;result.group=state.group;result.queuedGroup=state.queuedGroup;result.program=state.program;result.queuedProgram=state.queuedProgram;result.selectedTrack=state.selectedTrack;result.songLength=state.songLength;result.songPosition=state.songPosition;result.songRepeat=state.songRepeat;result.peak=state.peak;result.preLimiterPeak=state.preLimiterPeak;result.limiterReductionDb=state.limiterReductionDb;result.trackPeaks=state.trackPeaks;
      const auto& sequence=state.sequences[state.sequence];const int first=state.viewBar*Steps;result.melody.fill(-1);for(int p=0;p<Pads;++p)for(int step=0;step<Steps;++step)result.pattern[p][step]=sequence.drum[p][first+step];for(int step=0;step<Steps;++step)result.melody[step]=sequence.melody[first+step];}
     {std::lock_guard<std::mutex> lock(impl->metadataMutex);for(int pad=0;pad<Pads;++pad){const auto& bank=impl->banks[result.program][pad];const auto& primary=bank.layers[0];result.names[pad]=primary.name;result.paths[pad]=primary.path;result.waveforms[pad]=primary.waveform;result.durations[pad]=primary.duration;for(int layer=0;layer<PadLayers;++layer){const auto& source=bank.layers[layer];result.layers[pad][layer]={source.name,source.path,source.duration,source.velocityStart,source.velocityEnd,source.reverse,source.loaded};}}}
     return result;
@@ -567,9 +568,14 @@ void Engine::render(float* out){
         }
         impl->untilStep-=Block;
     }
-    impl->graph->process(*impl->buffer);float peak=0;
-    for(int n=0;n<Block;++n){impl->currentVolume+=(float(s.volume)-impl->currentVolume)*.004f;for(int c=0;c<2;++c){float v=impl->buffer->getOutputBuffer(c)[n]*(s.volume==0?0.f:impl->currentVolume)*.5f;if(!std::isfinite(v))v=0;peak=std::max(peak,std::abs(v));v=std::clamp(v,-.98f,.98f);out[n*2+c]=v;}}
-    s.peak=peak;for(int p=0;p<Pads;++p){s.active[p]=impl->players[p]->isPlaying();s.progress[p]=impl->players[p]->progress();}
+    impl->graph->process(*impl->buffer);float preLimiterPeak=0;
+    for(int n=0;n<Block;++n){impl->currentVolume+=(float(s.volume)-impl->currentVolume)*.004f;const float master=s.volume==0?0.f:impl->currentVolume;for(int c=0;c<2;++c){float value=impl->buffer->getOutputBuffer(c)[n]*master;if(!std::isfinite(value))value=0;out[n*2+c]=value;preLimiterPeak=std::max(preLimiterPeak,std::abs(value));}}
+    const float targetGain=preLimiterPeak>MasterCeiling?MasterCeiling/preLimiterPeak:1.f;
+    if(targetGain<impl->limiterGain)impl->limiterGain=targetGain;else impl->limiterGain+=float((1.-impl->limiterGain)*.015);
+    impl->limiterGain=std::clamp(impl->limiterGain,0.f,1.f);float postLimiterPeak=0;
+    for(int sample=0;sample<Block*2;++sample){out[sample]=std::clamp(out[sample]*impl->limiterGain,-MasterCeiling,MasterCeiling);postLimiterPeak=std::max(postLimiterPeak,std::abs(out[sample]));}
+    s.preLimiterPeak=preLimiterPeak;s.peak=postLimiterPeak;s.limiterReductionDb=impl->limiterGain<1.f?float(-20.*std::log10(std::max(impl->limiterGain,1e-6f))):0.f;
+    for(int p=0;p<Pads;++p){s.active[p]=impl->players[p]->isPlaying();s.progress[p]=impl->players[p]->progress();s.trackPeaks[p]=std::max(impl->players[p]->outputPeak(),s.trackPeaks[p]*.97f);}
 }
 bool Engine::save(const std::string& path,std::string& error){
     auto s=snapshot();std::array<std::array<std::array<PadLayerInfo,PadLayers>,Pads>,Programs> layers;std::array<std::array<PadEdit,Pads>,Programs> edits;

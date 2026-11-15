@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.19.0
+        default: 0.19.1
 
 permissions:
   contents: write
@@ -62,6 +62,16 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.19.1 corrects the complete gain structure. The hidden
+            fixed -6 dB attenuation and the destructive hard clip are removed.
+            Master now reaches a real 0 dB, followed by a safety limiter with
+            a -1 dBFS sample-peak ceiling shared by live playback and 24-bit
+            WAV export. The Master meter separates output level and gain
+            reduction. Track Mixer now draws a fader and a pre-Master peak
+            meter for each of the sixteen tracks, so the source of an overload
+            can be reduced before it reaches the bus. The project and kit file
+            formats remain KICKLAB 14 and KICKKIT 4.
 
             Version 0.19.0 completes KICK's standalone edit workflow with
             Copy Pad, Delete Pad and Erase Notes. Copy Pad duplicates all four

@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.19.0 termine le workflow d'édition autonome avec **Copy Pad**, **Delete Pad** et **Erase Notes**. ERASE ouvre les deux écrans ensemble ; Shift + Duplicate ouvre la même vue, tandis que Duplicate seul conserve son rôle de copie de pattern A–H. La version 0.18.0 avait porté le Color Editor publié de KICK.
+La version 0.19.1 corrige le **gain staging** : disparition de l'atténuation fixe cachée de −6 dB et de l'écrêtage brutal, Master réel jusqu'à 0 dB, limiteur de sécurité à −1 dBFS pour l'écoute et le WAV, et vumètre individuel sur les seize pistes. La version 0.19.0 avait terminé Copy Pad, Delete Pad et Erase Notes.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
 
@@ -23,6 +23,7 @@ La version 0.19.0 termine le workflow d'édition autonome avec **Copy Pad**, **D
 9. Le menu **List Edit** ou **Shift + EVENTS** ouvre la table globale du pattern. Tourner l'encodeur, utiliser les flèches ou cliquer une ligne choisit l'événement. P1 change Time, P2 le Pad/Note, P3 la ligne ; P5–P8 règlent Length, Velocity, Probability et Ratchet. Les touches contextuelles permettent Précédent, Suivant, Insérer et Supprimer.
 10. Le menu **Color Editor** ouvre l'éditeur du Program actif. Choisir l'une des dix-huit couleurs sur l'écran A puis cliquer un pad de l'écran B ou un pad physique. `Single/All Pads` choisit la portée ; Empty Pad, Pad Off et Pad On reproduisent les trois modes d'éclairage KICK.
 11. Appuyer sur **ERASE** ou **Shift + DUPLICATE** pour ouvrir l'édition finale KICK. L'écran A choisit un pad source et un pad destination : Copy duplique ses quatre couches, Pad Edit et FX ; Delete vide le pad choisi sans effacer les steps. L'écran B efface uniquement les notes d'une séquence, d'une piste Drum et d'une plage musicale. Pour une séquence mélodique, il cible sa voie de notes. Les soft keys, P1–P8, l'encodeur, les pads, le clavier et la souris restent équivalents.
+12. Dans **TRACK MIXER**, chaque piste possède maintenant un fader et un vumètre pré-Master. Orange indique l'approche de 0 dBFS et rouge un dépassement interne : réduire cette piste avec son knob. Le Master affiche son gain réel en dB, le niveau OUT et la réduction `GR` du limiteur. Une forte valeur GR signifie que le mix doit être abaissé piste par piste.
 
 Le kit chargé au démarrage se trouve dans `demo-kit`. La **Factory Sample Library** est le dossier `samples` créé à côté de l'exécutable ; elle commence sans son officiel.
 
@@ -97,6 +98,8 @@ Charger un nouveau WAV sur un pad remet ses réglages à zéro. Cela coupe la vo
 - REC est actuellement un overdub monophonique pour Keyboard. La vélocité d'entrée est conservée ; la capture automatique de la durée Note Off, les accords polyphoniques, le mode Replace, le compte à rebours, le retour LED et l'horloge MIDI restent à porter.
 
 ## WAV et projets
+
+Le bus Master utilise désormais un gain réel de −∞ à 0 dB, sans réduction fixe cachée. Un limiteur de sécurité commun à l'écoute et au rendu remplace l'ancien hard clip et garantit un plafond d'échantillon de −1 dBFS. Il ne remplace pas le mixage : si `GR` devient important, utiliser les faders/vumètres du Track Mixer pour réduire les pistes responsables. Les WAV 24 bits exportés ne peuvent plus contenir d'échantillons écrêtés à 0 dBFS.
 
 WAV PCM 16/24/32 bits, flottant 32 bits et WAV Extensible PCM/flottant, mono/stéréo, de 8 à 192 kHz, jusqu'à 60 secondes et 64 Mo par fichier. Les WAV sont convertis à 48 kHz au chargement par interpolation linéaire. MP3, FLAC et AIFF ne sont pas pris en charge dans cette interface.
 

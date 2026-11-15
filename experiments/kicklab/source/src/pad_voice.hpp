@@ -244,6 +244,7 @@ public:
     void stop(){AudIO::AudioPlayback::stop();tail=0;envelope=0;envelopeStage=EnvelopeStage::Idle;}
     void resetMix(){gain=edit.gain;tail=0;envelope=0;envelopeStage=EnvelopeStage::Idle;}
     void setTrackMix(double levelValue,double panValue){trackLevel=std::clamp(levelValue,0.,1.);trackPan=std::clamp(panValue,-1.,1.);}
+    float outputPeak()const{return meterPeak;}
 protected:
     void process(AudIO::Buffer<float>& buffer)override {
         AudIO::AudioPlayback::process(buffer);
@@ -259,9 +260,11 @@ protected:
         if(tail>0)effects->render(buffer);
         const double left=trackLevel*(trackPan>0?1.-trackPan:1.);
         const double right=trackLevel*(trackPan<0?1.+trackPan:1.);
+        meterPeak=0;
         for(int n=0;n<lab::Block;++n){gain+=(edit.gain-gain)*.004;
             out[0][n]=(tail>0||sounded)?float(out[0][n]*gain*velocityGain*left):0.f;
-            out[1][n]=(tail>0||sounded)?float(out[1][n]*gain*velocityGain*right):0.f;}
+            out[1][n]=(tail>0||sounded)?float(out[1][n]*gain*velocityGain*right):0.f;
+            meterPeak=std::max(meterPeak,std::max(std::abs(out[0][n]),std::abs(out[1][n])));}
     }
 private:
     enum class EnvelopeStage { Idle,Attack,Decay,Sustain,Release };
@@ -279,6 +282,7 @@ private:
     double gain=1;
     double trackLevel=1,trackPan=0,velocityGain=1;
     double envelope=0,releaseStep=0;
+    float meterPeak=0;
     EnvelopeStage envelopeStage=EnvelopeStage::Idle;
     int tail=0;
 };

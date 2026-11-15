@@ -9,6 +9,7 @@
 
 namespace lab {
 constexpr int Pads=16, Groups=8, Programs=16, PadLayers=4, PadColors=18, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
+constexpr float MasterCeiling=0.89125094f; // -1 dBFS sample-peak ceiling.
 constexpr int Sequences=16, MaxBars=4, MaxSequenceSteps=Steps*MaxBars, MaxSongSteps=32;
 enum class ProgramType { Drum=0, Keygroup=1 };
 enum class EmptyPadColorMode { Off=0, Dim=1 };
@@ -134,6 +135,7 @@ struct Snapshot {
     std::array<bool,Pads> active{};
     std::array<PadEdit,Pads> edits{};
     std::array<double,Pads> durations{}, progress{};
+    std::array<float,Pads> trackPeaks{};
     double tempo=120,volume=.65;
     bool playing=false,songPlaying=false,noteRepeat=false,arpeggiator=false;
     int repeatDivision=16;
@@ -141,7 +143,7 @@ struct Snapshot {
     int program=0,queuedProgram=-1;
     int selectedTrack=0;
     int songLength=0,songPosition=-1,songRepeat=0;
-    float peak=0;
+    float peak=0,preLimiterPeak=0,limiterReductionDb=0;
 };
 class Engine {
 public:

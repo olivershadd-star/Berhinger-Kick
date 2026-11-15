@@ -884,7 +884,14 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     if(binding.module==lab::DisplayModule::Mixer){
         text(dc,{box.x+14,box.y+9,290,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  TRACK MIXER",12,focused?accent:muted,FW_SEMIBOLD);
         text(dc,{box.x+310,box.y+9,130,24},L"PISTES "+number(mixerBank*8+1)+L"–"+number(mixerBank*8+8),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
-        for(int row=0;row<4;++row){const int trackIndex=mixerTrackFor(display,row);const auto& track=snapshot.sequences[snapshot.sequence].tracks[trackIndex];auto b=surfaceMixerTrackBox(display,row);const bool selectedTrack=trackIndex==stepTrack;fill(dc,b,selectedTrack?RGB(31,62,59):(row%2?RGB(18,31,35):RGB(17,28,33)));const std::wstring type=track.program==lab::ProgramType::Drum?L"D":L"K";text(dc,{b.x+10,b.y,b.w-210,b.h},number(trackIndex+1)+L" ["+type+L"] "+wide(snapshot.names[trackIndex]),10,selectedTrack?accent:ink,FW_SEMIBOLD,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);std::wstring flags=(track.armed?std::wstring(L"REC "):std::wstring())+(track.solo?L"SOLO ":L"")+(track.mute?L"MUTE":L"");text(dc,{b.x+b.w-202,b.y,90,b.h},flags,8,track.mute?RGB(255,133,103):(track.solo?RGB(241,184,88):muted),FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);const std::wstring value=mixerParameter==0?number(int(std::round(track.level*100)))+L" %":(std::abs(track.pan)<.01?L"C":track.pan<0?L"L "+number(int(std::round(-track.pan*100))):L"R "+number(int(std::round(track.pan*100))));text(dc,{b.x+b.w-102,b.y,92,b.h},value,10,accent,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);}
+        for(int row=0;row<4;++row){
+            const int trackIndex=mixerTrackFor(display,row);const auto& track=snapshot.sequences[snapshot.sequence].tracks[trackIndex];auto b=surfaceMixerTrackBox(display,row);const bool selectedTrack=trackIndex==stepTrack;fill(dc,b,selectedTrack?RGB(31,62,59):(row%2?RGB(18,31,35):RGB(17,28,33)));
+            const std::wstring type=track.program==lab::ProgramType::Drum?L"D":L"K";text(dc,{b.x+10,b.y+2,190,20},number(trackIndex+1)+L" ["+type+L"] "+wide(snapshot.names[trackIndex]),9,selectedTrack?accent:ink,FW_SEMIBOLD,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            std::wstring flags=(track.armed?std::wstring(L"REC "):std::wstring())+(track.solo?L"SOLO ":L"")+(track.mute?L"MUTE":L"");text(dc,{b.x+204,b.y+2,74,20},flags,8,track.mute?RGB(255,133,103):(track.solo?RGB(241,184,88):muted),FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            const double levelDb=track.level>0?20.*std::log10(track.level):-60.;const std::wstring value=mixerParameter==0?(track.level>0?decimal(levelDb,1)+L" dB":L"−∞ dB"):(std::abs(track.pan)<.01?L"C":track.pan<0?L"L "+number(int(std::round(-track.pan*100))):L"R "+number(int(std::round(track.pan*100))));text(dc,{b.x+282,b.y+2,104,20},value,9,accent,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            const Box fader{b.x+10,b.y+29,226,8};round(dc,fader,RGB(11,18,24),line);const int marker=fader.x+2+int((fader.w-4)*std::clamp(track.level,0.,1.));fill(dc,{marker-1,fader.y-2,3,fader.h+4},accent);
+            const Box meter{b.x+248,b.y+29,138,8};round(dc,meter,RGB(11,18,24),line);const double peak=snapshot.trackPeaks[trackIndex],peakDb=peak>0?20.*std::log10(peak):-60.;const int lit=int((meter.w-4)*std::clamp((peakDb+60.)/66.,0.,1.));if(lit>0)fill(dc,{meter.x+2,meter.y+2,lit,meter.h-4},peak>=1?RGB(255,95,90):(peakDb> -6?RGB(241,184,88):accent));
+        }
         text(dc,{box.x+14,box.y+268,box.w-28,16},mixerParameter==0?L"KNOBS : LEVEL · bas : PAN · droite : page suivante":L"KNOBS : PAN · haut : LEVEL · gauche/droite : banques",9,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return;
     }
     if(binding.module==lab::DisplayModule::PadMixer){
@@ -1150,12 +1157,12 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     paintBrandPanel(dc,snapshot);
 }
 
-void paintMasterMeter(HDC dc,double value,double peak){
-    value=std::clamp(value,0.,1.);peak=std::max(0.,peak);const Box meter{1394,784,152,14};
-    const double db=peak>0?20.*std::log10(peak):-60.;const double ratio=std::clamp((db+60.)/60.,0.,1.);const int lit=int((meter.w-4)*ratio);
-    text(dc,{1394,746,152,16},L"MASTER  "+number(int(value*100))+L" %",9,ink,FW_SEMIBOLD);
-    const std::wstring level=peak>=1?L"CLIP":(db<=-59.9?L"−∞ dB":number(int(std::round(db)))+L" dB");text(dc,{1394,764,152,16},level,9,peak>=1?RGB(255,95,90):muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-    round(dc,meter,RGB(20,26,34),line);if(lit>0){const int green=std::min(lit,int((meter.w-4)*.8)),amber=std::min(lit-green,int((meter.w-4)*.15)),red=lit-green-amber;if(green>0)fill(dc,{meter.x+2,meter.y+3,green,meter.h-6},accent);if(amber>0)fill(dc,{meter.x+2+green,meter.y+3,amber,meter.h-6},RGB(241,184,88));if(red>0)fill(dc,{meter.x+2+green+amber,meter.y+3,red,meter.h-6},RGB(255,95,90));}
+void paintMasterMeter(HDC dc,double value,double peak,double preLimiterPeak,double reductionDb){
+    value=std::clamp(value,0.,1.);peak=std::max(0.,peak);preLimiterPeak=std::max(0.,preLimiterPeak);const Box meter{1394,784,152,14};
+    const double db=peak>0?20.*std::log10(peak):-60.,preDb=preLimiterPeak>0?20.*std::log10(preLimiterPeak):-60.;const double ratio=std::clamp((db+60.)/60.,0.,1.);const int lit=int((meter.w-4)*ratio),green=std::min(lit,int((meter.w-4)*.8)),amber=std::max(0,lit-green);
+    const double masterDb=value>0?20.*std::log10(value):-60.;text(dc,{1394,746,152,16},value>0?L"MASTER  "+decimal(masterDb,1)+L" dB":L"MASTER  −∞ dB",9,ink,FW_SEMIBOLD);
+    std::wstring level=db<=-59.9?L"OUT −∞":L"OUT "+decimal(db,1)+L" dB";if(reductionDb>.05)level+=L" · GR "+decimal(reductionDb,1);else if(preDb> -59.9)level+=L" · PRE "+decimal(preDb,1);text(dc,{1394,764,152,16},level,8,reductionDb>6?RGB(255,133,103):(reductionDb>.05?RGB(241,184,88):muted),FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    round(dc,meter,RGB(20,26,34),line);if(green>0)fill(dc,{meter.x+2,meter.y+3,green,meter.h-6},accent);if(amber>0)fill(dc,{meter.x+2+green,meter.y+3,amber,meter.h-6},RGB(241,184,88));
     const int marker=meter.x+2+int((meter.w-4)*value);fill(dc,{marker-1,meter.y-2,2,meter.h+4},ink);
 }
 
@@ -1185,5 +1192,5 @@ void paintBrandPanel(HDC dc,const lab::Snapshot& snapshot){
     text(dc,{1392,646,156,18},midiId>=0?L"MIDI · CONNECTÉ":L"MIDI · DÉCONNECTÉ",8,midiId>=0?accent:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     text(dc,{1392,702,156,16},L"MASTER / WINDOWS",9,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     text(dc,{1392,720,156,14},L"DSP "+decimal(audio.renderPermille.load()/10.,1)+L" % · "+number(int(audio.lateBlocks.load()))+L" retards",8,audio.lateBlocks.load()?RGB(255,133,103):muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    meterPeak=std::max(double(snapshot.peak),meterPeak*.9);paintMasterMeter(dc,snapshot.volume,meterPeak);
+    meterPeak=std::max(double(snapshot.peak),meterPeak*.9);paintMasterMeter(dc,snapshot.volume,meterPeak,snapshot.preLimiterPeak,snapshot.limiterReductionDb);
 }
