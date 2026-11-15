@@ -225,9 +225,10 @@ public:
     lab::PadEdit edit;
     double projectTempo=120;
     std::unique_ptr<PadEffects> effects=std::make_unique<PadEffects>(edit);
-    void trigger(double transpose=0){
+    void trigger(double transpose=0,double velocity=1.,bool reverse=false){
         const double tempoRatio=edit.loopSync?projectTempo/std::clamp(edit.sourceBpm,40.,240.):1.;
         setSlice(edit.start,edit.end,std::pow(2.,(edit.semitones+transpose)/12.)*tempoRatio,edit.fadeMs);
+        setReverse(reverse);velocityGain=std::clamp(velocity,0.,1.);
         // Pads are one-shots. Looping must only ever be enabled by a future,
         // explicit KICK loop mode, never by importing or auditioning a WAV.
         setLooping(false);
@@ -259,8 +260,8 @@ protected:
         const double left=trackLevel*(trackPan>0?1.-trackPan:1.);
         const double right=trackLevel*(trackPan<0?1.+trackPan:1.);
         for(int n=0;n<lab::Block;++n){gain+=(edit.gain-gain)*.004;
-            out[0][n]=(tail>0||sounded)?float(out[0][n]*gain*left):0.f;
-            out[1][n]=(tail>0||sounded)?float(out[1][n]*gain*right):0.f;}
+            out[0][n]=(tail>0||sounded)?float(out[0][n]*gain*velocityGain*left):0.f;
+            out[1][n]=(tail>0||sounded)?float(out[1][n]*gain*velocityGain*right):0.f;}
     }
 private:
     enum class EnvelopeStage { Idle,Attack,Decay,Sustain,Release };
@@ -276,7 +277,7 @@ private:
         else if(envelopeStage==EnvelopeStage::Release){envelope-=releaseStep;if(envelope<=0){envelope=0;envelopeStage=EnvelopeStage::Idle;AudIO::AudioPlayback::stop();}}
     }
     double gain=1;
-    double trackLevel=1,trackPan=0;
+    double trackLevel=1,trackPan=0,velocityGain=1;
     double envelope=0,releaseStep=0;
     EnvelopeStage envelopeStage=EnvelopeStage::Idle;
     int tail=0;

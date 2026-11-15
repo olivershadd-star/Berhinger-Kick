@@ -8,9 +8,11 @@
 #include <vector>
 
 namespace lab {
-constexpr int Pads=16, Groups=8, Programs=16, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
+constexpr int Pads=16, Groups=8, Programs=16, PadLayers=4, PadColors=18, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
 constexpr int Sequences=16, MaxBars=4, MaxSequenceSteps=Steps*MaxBars, MaxSongSteps=32;
 enum class ProgramType { Drum=0, Keygroup=1 };
+enum class SamplePlayType { OneShot=0, NoteOff=1, NoteOn=2 };
+enum class LayerPlayType { Cycle=0, Velocity=1, Random=2 };
 struct ProgramInfo {
     std::string name;
     ProgramType type=ProgramType::Drum;
@@ -60,9 +62,19 @@ struct PadEdit {
     // the project tempo. It remains opt-in for ordinary one-shots.
     bool loopSync=false;
     double sourceBpm=120;
+    SamplePlayType samplePlay=SamplePlayType::OneShot;
+    LayerPlayType layerPlay=LayerPlayType::Velocity;
+    int chokeGroup=-1;
+    int color=0;
     bool insertsBypass=false;
     std::array<InsertState,InsertSlots> inserts{};
     PadEdit(){inserts[0]=defaultInsertState(InsertEffect::Lowpass);inserts[0].bypass=true;inserts[1]=defaultInsertState(InsertEffect::PurestDrive);inserts[1].bypass=true;}
+};
+struct PadLayerInfo {
+    std::string name="Vide",path;
+    double duration=0;
+    int velocityStart=1,velocityEnd=127;
+    bool reverse=false,loaded=false;
 };
 enum class PerformanceMode { Drum=0, Chromatic=1, Major=2, Minor=3 };
 struct SequenceData {
@@ -98,6 +110,7 @@ struct Snapshot {
     std::array<ProgramInfo,Programs> programs{};
     std::array<SongStep,MaxSongSteps> song{};
     std::array<std::vector<float>,Pads> waveforms{};
+    std::array<std::array<PadLayerInfo,PadLayers>,Pads> layers{};
     std::array<bool,Pads> active{};
     std::array<PadEdit,Pads> edits{};
     std::array<double,Pads> durations{}, progress{};
@@ -116,13 +129,17 @@ public:
     Engine(const Engine&)=delete;
     Engine& operator=(const Engine&)=delete;
     bool load(int pad,const std::string& path,std::string& error,bool preserveEdit=false);
+    bool loadLayer(int pad,int layer,const std::string& path,std::string& error);
     bool preview(const std::string& path,std::string& error);
     void stopPreview();
     void trigger(int pad);
     void triggerPitch(int pad,int semitones);
+    void triggerVelocity(int pad,int semitones,int velocity);
     void release(int pad);
     void releasePerformancePad(int performancePad);
     void setEdit(int pad, const PadEdit& edit);
+    void setLayerVelocityRange(int pad,int layer,int start,int end);
+    void setLayerReverse(int pad,int layer,bool reverse);
     void setInsertEffect(int pad,int slot,InsertEffect effect);
     void setInsertBypass(int pad,int slot,bool bypass);
     void setInsertsBypass(int pad,bool bypass);

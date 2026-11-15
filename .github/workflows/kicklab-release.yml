@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.13.0
+        default: 0.14.0
 
 permissions:
   contents: write
@@ -63,7 +63,15 @@ jobs:
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
 
-            Version 0.13.0 introduces the KICK Program model. Sixteen reusable
+            Version 0.14.0 completes the first KICK Drum Program playback model:
+            four layers per pad, Velocity/Cycle/Random layer selection, One Shot,
+            Note On and Note Off play types, choke groups, reverse playback and
+            eighteen pad colours. Pad Edit now exposes five hardware-style pages
+            across either display, and Maschine pad velocity reaches the engine.
+            KICKLAB 11 and KICKKIT 2 preserve all layer data while still reading
+            previous projects and kits.
+
+            Version 0.13.0 introduced the KICK Program model. Sixteen reusable
             Drum Programs own samples and pad settings while patterns only own
             musical events and reference a Program. The dual-screen Program
             Manager creates, duplicates, assigns and safely deletes Programs.

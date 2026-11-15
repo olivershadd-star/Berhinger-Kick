@@ -42,8 +42,10 @@ namespace AudIO
         const int end=std::clamp(int(std::ceil(sliceEnd*maxSamples)),begin+1,maxSamples);
         const double fade=std::min(fadeFrames,(end-begin)/pitchRatio*.5);
         for(uint32_t sample=0;sample<blockSize();++sample){
-            if(readIndex>=end){if(m_loop.load())readIndex=begin;else{m_playing=false;break;}}
-            readIndex=std::max(readIndex,double(begin));
+            if(mode==FORWARD&&readIndex>=end){if(m_loop.load())readIndex=begin;else{m_playing=false;break;}}
+            if(mode==REVERSE&&readIndex<begin){if(m_loop.load())readIndex=end-1;else{m_playing=false;break;}}
+            if(mode==FORWARD)readIndex=std::max(readIndex,double(begin));
+            else readIndex=std::min(readIndex,double(end-1));
             const int a=int(readIndex),b=std::min(a+1,end-1);const double f=readIndex-a;
             double envelope=1;
             if(fade>0){envelope=std::clamp(std::min((readIndex-begin)/pitchRatio,(end-1-readIndex)/pitchRatio)/fade,0.0,1.0);}
@@ -54,7 +56,7 @@ namespace AudIO
                     out[sample]=float((data[a]*(1-f)+data[b]*f)*envelope*vp.getGain(ch));
                 }
             }
-            readIndex+=pitchRatio;
+            readIndex+=mode==FORWARD?pitchRatio:-pitchRatio;
         }
     }
 
@@ -67,7 +69,8 @@ namespace AudIO
     void AudioPlayback::play( bool FromBegin )
     {
         if( FromBegin )
-            readIndex = std::min(std::max(0,maxSamples-1),int(sliceStart*maxSamples));
+            readIndex = mode==FORWARD?std::min(std::max(0,maxSamples-1),int(sliceStart*maxSamples)):
+                std::min(std::max(0,maxSamples-1),std::max(0,int(std::ceil(sliceEnd*maxSamples))-1));
 
         m_playing.store( maxSamples>0 );
     }

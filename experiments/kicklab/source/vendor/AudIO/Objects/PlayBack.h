@@ -37,6 +37,7 @@ namespace AudIO
         void setBypass( bool Bypass ) { m_bypass.store( Bypass ); };
         void setMute( bool Mute ) { m_mute.store( Mute ); };
         void setLooping( bool Loop ) { m_loop.store( Loop ); };
+        void setReverse(bool reverse) { mode=reverse?REVERSE:FORWARD; }
 
         float getVolume() { return vp.getParameter( VolumeAndPan::kParamGain ); };
         float getPan() { return vp.getParameter( VolumeAndPan::kParamPan ); };

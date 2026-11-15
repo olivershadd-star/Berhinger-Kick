@@ -1,11 +1,13 @@
-KICK Lab 0.13.0 — Programs séparés des patterns
+KICK Lab 0.14.0 — Drum Program complet, quatre couches
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
 Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
-Scénarios : lecture WAV et silence ; Loop Sync 130→120 BPM ; Note Repeat cadencé par l'audio ; découpe et hauteur Pad Perform ; gain individuel ; ADSR et Note Off ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; copie de pattern sans copie du Program ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; niveau/pan/mute/solo ; sauvegarde KICKLAB 10 ; migration KICKLAB 1 à 9 ; remise en file des buffers ; continuité sous activité graphique.
+Scénarios : lecture WAV et silence ; quatre Layers ; sélection Velocity et Cycle ; Reverse ; One Shot, Note On et Note Off ; Choke ; couleurs ; Loop Sync 130→120 BPM ; Note Repeat ; découpe et hauteur Pad Perform ; ADSR ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; export WAV stéréo 24 bits ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; mixage ; sauvegarde KICKLAB 11/KICKKIT 2 ; migrations anciennes ; continuité audio/graphique.
+
+0.14.0 porte le comportement Drum Program publié dans KICK. Chaque pad reçoit quatre couches WAV avec plages de vélocité et sélection Velocity, Cycle ou Random. One Shot ignore le relâchement, Note On suit le Note Off et Note Off déclenche au relâchement. Les groupes Choke coupent la voix précédente ; Reverse lit la couche depuis sa fin ; dix-huit couleurs distinguent les pads. Pad Edit possède cinq pages et les vélocités réelles des pads MIDI atteignent le moteur. KICKLAB 11 et KICKKIT 2 persistent l'ensemble et relisent les formats précédents.
 
 0.13.0 remplace le couplage implicite kit/pattern par le modèle Program de KICK. Seize Drum Programs indépendants possèdent les samples et tous les réglages de pads. Chaque pattern conserve un identifiant de Program explicite ; plusieurs patterns peuvent partager le même kit. Le Program Manager occupe les deux écrans et permet assignation, création, duplication et suppression protégée. PLUG-IN / Instance ouvre ce gestionnaire, tandis que PERFORM / FX reste le raccourci des inserts. KICKLAB 10 persiste les Programs et migre automatiquement les anciens groupes A–H.
 
