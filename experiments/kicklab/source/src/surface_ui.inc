@@ -20,53 +20,56 @@ const std::array<std::wstring,lab::MidiCommandCount> midiCommandLabels={
     L"Soft 9",L"Soft 10",L"Soft 11",L"Soft 12",L"Soft 13",L"Soft 14",L"Soft 15",L"Soft 16"
 };
 
-// Balanced Maschine+ grid: both displays keep their original readable width,
-// the pad matrix is exactly flush with display B and the two side command
-// columns mirror each other.
-static constexpr int SurfaceFirstX=286,SurfaceGap=492,SurfaceY=38;
+// The two KICK page displays use all the horizontal room up to the identity
+// column. Four context knobs remain physically attached to each page.
+static constexpr int SurfaceFirstX=278,SurfaceGap=566,SurfaceY=38,SurfaceDisplayWidth=552,SurfaceContentWidth=524;
 int surfaceX(int display)const{return SurfaceFirstX+display*SurfaceGap;}
-Box surfaceModuleBox(int display)const{return {surfaceX(display)-12,SurfaceY-12,480,374};}
-Box surfaceDisplayBox(int display)const{return {surfaceX(display),SurfaceY,456,294};}
-Box surfaceDisplayItemBox(int display,int local)const{return {surfaceX(display)+14+(local%2)*211,SurfaceY+46+(local/2)*56,199,46};}
-Box surfaceKnobBox(int display,int knob)const{return {surfaceX(display)+18+knob*108,SurfaceY+300,96,54};}
-Box surfaceSoftButtonBox(int display,int buttonIndex)const{return {surfaceX(display)+buttonIndex*114,4,104,27};}
-Box surfaceInsertSlotBox(int display,int slot)const{return {surfaceX(display)+14+slot*104,SurfaceY+47,96,34};}
-Box surfaceInsertEffectBox(int display)const{return {surfaceX(display)+14,SurfaceY+94,250,36};}
-Box surfaceInsertBypassBox(int display)const{return {surfaceX(display)+274,SurfaceY+94,136,36};}
-Box surfacePagePreviousBox(int display)const{return {surfaceX(display)+368,SurfaceY+8,28,24};}
-Box surfacePageNextBox(int display)const{return {surfaceX(display)+400,SurfaceY+8,28,24};}
-Box surfaceProgramAuditionBox(int display)const{return {surfaceX(display)+14,SurfaceY+46,396,34};}
-Box surfaceMidiDeviceBox(int display)const{return {surfaceX(display)+14,SurfaceY+46,240,34};}
-Box surfaceMidiPreviousBox(int display)const{return {surfaceX(display)+314,SurfaceY+46,44,34};}
-Box surfaceMidiNextBox(int display)const{return {surfaceX(display)+366,SurfaceY+46,44,34};}
-Box surfaceMidiBindingBox(int display,int row)const{return {surfaceX(display)+14,SurfaceY+146+row*34,396,28};}
+Box surfaceModuleBox(int display)const{return {surfaceX(display)-6,SurfaceY-12,SurfaceDisplayWidth+12,374};}
+Box surfaceDisplayBox(int display)const{return {surfaceX(display),SurfaceY,SurfaceDisplayWidth,294};}
+Box surfaceDisplayItemBox(int display,int local)const{return {surfaceX(display)+14+(local%2)*268,SurfaceY+46+(local/2)*56,256,46};}
+Box surfaceKnobBox(int display,int knob)const{return {surfaceX(display)+25+knob*138,SurfaceY+300,88,54};}
+Box surfaceSoftButtonBox(int display,int buttonIndex)const{return {surfaceX(display)+buttonIndex*138,4,128,27};}
+Box surfaceInsertSlotBox(int display,int slot)const{return {surfaceX(display)+14+slot*134,SurfaceY+47,124,34};}
+Box surfaceInsertEffectBox(int display)const{return {surfaceX(display)+14,SurfaceY+94,326,36};}
+Box surfaceInsertBypassBox(int display)const{return {surfaceX(display)+350,SurfaceY+94,188,36};}
+Box surfacePagePreviousBox(int display)const{return {surfaceX(display)+SurfaceDisplayWidth-88,SurfaceY+8,28,24};}
+Box surfacePageNextBox(int display)const{return {surfaceX(display)+SurfaceDisplayWidth-54,SurfaceY+8,28,24};}
+Box surfaceProgramAuditionBox(int display)const{return {surfaceX(display)+14,SurfaceY+46,SurfaceContentWidth,34};}
+Box surfaceMidiDeviceBox(int display)const{return {surfaceX(display)+14,SurfaceY+46,342,34};}
+Box surfaceMidiPreviousBox(int display)const{return {surfaceX(display)+406,SurfaceY+46,58,34};}
+Box surfaceMidiNextBox(int display)const{return {surfaceX(display)+472,SurfaceY+46,66,34};}
+Box surfaceMidiBindingBox(int display,int row)const{return {surfaceX(display)+14,SurfaceY+146+row*34,SurfaceContentWidth,28};}
 Box surfaceBrowserPreviousBox(int display)const{return {surfaceX(display)+14,SurfaceY+46,42,34};}
-Box surfaceBrowserCategoryBox(int display)const{return {surfaceX(display)+62,SurfaceY+46,300,34};}
-Box surfaceBrowserNextBox(int display)const{return {surfaceX(display)+368,SurfaceY+46,42,34};}
-Box surfaceBrowserFileBox(int display,int row)const{return {surfaceX(display)+14,SurfaceY+90+row*31,396,27};}
-Box surfaceBrowserModeBox(int display)const{return {surfaceX(display)+14,SurfaceY+252,82,30};}
-Box surfaceBrowserAuditionBox(int display)const{return {surfaceX(display)+102,SurfaceY+252,82,30};}
-Box surfaceBrowserLoadBox(int display)const{return {surfaceX(display)+190,SurfaceY+252,100,30};}
-Box surfaceBrowserRefreshBox(int display)const{return {surfaceX(display)+296,SurfaceY+252,114,30};}
-Box surfaceSongActionBox(int display,int action)const{return {surfaceX(display)+14+action*99,SurfaceY+46,93,32};}
-Box surfaceSongRowBox(int display,int row)const{return {surfaceX(display)+14,SurfaceY+94+row*43,396,36};}
-Box surfaceMixerTrackBox(int display,int row)const{return {surfaceX(display)+14,SurfaceY+54+row*52,396,44};}
-Box surfaceTrackMuteBox(int display,int local)const{return {surfaceX(display)+14+(local%2)*211,SurfaceY+48+(local/2)*56,199,46};}
-Box surfaceColorBox(int color)const{return {surfaceX(0)+14+(color%6)*68,SurfaceY+60+(color/6)*62,60,52};}
-Box surfaceColorPadBox(int pad)const{return {surfaceX(1)+14+(pad%4)*101,SurfaceY+58+(pad/4)*52,93,44};}
-Box surfaceEditPadBox(int pad)const{return {surfaceX(0)+14+(pad%4)*101,SurfaceY+58+(pad/4)*52,93,44};}
+Box surfaceBrowserCategoryBox(int display)const{return {surfaceX(display)+62,SurfaceY+46,422,34};}
+Box surfaceBrowserNextBox(int display)const{return {surfaceX(display)+496,SurfaceY+46,42,34};}
+Box surfaceBrowserFileBox(int display,int row)const{return {surfaceX(display)+14,SurfaceY+90+row*31,SurfaceContentWidth,27};}
+Box surfaceBrowserModeBox(int display)const{return {surfaceX(display)+14,SurfaceY+252,105,30};}
+Box surfaceBrowserAuditionBox(int display)const{return {surfaceX(display)+127,SurfaceY+252,105,30};}
+Box surfaceBrowserLoadBox(int display)const{return {surfaceX(display)+240,SurfaceY+252,134,30};}
+Box surfaceBrowserRefreshBox(int display)const{return {surfaceX(display)+382,SurfaceY+252,156,30};}
+Box surfaceSongActionBox(int display,int action)const{return {surfaceX(display)+14+action*132,SurfaceY+46,124,32};}
+Box surfaceSongRowBox(int display,int row)const{return {surfaceX(display)+14,SurfaceY+94+row*43,SurfaceContentWidth,36};}
+Box surfaceMixerTrackBox(int display,int row)const{return {surfaceX(display)+14,SurfaceY+54+row*52,SurfaceContentWidth,44};}
+Box surfaceTrackMuteBox(int display,int local)const{return {surfaceX(display)+14+(local%2)*268,SurfaceY+48+(local/2)*56,256,46};}
+Box surfaceColorBox(int color)const{return {surfaceX(0)+14+(color%6)*87,SurfaceY+60+(color/6)*62,79,52};}
+Box surfaceColorPadBox(int pad)const{return {surfaceX(1)+14+(pad%4)*130,SurfaceY+58+(pad/4)*52,122,44};}
+Box surfaceEditPadBox(int pad)const{return {surfaceX(0)+14+(pad%4)*130,SurfaceY+58+(pad/4)*52,122,44};}
 
 Box shortcutBox(int index)const{return {20+(index%2)*120,38+(index/2)*48,112,38};}
-Box groupBox(int group)const{return {20+(group%4)*108,624+(group/4)*54,100,46};}
+Box utilityButtonBox(int column)const{return {20+column*120,326,112,38};}
+Box groupBox(int group)const{return {20+(group%4)*108,604+(group/4)*54,100,46};}
 Box modeBox(int mode)const{return {778+mode*116,420,108,32};}
 Box sideCommandBox(int command)const{return {650,466+command*41,112,34};}
 Box futureCommandBox(int command)const{return {1246,466+command*41,110,34};}
-Box smallControlBox(int column,int row)const{return {20+column*120,420+row*48,112,38};}
-Box performanceButtonBox(int column)const{return {20+column*108,570,100,38};}
+Box smallControlBox(int column,int row)const{return {20+column*120,374+row*48,112,38};}
+Box performanceButtonBox(int column)const{return {20+column*108,526,100,38};}
 Box transportBox(int index)const{return {20+(index%4)*108,768+(index/4)*44,100,36};}
-Box brandPanelBox()const{return {1368,26,204,808};}
-Box brandHomeBox()const{return {1382,42,176,130};}
-Box brandMasterBox()const{return {1382,674,176,144};}
+Box brandPanelBox()const{return {1412,8,176,884};}
+Box brandHomeBox()const{return {1418,16,164,108};}
+Box brandControlBox()const{return {1418,138,164,494};}
+Box brandMacroBox(int macro)const{return {1427+(macro%2)*76,154+(macro/2)*67,66,58};}
+Box brandPushBox(int buttonIndex)const{return {1427+(buttonIndex%2)*76,438+(buttonIndex/2)*69,66,54};}
+Box brandMasterBox()const{return {1418,650,164,234};}
 
 int surfaceDragDisplay=-1,surfaceDragKnob=-1,surfaceDragStartY=0,surfaceDragLastStep=0;
 
@@ -766,6 +769,11 @@ bool maschineClick(int x,int y,bool right){
         }
         return true;
     }
+    for(int column=0;column<2;++column)if(utilityButtonBox(column).contains(x,y)){
+        if(column==0)showSurfaceHome();
+        else status=L"Bouton réservé — aucune fonction assignée pour le moment.";
+        return true;
+    }
     for(int group=0;group<8;++group)if(groupBox(group).contains(x,y)){
         selectGroupBlock(group);return true;
     }
@@ -824,9 +832,10 @@ bool maschineClick(int x,int y,bool right){
         if(right&&padMode==0){selectPad(p);sampleMenu();return true;}
         dispatch({lab::SurfaceAction::PadPress,p});return true;
     }
+    for(int macro=0;macro<8;++macro)if(brandMacroBox(macro).contains(x,y)){status=L"Macro "+number(macro+1)+L" réservée — assignation à venir.";return true;}
+    for(int buttonIndex=0;buttonIndex<4;++buttonIndex)if(brandPushBox(buttonIndex).contains(x,y)){status=L"Poussoir "+number(buttonIndex+1)+L" réservé — assignation à venir.";return true;}
     if(brandMasterBox().contains(x,y)){
-        if(y<730)settingsMenu();
-        else {auto snapshot=engine.snapshot();engine.setVolume(std::clamp((x-1394)/152.,0.,1.));markProjectDirty();}
+        const auto box=brandMasterBox();auto snapshot=engine.snapshot();engine.setVolume(std::clamp((x-(box.x+12))/double(box.w-24),0.,1.));markProjectDirty();
         return true;
     }
     return false;
@@ -852,10 +861,11 @@ void paintSurfaceKnob(HDC dc,int display,int knob,const lab::Snapshot& snapshot)
         const int parameter=binding.parameterForKnob(knob);
         if(parameter>=0&&parameter<lab::insertParameterCount(insert.effect)){ratio=insert.parameters[parameter];assigned=true;}
     }
-    HBRUSH brush=CreateSolidBrush(RGB(31,38,50));HPEN edge=CreatePen(PS_SOLID,2,line);
-    auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-19,cy-19,cx+19,cy+19);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);
+    HBRUSH shadow=CreateSolidBrush(RGB(9,13,18));HPEN shadowEdge=CreatePen(PS_SOLID,1,RGB(8,11,15));auto oldB=SelectObject(dc,shadow),oldP=SelectObject(dc,shadowEdge);Ellipse(dc,cx-17,cy-15,cx+19,cy+21);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(shadow);DeleteObject(shadowEdge);
+    HBRUSH brush=CreateSolidBrush(themeButtons);HPEN edge=CreatePen(PS_SOLID,2,assigned?RGB(54,76,91):line);
+    oldB=SelectObject(dc,brush);oldP=SelectObject(dc,edge);Ellipse(dc,cx-17,cy-19,cx+17,cy+15);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);
     constexpr double pi=3.14159265358979323846;const double angle=(135.+270.*ratio)*pi/180.;
-    HPEN mark=CreatePen(PS_SOLID,3,assigned?accent:muted);oldP=SelectObject(dc,mark);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx+int(std::cos(angle)*12),cy+int(std::sin(angle)*12));SelectObject(dc,oldP);DeleteObject(mark);
+    HPEN mark=CreatePen(PS_SOLID,3,assigned?accent:muted);oldP=SelectObject(dc,mark);MoveToEx(dc,cx,cy-2,nullptr);LineTo(dc,cx+int(std::cos(angle)*10),cy-2+int(std::sin(angle)*10));SelectObject(dc,oldP);DeleteObject(mark);
     text(dc,{knobBox.x,knobBox.y+41,knobBox.w,13},L"P"+number(display*4+knob+1),8,assigned?accent:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 }
 
@@ -1090,7 +1100,7 @@ void paintSurface(HDC dc,const lab::Snapshot& snapshot){
 }
 
 void hardwareButton(HDC dc,Box box,const std::wstring& primary,const std::wstring& shifted=L"",bool on=false,bool available=true){
-    round(dc,box,on?accent:RGB(28,34,45),on?accent:(available?line:RGB(35,41,51)));
+    round(dc,box,on?accent:themeButtons,on?accent:(available?line:RGB(35,41,51)));
     text(dc,{box.x+6,box.y+3,box.w-12,shifted.empty()?box.h-6:17},primary,10,on?bg:(available?ink:muted),FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     if(!shifted.empty())text(dc,{box.x+6,box.y+19,box.w-12,box.h-21},shifted,8,on?RGB(24,55,51):muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
@@ -1102,6 +1112,9 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
         {L"FILE",L"Save"},{L"SETTINGS",L""},{L"AUTO",L""},{L"MACRO",L"Set"}
     }};
     for(int i=0;i<12;++i){const bool available=i!=10;const auto module=surface.displays[0].module;hardwareButton(dc,shortcutBox(i),shortcuts[i].first,shortcuts[i].second,i==3&&(module==lab::DisplayModule::Mixer||module==lab::DisplayModule::PadMixer),available);}
+
+    hardwareButton(dc,utilityButtonBox(0),L"MENU",L"Écrans A + B",false,true);
+    hardwareButton(dc,utilityButtonBox(1),L"RÉSERVE",L"",false,false);
 
     static const std::array<std::pair<const wchar_t*,const wchar_t*>,5> small={{
         {L"VOLUME",L"Velocity"},{L"NOTE REPEAT",L"Arp"},{L"SWING",L"Position"},{L"LOCK",L"Ext Lock"},{L"TEMPO",L"Tune"}
@@ -1136,7 +1149,7 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
     const bool playVisible=snapshot.playing&&snapshot.playBar==snapshot.viewBar;ULONGLONG now=GetTickCount64();
     for(int p=0;p<16;++p){
         const auto box=padBox(p);const bool active=editingPadMix?snapshot.edits[p].mute:steps?(melodicSteps?snapshot.melody[p]==engine.performanceNote(stepTrack):snapshot.pattern[stepTrack][p]):notes?false:snapshot.active[p];
-        const bool hot=now<flashed[p]||active||(steps&&playVisible&&snapshot.step==p)||(editingEvents&&p==eventStep)||(editingPadMix&&p==selected)||(editingPads&&(p==editSourcePad||p==editDestinationPad));const COLORREF color=editingPadMix&&snapshot.edits[p].mute?RGB(225,92,78):editingPads&&p==editDestinationPad?RGB(241,148,88):steps?RGB(241,184,88):programPadColor(snapshot.edits[p].color);COLORREF face=RGB(36,42,53);const auto& colorMode=snapshot.programs[snapshot.program];
+        const bool hot=now<flashed[p]||active||(steps&&playVisible&&snapshot.step==p)||(editingEvents&&p==eventStep)||(editingPadMix&&p==selected)||(editingPads&&(p==editSourcePad||p==editDestinationPad));const COLORREF color=editingPadMix&&snapshot.edits[p].mute?RGB(225,92,78):editingPads&&p==editDestinationPad?RGB(241,148,88):steps?RGB(241,184,88):programPadColor(snapshot.edits[p].color);COLORREF face=dimColor(themePads,.28);const auto& colorMode=snapshot.programs[snapshot.program];
         if(editingColors)face=color;else if(hot&&colorMode.padOnColor!=lab::PadOnColorMode::Off)face=color;else if(snapshot.paths[p].empty()&&colorMode.emptyPadColor==lab::EmptyPadColorMode::Dim)face=dimColor(color,.22);else if(!snapshot.paths[p].empty()&&colorMode.padOffColor==lab::PadOffColorMode::Dim)face=dimColor(color,.28);
         round(dc,box,face,(padMode==0&&p==selected)||editingColors&&p==selected?color:line);
         std::wstring title=editingPadMix?wide(snapshot.names[p]):steps?L"STEP "+number(p+1):notes?noteName(engine.performanceNote(p)):wide(snapshot.names[p]);
@@ -1158,10 +1171,10 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
 }
 
 void paintMasterMeter(HDC dc,double value,double peak,double preLimiterPeak,double reductionDb){
-    value=std::clamp(value,0.,1.);peak=std::max(0.,peak);preLimiterPeak=std::max(0.,preLimiterPeak);const Box meter{1394,784,152,14};
+    const auto master=brandMasterBox();value=std::clamp(value,0.,1.);peak=std::max(0.,peak);preLimiterPeak=std::max(0.,preLimiterPeak);const Box meter{master.x+12,master.y+178,master.w-24,16};
     const double db=peak>0?20.*std::log10(peak):-60.,preDb=preLimiterPeak>0?20.*std::log10(preLimiterPeak):-60.;const double ratio=std::clamp((db+60.)/60.,0.,1.);const int lit=int((meter.w-4)*ratio),green=std::min(lit,int((meter.w-4)*.8)),amber=std::max(0,lit-green);
-    const double masterDb=value>0?20.*std::log10(value):-60.;text(dc,{1394,746,152,16},value>0?L"MASTER  "+decimal(masterDb,1)+L" dB":L"MASTER  −∞ dB",9,ink,FW_SEMIBOLD);
-    std::wstring level=db<=-59.9?L"OUT −∞":L"OUT "+decimal(db,1)+L" dB";if(reductionDb>.05)level+=L" · GR "+decimal(reductionDb,1);else if(preDb> -59.9)level+=L" · PRE "+decimal(preDb,1);text(dc,{1394,764,152,16},level,8,reductionDb>6?RGB(255,133,103):(reductionDb>.05?RGB(241,184,88):muted),FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    const double masterDb=value>0?20.*std::log10(value):-60.;text(dc,{master.x+12,master.y+106,master.w-24,18},value>0?decimal(masterDb,1)+L" dB":L"−∞ dB",13,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    std::wstring level=db<=-59.9?L"OUT −∞":L"OUT "+decimal(db,1)+L" dB";if(reductionDb>.05)level+=L" · GR "+decimal(reductionDb,1);else if(preDb> -59.9)level+=L" · PRE "+decimal(preDb,1);text(dc,{master.x+10,master.y+142,master.w-20,20},level,8,reductionDb>6?RGB(255,133,103):(reductionDb>.05?RGB(241,184,88):muted),FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     round(dc,meter,RGB(20,26,34),line);if(green>0)fill(dc,{meter.x+2,meter.y+3,green,meter.h-6},accent);if(amber>0)fill(dc,{meter.x+2+green,meter.y+3,amber,meter.h-6},RGB(241,184,88));
     const int marker=meter.x+2+int((meter.w-4)*value);fill(dc,{marker-1,meter.y-2,2,meter.h+4},ink);
 }
@@ -1171,26 +1184,24 @@ void paintBackdrop(HDC dc){
     // control so readability remains identical on low-contrast displays.
     HPEN blue=CreatePen(PS_SOLID,1,RGB(15,42,58));HPEN red=CreatePen(PS_SOLID,1,RGB(56,22,30));
     auto old=SelectObject(dc,blue);
-    for(int y=408;y<890;y+=48){MoveToEx(dc,270,y,nullptr);LineTo(dc,1360,y+((y/48)%2?18:-18));}
+    for(int y=408;y<890;y+=48){MoveToEx(dc,270,y,nullptr);LineTo(dc,1400,y+((y/48)%2?18:-18));}
     SelectObject(dc,red);
-    for(int x=270;x<1360;x+=92){MoveToEx(dc,x,404,nullptr);LineTo(dc,x+118,884);}
+    for(int x=270;x<1400;x+=92){MoveToEx(dc,x,404,nullptr);LineTo(dc,x+118,884);}
     Arc(dc,330,470,635,790,330,630,635,630);Arc(dc,1040,490,1344,820,1040,650,1344,650);
     SelectObject(dc,old);DeleteObject(blue);DeleteObject(red);
 }
 
 void paintBrandPanel(HDC dc,const lab::Snapshot& snapshot){
-    const auto box=brandPanelBox();round(dc,box,RGB(11,17,27),RGB(42,69,88));
-    HPEN blue=CreatePen(PS_SOLID,1,RGB(23,65,86)),red=CreatePen(PS_SOLID,1,RGB(89,30,39));auto old=SelectObject(dc,blue);
-    for(int y=box.y+18;y<box.y+box.h-18;y+=42){MoveToEx(dc,box.x+12,y,nullptr);LineTo(dc,box.x+box.w-12,y+18);}
-    SelectObject(dc,red);for(int y=box.y+30;y<box.y+box.h-20;y+=84)Arc(dc,box.x+22,y,box.x+box.w-22,y+122,box.x+22,y+60,box.x+box.w-22,y+60);
-    SelectObject(dc,old);DeleteObject(blue);DeleteObject(red);
-    fill(dc,{box.x+10,box.y+10,box.w-20,1},accent);fill(dc,{box.x+10,box.y+box.h-11,box.w-20,1},RGB(137,43,53));
-    text(dc,{1382,48,176,68},L"KICK",42,ink,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{1382,114,176,28},L"ANKS Labs",13,accent,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{1390,202,160,110},status,9,muted,FW_NORMAL,DT_CENTER|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
-    text(dc,{1392,626,156,18},audio.running?L"AUDIO WINDOWS · ACTIF":L"AUDIO · ARRÊT",8,audio.running?accent:RGB(255,133,103),FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{1392,646,156,18},midiId>=0?L"MIDI · CONNECTÉ":L"MIDI · DÉCONNECTÉ",8,midiId>=0?accent:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{1392,702,156,16},L"MASTER / WINDOWS",9,ink,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{1392,720,156,14},L"DSP "+decimal(audio.renderPermille.load()/10.,1)+L" % · "+number(int(audio.lateBlocks.load()))+L" retards",8,audio.lateBlocks.load()?RGB(255,133,103):muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    const auto identity=brandHomeBox(),controls=brandControlBox(),master=brandMasterBox();
+    round(dc,identity,RGB(11,17,27),RGB(42,69,88));fill(dc,{identity.x+8,identity.y+7,identity.w-16,2},accent);
+    text(dc,{identity.x+8,identity.y+12,identity.w-16,52},L"KICK",36,ink,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{identity.x+8,identity.y+62,identity.w-16,18},L"ANKS Labs",12,accent,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.20.0",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+
+    round(dc,controls,RGB(11,17,27),RGB(42,69,88));
+    for(int macro=0;macro<8;++macro){const auto box=brandMacroBox(macro);const int cx=box.x+box.w/2,cy=box.y+23;HBRUSH brush=CreateSolidBrush(themeButtons);HPEN edge=CreatePen(PS_SOLID,2,line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-15,cy-15,cx+15,cy+15);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);HPEN marker=CreatePen(PS_SOLID,2,muted);oldP=SelectObject(dc,marker);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx,cy-10);SelectObject(dc,oldP);DeleteObject(marker);text(dc,{box.x,box.y+40,box.w,14},L"M"+number(macro+1),8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    for(int buttonIndex=0;buttonIndex<4;++buttonIndex){const auto box=brandPushBox(buttonIndex);round(dc,box,themeButtons,line);text(dc,box,L"P"+number(buttonIndex+1),9,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+
+    round(dc,master,RGB(11,17,27),RGB(42,69,88));text(dc,{master.x+8,master.y+18,master.w-16,24},L"MASTER",13,ink,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);text(dc,{master.x+8,master.y+50,master.w-16,28},L"●",24,accent,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     meterPeak=std::max(double(snapshot.peak),meterPeak*.9);paintMasterMeter(dc,snapshot.volume,meterPeak,snapshot.preLimiterPeak,snapshot.limiterReductionDb);
 }

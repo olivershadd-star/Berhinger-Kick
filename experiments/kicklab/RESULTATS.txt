@@ -1,4 +1,4 @@
-KICK Lab 0.19.1 — Gain staging, limiteur et Track Meters
+KICK Lab 0.20.0 — double écran étendu et apparence portable
 
 Compilation MSVC native et tests audio sur GitHub Actions : réussis.
 Test de démarrage de l’interface Windows et création des catégories de bibliothèque : réussis.
@@ -6,6 +6,8 @@ Tests moteur Linux GCC 14.2 : réussis.
 Tests Linux avec AddressSanitizer et UndefinedBehaviorSanitizer : aucun diagnostic.
 
 Scénarios : gain Master réel ; surcharge de seize pistes ; limiteur −1 dBFS ; vumètres de pistes ; export WAV 24 bits sans échantillon écrêté ; lecture WAV et silence ; Copy Pad complet et indépendant ; Delete Pad sans altérer les patterns ; Erase Notes Drum/mélodique par plage ; Color Editor par Program et par kit ; List Edit avec insertion, déplacement protégé et suppression ; Pad Mixer Level/Pan ; Pad Mutes groupés ; Events Velocity/Probability/Ratchet/Length ; capture de vélocité REC ; quatre Layers ; sélection Velocity et Cycle ; Reverse ; One Shot, Note On et Note Off ; Choke ; Loop Sync 130→120 BPM ; Note Repeat ; découpe et hauteur Pad Perform ; ADSR ; 31 effets ; quatre inserts ; Programs réutilisables ; patterns A–H indépendants ; Pad/Keyboard/Chords/Step ; REC quantifié ; Next Sequence ; Song ; mixage ; sauvegarde KICKLAB 14/KICKKIT 4 ; migrations anciennes ; continuité audio/graphique.
+
+0.20.0 étend les deux écrans KICK de manière symétrique jusqu'à la nouvelle colonne latérale. MENU restaure les deux pages d'accueil en une action. La colonne KICK ne contient plus que l'identité et la version, huit macros et quatre poussoirs réservés, puis le Master. SETTINGS permet de copier un fond PNG/JPG/BMP dans le dossier portable appearance et de choisir en RGB la couleur du fond, des boutons et des pads au repos. KickLab.kicktheme recharge automatiquement ces choix. Aucun changement du moteur, des formats KICKLAB/KICKKIT ni du profil MIDI.
 
 0.19.1 remplace l'ancien gain fixe ×0,5 suivi d'un hard clip à 0,98. Le Master atteint maintenant un vrai 0 dB et un limiteur de sécurité commun au direct et au WAV maintient les échantillons sous −1 dBFS. Le vumètre Master affiche le niveau OUT et la réduction GR. Le Track Mixer ajoute un fader graphique et un vumètre pré-Master pour chacune des seize pistes, afin d'identifier et réduire la source d'une surcharge plutôt que de seulement constater le rouge sur le bus. Aucun changement de format de projet ou de kit.
 
