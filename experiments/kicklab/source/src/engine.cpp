@@ -213,6 +213,8 @@ struct Engine::Impl {
     std::array<bool,Pads> loaded{};
     float currentVolume=.65f;
     float limiterGain=1.f;
+    std::array<int,Pads> trackMeterHold{};
+    int mixMeterHold=0,preMeterHold=0,outMeterHold=0;
     double untilStep=0;
     int nextStep=0;
     int preparedProgram=-1;
@@ -350,6 +352,10 @@ void Engine::setEdit(int pad,const PadEdit& requested){
     std::unique_ptr<PadEffects> replacement;if(rebuild)replacement=std::make_unique<PadEffects>(edit);
     std::scoped_lock lock(impl->mutex,impl->audioMutex);
     impl->state.edits[pad]=edit;impl->banks[impl->state.program][pad].edit=edit;impl->players[pad]->edit=edit;if(edit.mute)impl->players[pad]->stop();if(replacement)impl->players[pad]->effects.swap(replacement);else impl->players[pad]->effects->sync(edit);
+    // A held peak from the previous gain/FX setting is no longer meaningful.
+    // Clear it immediately so lowering a pad does not keep showing a red value
+    // for seconds and falsely suggest that the new setting still clips.
+    impl->state.trackPeaks[pad]=0;impl->trackMeterHold[pad]=0;impl->state.mixPeak=impl->state.preLimiterPeak=impl->state.peak=impl->state.limiterReductionDb=0;impl->mixMeterHold=impl->preMeterHold=impl->outMeterHold=0;
 }
 void Engine::setLayerVelocityRange(int pad,int layer,int start,int end){
     if(pad<0||pad>=Pads||layer<0||layer>=PadLayers)return;start=std::clamp(start,1,127);end=std::clamp(end,start,127);
@@ -424,6 +430,27 @@ void Engine::copySequence(int source,int destination){
     std::lock_guard<std::mutex> lock(impl->mutex);const auto name=impl->state.sequences[destination].name;const int program=impl->state.sequences[destination].program;
     impl->state.sequences[destination]=impl->state.sequences[source];impl->state.sequences[destination].name=name;impl->state.sequences[destination].program=program;
 }
+bool Engine::copyBar(int sourceSequence,int sourceBar,int destinationSequence,int destinationBar){
+    if(sourceSequence<0||sourceSequence>=Sequences||destinationSequence<0||destinationSequence>=Sequences
+       ||sourceBar<0||sourceBar>=MaxBars||destinationBar<0||destinationBar>=MaxBars)return false;
+    std::lock_guard<std::mutex> lock(impl->mutex);
+    const auto& source=impl->state.sequences[sourceSequence];auto& destination=impl->state.sequences[destinationSequence];
+    if(sourceBar>=source.bars)return false;
+    if(destinationBar>=destination.bars)destination.bars=destinationBar+1;
+    const int sourceFirst=sourceBar*Steps,destinationFirst=destinationBar*Steps;
+    for(int step=0;step<Steps;++step){
+        const int from=sourceFirst+step,to=destinationFirst+step;
+        destination.melody[to]=source.melody[from];destination.melodyEvents[to]=source.melodyEvents[from];
+        for(int track=0;track<Pads;++track){destination.drum[track][to]=source.drum[track][from];destination.drumEvents[track][to]=source.drumEvents[track][from];}
+    }
+    return true;
+}
+bool Engine::clearBar(int sequenceIndex,int bar){
+    if(sequenceIndex<0||sequenceIndex>=Sequences||bar<0||bar>=MaxBars)return false;
+    std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[sequenceIndex];if(bar>=sequence.bars)return false;
+    const int first=bar*Steps;for(int step=0;step<Steps;++step){const int absolute=first+step;sequence.melody[absolute]=-1;sequence.melodyEvents[absolute]={};for(int track=0;track<Pads;++track){sequence.drum[track][absolute]=false;sequence.drumEvents[track][absolute]={};}}
+    return true;
+}
 int Engine::createProgram(const std::string& requestedName,ProgramType type){
     if(int(type)<0||int(type)>int(ProgramType::Keygroup))return -1;std::scoped_lock lock(impl->mutex,impl->metadataMutex,impl->audioMutex);
     int slot=-1;for(int i=0;i<Programs;++i)if(!impl->state.programs[i].used){slot=i;break;}if(slot<0)return -1;
@@ -492,7 +519,7 @@ void Engine::setPerformanceMode(PerformanceMode mode){if(int(mode)<0||int(mode)>
 void Engine::setMelodicSourcePad(int pad){if(pad<0||pad>=Pads)return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].sourcePad=pad;}
 void Engine::setRootNote(int note){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].rootNote=std::clamp(note,0,101);}
 void Engine::selectTrack(int track){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.selectedTrack=std::clamp(track,0,Pads-1);}
-void Engine::setTrackLevel(int track,double level){if(track<0||track>=Pads||!std::isfinite(level))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].tracks[track].level=std::clamp(level,0.,1.);}
+void Engine::setTrackLevel(int track,double level){if(track<0||track>=Pads||!std::isfinite(level))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].tracks[track].level=std::clamp(level,0.,1.);impl->state.trackPeaks[track]=0;impl->trackMeterHold[track]=0;impl->state.mixPeak=impl->state.preLimiterPeak=impl->state.peak=impl->state.limiterReductionDb=0;impl->mixMeterHold=impl->preMeterHold=impl->outMeterHold=0;}
 void Engine::setTrackPan(int track,double pan){if(track<0||track>=Pads||!std::isfinite(pan))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].tracks[track].pan=std::clamp(pan,-1.,1.);}
 void Engine::setTrackMute(int track,bool mute){if(track<0||track>=Pads)return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].tracks[track].mute=mute;}
 void Engine::setTrackSolo(int track,bool solo){if(track<0||track>=Pads)return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.sequences[impl->state.sequence].tracks[track].solo=solo;}
@@ -518,9 +545,10 @@ void Engine::playSong(){
     selectSequence(first);std::lock_guard<std::mutex> lock(impl->mutex);auto& s=impl->state;s.songPlaying=true;s.songPosition=0;s.songRepeat=0;s.playing=true;
 }
 void Engine::setPlaying(bool b){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.playing=b;}
-void Engine::stop(){std::scoped_lock lock(impl->mutex,impl->audioMutex);auto& s=impl->state;impl->cancelPreparedProgram();s.playing=false;s.songPlaying=false;s.noteRepeat=false;s.arpeggiator=false;s.songPosition=-1;s.songRepeat=0;s.queuedSequence=-1;s.queuedGroup=-1;s.step=-1;s.playBar=0;s.mixPeak=s.peak=s.preLimiterPeak=s.limiterReductionDb=0;s.trackPeaks={};impl->limiterGain=1;impl->untilStep=impl->untilRepeat=0;impl->nextStep=0;impl->repeatPad=-1;impl->arpHeld.fill(false);impl->arpIndex=-1;impl->ratchetRemaining.fill(0);impl->gateRemaining.fill(0);for(int p=0;p<Pads;++p){impl->players[p]->stop();impl->pendingPitch[p].store(1000);}impl->previewPlayer->stop();}
+void Engine::stop(){std::scoped_lock lock(impl->mutex,impl->audioMutex);auto& s=impl->state;impl->cancelPreparedProgram();s.playing=false;s.songPlaying=false;s.noteRepeat=false;s.arpeggiator=false;s.songPosition=-1;s.songRepeat=0;s.queuedSequence=-1;s.queuedGroup=-1;s.step=-1;s.playBar=0;s.mixPeak=s.peak=s.preLimiterPeak=s.limiterReductionDb=0;s.trackPeaks={};impl->trackMeterHold={};impl->mixMeterHold=impl->preMeterHold=impl->outMeterHold=0;impl->limiterGain=1;impl->untilStep=impl->untilRepeat=0;impl->nextStep=0;impl->repeatPad=-1;impl->arpHeld.fill(false);impl->arpIndex=-1;impl->ratchetRemaining.fill(0);impl->gateRemaining.fill(0);for(int p=0;p<Pads;++p){impl->players[p]->stop();impl->pendingPitch[p].store(1000);}impl->previewPlayer->stop();}
 void Engine::setTempo(double t){if(!std::isfinite(t))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.tempo=std::clamp(t,40.,240.);}
-void Engine::setVolume(double v){if(!std::isfinite(v))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.volume=std::clamp(v,0.,1.);}
+void Engine::setVolume(double v){if(!std::isfinite(v))return;std::lock_guard<std::mutex> lock(impl->mutex);impl->state.volume=std::clamp(v,0.,1.);impl->state.preLimiterPeak=impl->state.peak=impl->state.limiterReductionDb=0;impl->preMeterHold=impl->outMeterHold=0;}
+void Engine::resetMeters(){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.trackPeaks={};impl->state.mixPeak=impl->state.preLimiterPeak=impl->state.peak=impl->state.limiterReductionDb=0;impl->trackMeterHold={};impl->mixMeterHold=impl->preMeterHold=impl->outMeterHold=0;}
 void Engine::setNoteRepeat(bool enabled,bool arpeggiator){std::scoped_lock lock(impl->mutex,impl->audioMutex);impl->state.noteRepeat=enabled;impl->state.arpeggiator=enabled&&arpeggiator;impl->untilRepeat=0;if(!enabled){impl->repeatPad=-1;impl->arpHeld.fill(false);impl->arpIndex=-1;}}
 void Engine::setRepeatDivision(int division){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.repeatDivision=division<=4?4:division<=8?8:division<=16?16:32;impl->untilRepeat=0;}
 void Engine::setRepeatVoice(int pad,int semitones,bool held){if(pad<0||pad>=Pads)return;std::scoped_lock lock(impl->mutex,impl->audioMutex);if(held){impl->repeatPad=pad;impl->repeatPitch=std::clamp(semitones,-48,48);impl->untilRepeat=0;}else if(impl->repeatPad==pad)impl->repeatPad=-1;}
@@ -592,11 +620,12 @@ void Engine::render(float* out){
         impl->limiterGain=std::clamp(impl->limiterGain,0.f,1.f);minimumLimiterGain=std::min(minimumLimiterGain,impl->limiterGain);
         for(int channel=0;channel<2;++channel){auto& sample=out[frame*2+channel];sample=std::clamp(sample*impl->limiterGain,-MasterCeiling,MasterCeiling);postLimiterPeak=std::max(postLimiterPeak,std::abs(sample));}
     }
-    // Hold percussion peaks long enough for the 60 Hz Windows UI to display
-    // their envelope instead of a single-frame dot.
-    constexpr float meterRelease=.996f;
-    s.mixPeak=std::max(mixPeak,s.mixPeak*meterRelease);s.preLimiterPeak=std::max(preLimiterPeak,s.preLimiterPeak*meterRelease);s.peak=std::max(postLimiterPeak,s.peak*meterRelease);s.limiterReductionDb=minimumLimiterGain<1.f?float(-20.*std::log10(std::max(minimumLimiterGain,1e-6f))):0.f;
-    for(int p=0;p<Pads;++p){s.active[p]=impl->players[p]->isPlaying();s.progress[p]=impl->players[p]->progress();s.trackPeaks[p]=std::max(impl->players[p]->outputPeak(),s.trackPeaks[p]*meterRelease);}
+    // A deterministic 250 ms peak hold makes short drums readable without
+    // leaving an obsolete red peak on screen after a fader was lowered.
+    constexpr int meterHoldBlocks=47;constexpr float meterRelease=.95f;
+    auto updateMeter=[&](float current,float& held,int& hold){if(current>=held){held=current;hold=meterHoldBlocks;}else if(hold>0)--hold;else held=std::max(current,held*meterRelease);};
+    updateMeter(mixPeak,s.mixPeak,impl->mixMeterHold);updateMeter(preLimiterPeak,s.preLimiterPeak,impl->preMeterHold);updateMeter(postLimiterPeak,s.peak,impl->outMeterHold);s.limiterReductionDb=minimumLimiterGain<1.f?float(-20.*std::log10(std::max(minimumLimiterGain,1e-6f))):0.f;
+    for(int p=0;p<Pads;++p){s.active[p]=impl->players[p]->isPlaying();s.progress[p]=impl->players[p]->progress();float current=impl->players[p]->outputPeak();updateMeter(current,s.trackPeaks[p],impl->trackMeterHold[p]);}
 }
 bool Engine::save(const std::string& path,std::string& error){
     auto s=snapshot();std::array<std::array<std::array<PadLayerInfo,PadLayers>,Pads>,Programs> layers;std::array<std::array<PadEdit,Pads>,Programs> edits;

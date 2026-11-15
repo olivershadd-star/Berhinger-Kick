@@ -182,6 +182,10 @@ public:
     void selectSequence(int sequence);
     void queueSequence(int sequence);
     void copySequence(int source,int destination);
+    // Copy one complete 16-step bar, including all drum tracks, melodic notes
+    // and their Events metadata.  Programs/kits remain independent.
+    bool copyBar(int sourceSequence,int sourceBar,int destinationSequence,int destinationBar);
+    bool clearBar(int sequence,int bar);
     int createProgram(const std::string& name,ProgramType type=ProgramType::Drum);
     int duplicateProgram(int source,const std::string& name="");
     bool renameProgram(int program,const std::string& name);
@@ -206,6 +210,7 @@ public:
     void setTrackSolo(int track,bool solo);
     void setTrackArmed(int track,bool armed);
     void setTrackProgram(int track,ProgramType program);
+    void resetMeters();
     int performanceNote(int performancePad)const;
     // Records onto the running sequence, snapped to 1/4, 1/8 or 1/16.
     // note < 0 records a drum hit on pad; otherwise it records the MIDI note.

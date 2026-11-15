@@ -38,6 +38,7 @@ int main(int argc,char**argv){try{
     check(midiEncoderDelta(MidiCcMode::Relative1,-1,65)==1&&midiEncoderDelta(MidiCcMode::Relative1,65,63)==-1,"65/63 encoder direction failed");
     check(midiToggleButtonPress(-1,0)&&midiToggleButtonPress(0,127)&&midiToggleButtonPress(127,0)&&!midiToggleButtonPress(0,0),"Maschine toggle button decoding failed");
     check(midiCommandUsesGate(MidiCommandTarget::Shift)&&midiCommandUsesGate(MidiCommandTarget::Select)&&!midiCommandUsesGate(MidiCommandTarget::Browser),"MIDI command gate classification failed");
+    bool commandPressed=false;check(midiCommandTransition(MidiButtonMode::Toggle,-1,0,commandPressed)&&!commandPressed,"first zero-valued toggle press was lost");check(midiCommandTransition(MidiButtonMode::Toggle,0,127,commandPressed)&&commandPressed,"127-valued toggle press was lost");check(!midiCommandTransition(MidiButtonMode::Toggle,127,127,commandPressed),"unchanged toggle value retriggered");check(midiCommandTransition(MidiButtonMode::Gate,0,127,commandPressed)&&commandPressed&&midiCommandTransition(MidiButtonMode::Gate,127,0,commandPressed)&&!commandPressed,"gate press/release decoding failed");
     MidiPadBinding padBinding{0,12};check(padBinding.matches(0,12)&&!padBinding.matches(0,13)&&!padBinding.matches(1,12),"learned pad matching failed");
     auto dir=std::filesystem::absolute(argc>1?argv[1]:"test-output");std::filesystem::create_directories(dir);
     auto path=[&](const char* n){return (dir/n).u8string();};
@@ -87,6 +88,9 @@ int main(int argc,char**argv){try{
     // transport.  Playback can enter bar 2 while bar 1 remains editable, and
     // can wrap to bar 1 while bar 2 remains editable.
     {Engine editPage;editPage.setSequenceBars(2);editPage.setViewBar(0);editPage.setPlaying(true);for(int b=0;b<380;++b)editPage.render(block);auto state=editPage.snapshot();check(state.playBar==1&&state.viewBar==0,"playhead stole the selected edit bar");editPage.setViewBar(1);for(int b=0;b<380;++b)editPage.render(block);state=editPage.snapshot();check(state.playBar==0&&state.viewBar==1,"selected edit bar did not remain independent after transport wrap");editPage.stop();}
+    // Copy/Paste Bar is independent from the Program and preserves all sixteen
+    // tracks plus per-event metadata, as in KICK's copyTrackBars workflow.
+    {Engine bars;bars.setSequenceBars(2);bars.insertStepEvent(3,1);bars.setStepEvent(3,1,StepEvent{77,66,3,5});bars.insertStepEvent(9,14);bars.setPerformanceMode(PerformanceMode::Chromatic);bars.insertStepEvent(61,7,true);bars.setStepEvent(0,7,StepEvent{88,55,2,4},true);check(bars.copyBar(0,0,0,1),"bar copy was rejected");auto copied=bars.snapshot();check(copied.sequences[0].drum[3][17]&&copied.sequences[0].drumEvents[3][17].velocity==77&&copied.sequences[0].drumEvents[3][17].length==5&&copied.sequences[0].drum[9][30]&&copied.sequences[0].melody[23]==61&&copied.sequences[0].melodyEvents[23].probability==55,"bar copy lost tracks, melody or Events metadata");check(bars.clearBar(0,1),"bar clear was rejected");copied=bars.snapshot();check(!copied.sequences[0].drum[3][17]&&!copied.sequences[0].drum[9][30]&&copied.sequences[0].melody[23]<0&&copied.sequences[0].drum[3][1]&&copied.sequences[0].melody[7]==61,"bar clear changed the source bar or retained destination events");}
     // Export renders the active pattern through the real engine at an exact
     // musical length. One 4/4 bar at 120 BPM is 96,000 stereo frames.
     const auto exportedPath=path("pattern-export.wav");check(e.exportCurrentPatternWav(exportedPath,error),error.c_str());

@@ -20,6 +20,7 @@ struct MidiCcBinding {
     int channel = -1;
     int cc = -1;
     MidiCcMode mode = MidiCcMode::Absolute;
+    int lastValue = -1;
 };
 
 struct MidiPadBinding {
@@ -32,6 +33,7 @@ struct MidiPadBinding {
 };
 
 enum class MidiMessageKind { None, Note, ControlChange };
+enum class MidiButtonMode { Momentary=0, Toggle=1, Gate=2 };
 
 enum class MidiCommandTarget {
     PlayPause,
@@ -79,8 +81,19 @@ struct MidiCommandBinding {
     int channel = -1;
     int number = -1;
     MidiCcMode mode = MidiCcMode::Absolute;
+    MidiButtonMode buttonMode = MidiButtonMode::Toggle;
     int lastValue = -1;
 };
+
+inline MidiButtonMode midiDefaultButtonMode(MidiCommandTarget target) {
+    return midiCommandUsesGate(target) ? MidiButtonMode::Gate : MidiButtonMode::Toggle;
+}
+
+inline bool midiCommandTransition(MidiButtonMode mode,int previous,int value,bool& pressed) {
+    value=std::clamp(value,0,127);pressed=value>0;
+    if(mode==MidiButtonMode::Toggle)return previous<0||value!=std::clamp(previous,0,127);
+    return previous<0 ? pressed : pressed!=(previous>0);
+}
 
 inline int midiCcDelta(MidiCcMode mode, int value) {
     value = std::clamp(value, 0, 127);

@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.21.3
+        default: 0.22.0
 
 permissions:
   contents: write
@@ -62,6 +62,20 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.22.0 completes the coherent Step/Maschine editing batch.
+            Both displays now show the Step context, with an edit bar independent
+            from the playhead, optional Follow, track selection and direct bar
+            1-4 access. Complete bars copy/paste/duplicate with all 16 tracks and
+            Events metadata; patterns, pads and kits have independent clipboard
+            commands. The former nine empty buttons become 18 contextual Step,
+            Pad/Kit, Pattern or Mixer shortcuts. KICKMIDI 6 stores explicit
+            Toggle/Gate behaviour so Maschine buttons no longer need two presses,
+            while absolute Q-Links edit mixer values in precise one-percent steps.
+            Active-group pad routing prevents another Maschine pad page from
+            triggering the wrong KICK pad. Meter peaks reset when gain changes,
+            use a readable 250 ms hold, and Track Mixer exposes Pad gain beside
+            Track level. The waveOut queue is halved for lower pad latency.
 
             Version 0.21.3 makes the selected edit bar independent from the
             running playhead, so bar 1 or 2 can remain open while transport
