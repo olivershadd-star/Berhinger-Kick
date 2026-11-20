@@ -1,44 +1,70 @@
-# KICK Windows — portage progressif
+# KICK Lab — portage Windows de KICK
 
-Ce dépôt adapte le code KICK publié par Music Tribe à un ordinateur Windows **sans surface matérielle KICK**. Le travail repart de la dernière base réellement jouable : moteur AudIO, sortie Windows WinMM, pads à la souris, samples, séquenceur et effets déjà testés.
+KICK Lab adapte progressivement le code KICK publié par Music Tribe à un ordinateur Windows, sans exiger la surface matérielle KICK. La souris et le clavier fonctionnent seuls ; un contrôleur Maschine+ peut également piloter les pads, les encodeurs et les commandes.
 
-## Version recommandée
+## Télécharger la version Windows
 
-**[Télécharger le build Windows 0.2.4 — première banque de 14 effets](https://github.com/olivershadd-star/Berhinger-Kick/actions/runs/43166145754/artifacts/13920298199)**
+### [Télécharger KICK Lab 0.22.0 — Windows x64 portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.22.0-preview/KickLab-Windows-x64-0.22.0-preview.zip)
 
-Cette base possède une sortie audio Windows fonctionnelle, seize pads cliquables, le chargement de WAV, une Factory Sample Library personnelle, un séquenceur 16 pas et l'éditeur de sample. Chaque pad possède les quatre inserts du modèle KICK et une première sélection de 14 effets originaux. Elle reste une étape intermédiaire du portage.
+Aucune installation n'est nécessaire : extraire complètement le ZIP puis ouvrir `KickLab.exe`.
 
-La préversion `v0.3.3-preview` qui chargeait toute l'interface originale d'un seul coup est conservée comme **référence technique uniquement**. Elle dépend encore de commandes matérielles, ne contient pas les programmes ni les samples retirés de la publication et n'est pas recommandée pour jouer.
+- [Page de la version 0.22.0](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.22.0-preview)
+- [Toutes les versions et leurs fichiers](https://github.com/olivershadd-star/Berhinger-Kick/releases)
+- Windows 10/11 x64
+- Bibliothèque `samples` externe et personnelle
+- Aucun son commercial inclus
 
-## Méthode de travail
+![Interface KICK Lab organisée pour Maschine+](experiments/kicklab/APERCU-MASCHINE-PLUS.png)
 
-Chaque évolution part désormais de la base sonore ci-dessus :
+## Ce qui fonctionne dans la version 0.22.0
 
-1. sélectionner une fonction précise déjà présente dans le code KICK publié ;
-2. porter son modèle et son traitement sans remplacer tout le moteur ;
-3. fournir une commande souris ou clavier lorsqu'elle dépend d'un pad, d'une molette ou d'un bouton physique ;
-4. vérifier le son, l'interface et les fonctions déjà acquises avant d'intégrer le module suivant ;
-5. ne publier une version que si le parcours musical testé fonctionne réellement.
+- moteur AudIO et sortie Windows WinMM ;
+- seize pads, Programs et kits sauvegardables ;
+- huit patterns A–H indépendants, de une à quatre mesures ;
+- modes Pad, Keyboard, Chords et Step ;
+- enregistrement quantifié, Events et List Edit ;
+- séquenceur graphique 16 pistes × 16 pas ;
+- sélection fixe de la mesure d'édition pendant la lecture ;
+- Copy/Paste/Duplicate/Clear pour les mesures, patterns, pads et kits ;
+- Track Mixer, Pad Mixer, mutes, solos et vumètres en dB ;
+- quatre inserts par pad et 31 effets Airwindows ;
+- export du pattern actif en WAV stéréo 48 kHz / 24 bits ;
+- navigation récursive dans la bibliothèque externe `samples` ;
+- profil MIDI portable `KICKMIDI 6` et intégration Maschine+ ;
+- apparence personnalisable et fond d'écran importable.
 
-Le port complet expérimental est conservé sur la branche [`port/kick-original-windows`](https://github.com/olivershadd-star/Berhinger-Kick/tree/port/kick-original-windows). Il sert à consulter les écrans et les dépendances, pas de base aux versions jouables.
+La sortie et l'export sont protégés à −1 dBFS. Le Mixer distingue le gain du pad, le niveau de piste, la somme avant Master, le niveau avant limiteur et la sortie finale.
 
-## Organisation
+## Démarrage rapide
 
-| Dossier | Rôle |
+1. Extraire le ZIP dans un dossier où KICK Lab peut écrire.
+2. Conserver `demo-kit` à côté de `KickLab.exe`.
+3. Remettre ou créer le dossier `samples` à côté de l'exécutable.
+4. Charger des WAV avec Browser ou par clic droit sur un pad.
+5. Choisir A–H, puis utiliser Pad, Keyboard ou Step pour construire le pattern.
+6. Utiliser File/Save pour enregistrer un projet `.kicklab`, un kit `.kickkit` ou exporter un WAV.
+
+Le dossier `samples` peut contenir des catégories, des packs et autant de sous-dossiers que nécessaire. Il reste extérieur au programme afin de ne pas alourdir les téléchargements et de ne pas redistribuer les sons de l'utilisateur.
+
+## Maschine+
+
+Passer Maschine+ en mode contrôleur avec `Shift + Channel/MIDI`, puis choisir de préférence l'entrée **Maschine Plus Virtual** dans KICK Lab. La page MIDI Control apprend et sauvegarde les pads, les 16 Q-Links, les boutons et les deux pages de touches Soft dans `profiles/MaschinePlus.kickmidi`.
+
+KICK Lab reste entièrement utilisable sans Maschine+.
+
+## Sources et organisation
+
+| Emplacement | Contenu |
 |---|---|
-| `experiments/kicklab/` | Base Windows active : AudIO, WinMM, pads, samples, séquenceur et effets |
-| `upstream/0700-AAM/` | 3 183 fichiers originaux Music Tribe conservés sans modification |
-| `port/` | Adaptateurs et recherches du port complet, conservés pour reprendre des modules précis |
-| `docs/PORTAGE-INCREMENTAL.md` | Ordre d'intégration et critères de validation |
-| `downloads/` | Archives Windows précédentes |
+| `experiments/kicklab/` | Application Windows active et documentation détaillée |
+| `upstream/0700-AAM/` | Sources publiques originales de Music Tribe conservées comme référence |
+| `port/` | Adaptateurs et recherches du port complet |
+| `docs/` | Analyses et documents de portage |
+| `.github/workflows/` | Compilation et tests Windows automatisés |
 
-## Pourquoi la préversion complète était muette
+La branche `main` correspond désormais à la version publique recommandée. Les fichiers affichés dans **Actions** sont des artefacts de validation ; les téléchargements destinés au public se trouvent toujours dans **Releases**.
 
-Le dépôt public ne contient aucun sample d'usine, aucun son de métronome et pratiquement aucun contenu de programme. Les cinq démos livrées sont de petits fichiers de projet presque vides. L'interface originale attend aussi la surface matérielle pour plusieurs sélections.
-
-La base 0.2.4 utilise directement WinMM avec quatre buffers stéréo à 48 kHz. La préversion complète l'avait remplacé par un périphérique JUCE et un nouvel adaptateur de blocs AudIO. Ce remplacement simultané du périphérique, du moteur et de l'interface a supprimé la base sonore connue et rendu les problèmes impossibles à isoler. Cette voie n'est plus la voie principale.
-
-## Construire la base active
+## Compiler
 
 Sous Windows avec Visual Studio 2022 :
 
@@ -48,8 +74,8 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-L'exécutable est produit dans `build/incremental-port/Release/KickLab.exe`. La compilation complète de référence reste possible avec `-DKICK_BUILD_ORIGINAL_REFERENCE=ON`.
+L'exécutable est produit dans `build/incremental-port/Release/KickLab.exe`.
 
-## Licence
+## Licence et statut
 
-Les sources Music Tribe et les adaptations restent sous AGPL-3.0-or-later. Airwindows et AudioFile conservent leurs licences. KICK et Behringer restent des marques de leurs propriétaires ; ce travail communautaire n'est pas une version officielle.
+Prototype communautaire indépendant sous AGPL-3.0-or-later. Airwindows et AudioFile conservent leurs licences respectives. KICK, Behringer, Maschine et Native Instruments sont des marques de leurs propriétaires. Ce projet n'est pas une version officielle de Behringer, Music Tribe ou Native Instruments.
