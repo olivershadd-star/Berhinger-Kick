@@ -36,7 +36,10 @@ if(MSVC)
     # Gain-stage tests keep additional complete Snapshot values alive in main.
     # MSVC reserves all of those large fixtures in one frame, so keep this
     # exhaustive test executable comfortably above that frame size.
-    target_link_options(KickLab-Test PRIVATE /STACK:67108864)
+    # FX Automation adds sparse per-pattern lanes to Snapshot. MSVC reserves
+    # all exhaustive-test locals in main's frame instead of reusing their
+    # scoped storage, so the test runner needs more stack than the GUI.
+    target_link_options(KickLab-Test PRIVATE /STACK:134217728)
 endif()
 if(MINGW)
     target_link_options(KickLab-Test PRIVATE -static)
