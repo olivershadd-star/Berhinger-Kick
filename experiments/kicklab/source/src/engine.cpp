@@ -226,7 +226,9 @@ struct Engine::Impl {
     uint32_t randomState=0x6d2b79f5u;
     double untilRepeat=0;
     std::array<bool,128> arpHeld{};
+    std::array<std::array<std::array<int,InsertParameters>,InsertSlots>,Pads> appliedEffectAutomation{};
     Impl():pool(512*Block) {
+        for(auto& pad:appliedEffectAutomation)for(auto& slot:pad)slot.fill(-2);
         AudIO::MemoryPool<float>::get().initialize(pool.data(),512,Block);
         graph=std::make_unique<AudIO::Design>(0,2);
         auto bus=graph->createBus();
@@ -272,6 +274,7 @@ struct Engine::Impl {
             state.edits[pad]=newPad.edit;state.active[pad]=false;state.progress[pad]=0;players[pad]->edit=newPad.edit;players[pad]->resetMix();
         }
         state.program=requested;preparedProgram=-1;state.queuedProgram=-1;
+        for(auto& pad:appliedEffectAutomation)for(auto& slot:pad)slot.fill(-2);
     }
     int selectLayer(int pad,int velocity){
         auto& bank=banks[state.program][pad];std::array<int,PadLayers> valid{};int count=0;for(int layer=0;layer<PadLayers;++layer)if(bank.layers[layer].loaded)valid[count++]=layer;if(!count)return -1;
@@ -351,7 +354,7 @@ void Engine::setEdit(int pad,const PadEdit& requested){
     bool rebuild=false;{std::lock_guard<std::mutex> lock(impl->mutex);for(int slot=0;slot<InsertSlots;++slot)if(impl->state.edits[pad].inserts[slot].effect!=edit.inserts[slot].effect)rebuild=true;}
     std::unique_ptr<PadEffects> replacement;if(rebuild)replacement=std::make_unique<PadEffects>(edit);
     std::scoped_lock lock(impl->mutex,impl->audioMutex);
-    impl->state.edits[pad]=edit;impl->banks[impl->state.program][pad].edit=edit;impl->players[pad]->edit=edit;if(edit.mute)impl->players[pad]->stop();if(replacement)impl->players[pad]->effects.swap(replacement);else impl->players[pad]->effects->sync(edit);
+    impl->state.edits[pad]=edit;impl->banks[impl->state.program][pad].edit=edit;impl->players[pad]->edit=edit;if(edit.mute)impl->players[pad]->stop();if(replacement)impl->players[pad]->effects.swap(replacement);else impl->players[pad]->effects->sync(edit);for(auto& slot:impl->appliedEffectAutomation[pad])slot.fill(-2);
     // A held peak from the previous gain/FX setting is no longer meaningful.
     // Clear it immediately so lowering a pad does not keep showing a red value
     // for seconds and falsely suggest that the new setting still clips.
@@ -413,8 +416,8 @@ bool Engine::deleteStepEvent(int track,int absoluteStep,bool melodic){
     else {if(!sequence.drum[track][absoluteStep])return false;sequence.drum[track][absoluteStep]=false;sequence.drumEvents[track][absoluteStep]={};}
     return true;
 }
-void Engine::clearPattern(){std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];sequence.drum={};sequence.melody.fill(-1);sequence.drumEvents={};sequence.melodyEvents={};sequence.trackAutomation={};}
-void Engine::demoPattern(){std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];sequence.drum={};sequence.melody.fill(-1);sequence.drumEvents={};sequence.melodyEvents={};sequence.trackAutomation={};sequence.bars=1;impl->state.viewBar=0;for(int s:{0,4,8,12})sequence.drum[0][s]=true;for(int s:{4,12})sequence.drum[1][s]=true;for(int s=0;s<16;s+=2)sequence.drum[2][s]=true;sequence.drum[3][14]=true;sequence.sourcePad=12;sequence.rootNote=48;const int notes[8]={48,48,50,55,53,50,48,55};for(int i=0;i<8;++i)sequence.melody[i*2]=notes[i];}
+void Engine::clearPattern(){std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];sequence.drum={};sequence.melody.fill(-1);sequence.drumEvents={};sequence.melodyEvents={};sequence.trackAutomation={};sequence.effectAutomation={};}
+void Engine::demoPattern(){std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];sequence.drum={};sequence.melody.fill(-1);sequence.drumEvents={};sequence.melodyEvents={};sequence.trackAutomation={};sequence.effectAutomation={};sequence.bars=1;impl->state.viewBar=0;for(int s:{0,4,8,12})sequence.drum[0][s]=true;for(int s:{4,12})sequence.drum[1][s]=true;for(int s=0;s<16;s+=2)sequence.drum[2][s]=true;sequence.drum[3][14]=true;sequence.sourcePad=12;sequence.rootNote=48;const int notes[8]={48,48,50,55,53,50,48,55};for(int i=0;i<8;++i)sequence.melody[i*2]=notes[i];}
 void Engine::selectSequence(int requested){
     requested=std::clamp(requested,0,Sequences-1);std::scoped_lock lock(impl->mutex,impl->audioMutex);auto& s=impl->state;
     impl->prepareProgram(s.sequences[requested].program);impl->activatePreparedProgram();
@@ -443,12 +446,18 @@ bool Engine::copyBar(int sourceSequence,int sourceBar,int destinationSequence,in
         destination.melody[to]=source.melody[from];destination.melodyEvents[to]=source.melodyEvents[from];
         for(int track=0;track<Pads;++track){destination.drum[track][to]=source.drum[track][from];destination.drumEvents[track][to]=source.drumEvents[track][from];destination.trackAutomation[track].level[to]=source.trackAutomation[track].level[from];destination.trackAutomation[track].pan[to]=source.trackAutomation[track].pan[from];}
     }
+    for(const auto& sourceLane:source.effectAutomation){
+        if(sourceLane.pad<0)continue;EffectAutomationLane* destinationLane=nullptr;
+        for(auto& lane:destination.effectAutomation)if(lane.pad==sourceLane.pad&&lane.slot==sourceLane.slot&&lane.parameter==sourceLane.parameter){destinationLane=&lane;break;}
+        if(!destinationLane)for(auto& lane:destination.effectAutomation)if(lane.pad<0||std::all_of(lane.values.begin(),lane.values.end(),[](int point){return point==AutomationUnset;})){lane=EffectAutomationLane{};lane.pad=sourceLane.pad;lane.slot=sourceLane.slot;lane.parameter=sourceLane.parameter;destinationLane=&lane;break;}
+        if(!destinationLane)continue;for(int step=0;step<Steps;++step)destinationLane->values[destinationFirst+step]=sourceLane.values[sourceFirst+step];
+    }
     return true;
 }
 bool Engine::clearBar(int sequenceIndex,int bar){
     if(sequenceIndex<0||sequenceIndex>=Sequences||bar<0||bar>=MaxBars)return false;
     std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[sequenceIndex];if(bar>=sequence.bars)return false;
-    const int first=bar*Steps;for(int step=0;step<Steps;++step){const int absolute=first+step;sequence.melody[absolute]=-1;sequence.melodyEvents[absolute]={};for(int track=0;track<Pads;++track){sequence.drum[track][absolute]=false;sequence.drumEvents[track][absolute]={};sequence.trackAutomation[track].level[absolute]=AutomationUnset;sequence.trackAutomation[track].pan[absolute]=AutomationUnset;}}
+    const int first=bar*Steps;for(int step=0;step<Steps;++step){const int absolute=first+step;sequence.melody[absolute]=-1;sequence.melodyEvents[absolute]={};for(int track=0;track<Pads;++track){sequence.drum[track][absolute]=false;sequence.drumEvents[track][absolute]={};sequence.trackAutomation[track].level[absolute]=AutomationUnset;sequence.trackAutomation[track].pan[absolute]=AutomationUnset;}for(auto& lane:sequence.effectAutomation)lane.values[absolute]=AutomationUnset;}
     return true;
 }
 int Engine::createProgram(const std::string& requestedName,ProgramType type){
@@ -541,6 +550,21 @@ void Engine::clearTrackAutomation(int track,TrackAutomationParameter parameter){
     if(track<0||track>=Pads)return;std::lock_guard<std::mutex> lock(impl->mutex);auto& automation=impl->state.sequences[impl->state.sequence].trackAutomation[track];
     (parameter==TrackAutomationParameter::Level?automation.level:automation.pan).fill(AutomationUnset);
 }
+void Engine::setEffectAutomationPoint(int pad,int slot,int parameter,int absoluteStep,double value){
+    if(pad<0||pad>=Pads||slot<0||slot>=InsertSlots||parameter<0||parameter>=InsertParameters||absoluteStep<0||absoluteStep>=MaxSequenceSteps||!std::isfinite(value))return;
+    std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];if(absoluteStep>=sequence.bars*Steps)return;
+    EffectAutomationLane* target=nullptr;for(auto& lane:sequence.effectAutomation)if(lane.pad==pad&&lane.slot==slot&&lane.parameter==parameter){target=&lane;break;}
+    if(!target)for(auto& lane:sequence.effectAutomation)if(lane.pad<0||std::all_of(lane.values.begin(),lane.values.end(),[](int point){return point==AutomationUnset;})){lane=EffectAutomationLane{};lane.pad=pad;lane.slot=slot;lane.parameter=parameter;target=&lane;break;}
+    if(target)target->values[absoluteStep]=std::clamp(int(std::lround(std::clamp(value,0.,1.)*AutomationResolution)),0,AutomationResolution);
+}
+void Engine::clearEffectAutomationPoint(int pad,int slot,int parameter,int absoluteStep){
+    if(absoluteStep<0||absoluteStep>=MaxSequenceSteps)return;std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];
+    for(auto& lane:sequence.effectAutomation)if(lane.pad==pad&&lane.slot==slot&&lane.parameter==parameter){lane.values[absoluteStep]=AutomationUnset;return;}
+}
+void Engine::clearEffectAutomation(int pad,int slot,int parameter){
+    std::lock_guard<std::mutex> lock(impl->mutex);auto& sequence=impl->state.sequences[impl->state.sequence];
+    for(auto& lane:sequence.effectAutomation)if(lane.pad==pad&&lane.slot==slot&&lane.parameter==parameter){lane=EffectAutomationLane{};return;}
+}
 int Engine::performanceNote(int pad)const{if(pad<0||pad>=Pads)return 0;std::lock_guard<std::mutex> lock(impl->mutex);const auto& sequence=impl->state.sequences[impl->state.sequence];return mappedPerformanceNote(sequence.mode,sequence.rootNote,pad);}
 bool Engine::recordHit(int pad,int note,int quantizeDivision,int velocity){
     if(pad<0||pad>=Pads||(note>=0&&(note>127)))return false;
@@ -599,8 +623,15 @@ void Engine::render(float* out){
             impl->players[p]->projectTempo=s.tempo;impl->players[p]->setTrackMix(level*(edit.mute?0.:1.),std::clamp(pan+edit.pan,-1.,1.));
         }
     };
+    auto applyEffectAutomation=[&](int absoluteStep){
+        const auto& sequence=s.sequences[s.sequence];const int total=sequence.bars*Steps;
+        std::array<std::array<std::array<int,InsertParameters>,InsertSlots>,Pads> desired{};for(auto& pad:desired)for(auto& slot:pad)slot.fill(AutomationUnset);
+        if(absoluteStep>=0)for(const auto& lane:sequence.effectAutomation)if(lane.pad>=0&&lane.pad<Pads&&lane.slot>=0&&lane.slot<InsertSlots&&lane.parameter>=0&&lane.parameter<InsertParameters){const double held=automationValue(lane.values,total,absoluteStep,-1.);if(held>=0)desired[lane.pad][lane.slot][lane.parameter]=std::clamp(int(std::lround(held*AutomationResolution)),0,AutomationResolution);}
+        for(int pad=0;pad<Pads;++pad)for(int slot=0;slot<InsertSlots;++slot){const int count=insertParameterCount(s.edits[pad].inserts[slot].effect);for(int parameter=0;parameter<count;++parameter){const int requested=desired[pad][slot][parameter];auto& applied=impl->appliedEffectAutomation[pad][slot][parameter];if(requested==applied)continue;const double value=requested==AutomationUnset?s.edits[pad].inserts[slot].parameters[parameter]:requested/double(AutomationResolution);impl->players[pad]->effects->setEffectParameter(slot,parameter,float(value));applied=requested;}}
+    };
     auto& activeSequence=s.sequences[s.sequence];bool anySolo=false;for(const auto& track:activeSequence.tracks)anySolo=anySolo||track.solo;
     applyTrackMix(s.playing?std::max(0,s.playBar*Steps+std::max(0,s.step)):-1);
+    applyEffectAutomation(s.playing?std::max(0,s.playBar*Steps+std::max(0,s.step)):-1);
     for(int p=0;p<Pads;++p){const int pitch=impl->pendingPitch[p].exchange(1000);if(pitch!=1000)impl->triggerPad(p,pitch,impl->pendingVelocity[p].exchange(127));}
     for(int p=0;p<Pads;++p)if(impl->ratchetRemaining[p]>0){impl->ratchetUntil[p]-=Block;while(impl->ratchetRemaining[p]>0&&impl->ratchetUntil[p]<=0){impl->triggerPad(p,impl->ratchetPitch[p],impl->ratchetVelocity[p]);--impl->ratchetRemaining[p];impl->ratchetUntil[p]+=impl->ratchetInterval[p];}}
     if(s.noteRepeat){
@@ -614,6 +645,7 @@ void Engine::render(float* out){
     if(s.playing){
         if(impl->untilStep<=0){
             auto& sequence=s.sequences[s.sequence];const int absolute=impl->nextStep;s.step=absolute%Steps;s.playBar=absolute/Steps;applyTrackMix(absolute);
+            applyEffectAutomation(absolute);
             const double stepSamples=Rate*60./s.tempo/4.;auto passes=[&](int probability){if(probability>=100)return true;if(probability<=0)return false;impl->randomState=impl->randomState*1664525u+1013904223u;return int((impl->randomState>>16)%100u)<probability;};
             for(int p=0;p<Pads;++p)if(impl->gateRemaining[p]>0&&--impl->gateRemaining[p]==0&&impl->banks[s.program][p].edit.samplePlay==SamplePlayType::NoteOn)impl->players[p]->release();
             for(int p=0;p<Pads;++p){const auto& track=sequence.tracks[p];const auto& event=sequence.drumEvents[p][absolute];if(sequence.drum[p][absolute]&&!track.mute&&(!anySolo||track.solo)&&passes(event.probability)){impl->triggerPad(p,0,event.velocity);impl->gateRemaining[p]=event.length;impl->ratchetRemaining[p]=event.ratchet-1;impl->ratchetPitch[p]=0;impl->ratchetVelocity[p]=event.velocity;impl->ratchetInterval[p]=stepSamples/event.ratchet;impl->ratchetUntil[p]=impl->ratchetInterval[p];}}
@@ -659,10 +691,10 @@ void Engine::render(float* out){
 bool Engine::save(const std::string& path,std::string& error){
     auto s=snapshot();std::array<std::array<std::array<PadLayerInfo,PadLayers>,Pads>,Programs> layers;std::array<std::array<PadEdit,Pads>,Programs> edits;
     {std::scoped_lock lock(impl->mutex,impl->metadataMutex);for(int program=0;program<Programs;++program)for(int pad=0;pad<Pads;++pad){const auto& bank=impl->banks[program][pad];edits[program][pad]=bank.edit;for(int layer=0;layer<PadLayers;++layer){const auto& source=bank.layers[layer];layers[program][pad][layer]={source.name,source.path,source.duration,source.velocityStart,source.velocityEnd,source.reverse,source.loaded};}}}
-    std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 15\n"<<s.tempo<<' '<<s.volume<<' '<<s.group<<' '<<s.selectedTrack<<'\n';
+    std::ofstream f(std::filesystem::u8path(path));if(!f){error="Impossible d'enregistrer.";return false;}f<<std::setprecision(17)<<"KICKLAB 16\n"<<s.tempo<<' '<<s.volume<<' '<<s.group<<' '<<s.selectedTrack<<'\n';
     f<<"PROGRAMS "<<Programs<<'\n';for(int program=0;program<Programs;++program){const auto& info=s.programs[program];f<<"PROGRAM "<<program<<' '<<info.used<<' '<<int(info.type)<<' '<<std::quoted(info.name)<<' '<<int(info.emptyPadColor)<<' '<<int(info.padOffColor)<<' '<<int(info.padOnColor)<<'\n';for(int p=0;p<Pads;++p){const auto& e=edits[program][p];f<<"PAD "<<p<<' '<<int(e.samplePlay)<<' '<<int(e.layerPlay)<<' '<<e.chokeGroup<<' '<<e.color;writePadSettings(f,e);f<<' '<<e.pan<<' '<<e.mute<<'\n';for(int layer=0;layer<PadLayers;++layer){const auto& item=layers[program][p][layer];f<<"LAYER "<<layer<<' '<<std::quoted(item.path)<<' '<<item.velocityStart<<' '<<item.velocityEnd<<' '<<item.reverse<<'\n';}}}
     f<<"SEQUENCES "<<Sequences<<' '<<s.sequence<<' '<<s.viewBar<<'\n';
-    for(int index=0;index<Sequences;++index){const auto& sequence=s.sequences[index];f<<"SEQ "<<index<<' '<<std::quoted(sequence.name)<<' '<<sequence.bars<<' '<<int(sequence.mode)<<' '<<sequence.sourcePad<<' '<<sequence.rootNote<<' '<<sequence.program<<'\n'<<"TRACKS "<<Pads<<'\n';for(int track=0;track<Pads;++track){const auto& t=sequence.tracks[track];f<<"TRACK "<<track<<' '<<std::quoted(t.name)<<' '<<int(t.program)<<' '<<t.sourcePad<<' '<<t.level<<' '<<t.pan<<' '<<t.mute<<' '<<t.solo<<' '<<t.armed<<'\n';}f<<"DRUM";for(int p=0;p<Pads;++p){unsigned long long bits=0;for(int step=0;step<MaxSequenceSteps;++step)if(sequence.drum[p][step])bits|=1ull<<step;f<<' '<<bits;}f<<"\nMELO";for(int note:sequence.melody)f<<' '<<note;f<<"\nEVENTS\n";for(int p=0;p<Pads;++p){f<<"DEVT "<<p;for(const auto& event:sequence.drumEvents[p])f<<' '<<event.velocity<<' '<<event.probability<<' '<<event.ratchet<<' '<<event.length;f<<'\n';}f<<"MEVT";for(const auto& event:sequence.melodyEvents)f<<' '<<event.velocity<<' '<<event.probability<<' '<<event.ratchet<<' '<<event.length;f<<"\nAUTOMATION\n";for(int track=0;track<Pads;++track){f<<"TAUTO "<<track;for(int step=0;step<MaxSequenceSteps;++step)f<<' '<<sequence.trackAutomation[track].level[step]<<' '<<sequence.trackAutomation[track].pan[step];f<<'\n';}}
+    for(int index=0;index<Sequences;++index){const auto& sequence=s.sequences[index];f<<"SEQ "<<index<<' '<<std::quoted(sequence.name)<<' '<<sequence.bars<<' '<<int(sequence.mode)<<' '<<sequence.sourcePad<<' '<<sequence.rootNote<<' '<<sequence.program<<'\n'<<"TRACKS "<<Pads<<'\n';for(int track=0;track<Pads;++track){const auto& t=sequence.tracks[track];f<<"TRACK "<<track<<' '<<std::quoted(t.name)<<' '<<int(t.program)<<' '<<t.sourcePad<<' '<<t.level<<' '<<t.pan<<' '<<t.mute<<' '<<t.solo<<' '<<t.armed<<'\n';}f<<"DRUM";for(int p=0;p<Pads;++p){unsigned long long bits=0;for(int step=0;step<MaxSequenceSteps;++step)if(sequence.drum[p][step])bits|=1ull<<step;f<<' '<<bits;}f<<"\nMELO";for(int note:sequence.melody)f<<' '<<note;f<<"\nEVENTS\n";for(int p=0;p<Pads;++p){f<<"DEVT "<<p;for(const auto& event:sequence.drumEvents[p])f<<' '<<event.velocity<<' '<<event.probability<<' '<<event.ratchet<<' '<<event.length;f<<'\n';}f<<"MEVT";for(const auto& event:sequence.melodyEvents)f<<' '<<event.velocity<<' '<<event.probability<<' '<<event.ratchet<<' '<<event.length;f<<"\nAUTOMATION\n";for(int track=0;track<Pads;++track){f<<"TAUTO "<<track;for(int step=0;step<MaxSequenceSteps;++step)f<<' '<<sequence.trackAutomation[track].level[step]<<' '<<sequence.trackAutomation[track].pan[step];f<<'\n';}f<<"FXAUTOMATION "<<MaxEffectAutomationLanes<<'\n';for(int lane=0;lane<MaxEffectAutomationLanes;++lane){const auto& automation=sequence.effectAutomation[lane];f<<"FXAUTO "<<lane<<' '<<automation.pad<<' '<<automation.slot<<' '<<automation.parameter;for(int value:automation.values)f<<' '<<value;f<<'\n';}}
     f<<"SONG "<<s.songLength<<'\n';for(int index=0;index<s.songLength;++index)f<<"STEP "<<s.song[index].sequence<<' '<<s.song[index].repeats<<'\n';
     if(!f){error="Erreur d'ecriture.";return false;}return true;
 }
@@ -745,7 +777,7 @@ bool Engine::open(const std::string& path,std::string& error){
     std::string tag;int version;Snapshot s;
     for(int index=0;index<Programs;++index){s.programs[index].name=index<Groups?"Drum Program "+std::string(1,char('A'+index)):"Program "+std::to_string(index+1);s.programs[index].used=index<Groups;}
     for(int index=0;index<Sequences;++index){s.sequences[index].name="Sequence "+std::to_string(index+1);s.sequences[index].program=index<Groups?index:0;}
-    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>15)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
+    if(!(f>>tag>>version>>s.tempo>>s.volume)||tag!="KICKLAB"||(version<1||version>16)||!std::isfinite(s.tempo)||!std::isfinite(s.volume)||s.tempo<40||s.tempo>240||s.volume<0||s.volume>1){error="Projet KICKLAB invalide.";return false;}
     std::array<std::array<std::array<std::string,PadLayers>,Pads>,Programs> bankPaths{};std::array<std::array<PadEdit,Pads>,Programs> bankEdits{};
     std::array<std::array<std::array<int,PadLayers>,Pads>,Programs> velocityStart{},velocityEnd{};std::array<std::array<std::array<bool,PadLayers>,Pads>,Programs> reverse{};
     for(auto& program:velocityStart)for(auto& pad:program)pad.fill(1);for(auto& program:velocityEnd)for(auto& pad:program)pad.fill(127);
@@ -772,6 +804,7 @@ bool Engine::open(const std::string& path,std::string& error){
             if(!(f>>tag)||tag!="DRUM"){error="Pistes de sequence manquantes.";return false;}for(int p=0;p<Pads;++p){unsigned long long bits=0;if(!(f>>bits)){error="Piste de batterie invalide.";return false;}for(int step=0;step<MaxSequenceSteps;++step)sequence.drum[p][step]=(bits&(1ull<<step))!=0;}
             if(!(f>>tag)||tag!="MELO"){error="Piste melodique manquante.";return false;}for(int& note:sequence.melody)if(!(f>>note)||note< -1||note>127){error="Note melodique invalide.";return false;}if(version>=12){if(!(f>>tag)||tag!="EVENTS"){error="Données Events manquantes.";return false;}auto readEvent=[&](StepEvent& event){return bool(f>>event.velocity>>event.probability>>event.ratchet>>event.length)&&event.velocity>=1&&event.velocity<=127&&event.probability>=0&&event.probability<=100&&event.ratchet>=1&&event.ratchet<=8&&event.length>=1&&event.length<=16;};for(int expectedTrack=0;expectedTrack<Pads;++expectedTrack){int parsedTrack=-1;if(!(f>>tag>>parsedTrack)||tag!="DEVT"||parsedTrack!=expectedTrack){error="Events de piste invalides.";return false;}for(auto& event:sequence.drumEvents[expectedTrack])if(!readEvent(event)){error="Paramètres d'Event invalides.";return false;}}if(!(f>>tag)||tag!="MEVT"){error="Events mélodiques manquants.";return false;}for(auto& event:sequence.melodyEvents)if(!readEvent(event)){error="Event mélodique invalide.";return false;}}
             if(version>=15){if(!(f>>tag)||tag!="AUTOMATION"){error="Automation de piste manquante.";return false;}for(int expectedTrack=0;expectedTrack<Pads;++expectedTrack){int parsedTrack=-1;if(!(f>>tag>>parsedTrack)||tag!="TAUTO"||parsedTrack!=expectedTrack){error="Automation de piste invalide.";return false;}for(int step=0;step<MaxSequenceSteps;++step){auto& automation=sequence.trackAutomation[expectedTrack];if(!(f>>automation.level[step]>>automation.pan[step])||automation.level[step]<AutomationUnset||automation.level[step]>AutomationResolution||automation.pan[step]<AutomationUnset||automation.pan[step]>AutomationResolution){error="Point d'automation invalide.";return false;}}}}
+            if(version>=16){int laneCount=0;if(!(f>>tag>>laneCount)||tag!="FXAUTOMATION"||laneCount!=MaxEffectAutomationLanes){error="Automation d'effets manquante.";return false;}for(int expectedLane=0;expectedLane<MaxEffectAutomationLanes;++expectedLane){int parsed=-1;if(!(f>>tag>>parsed)||tag!="FXAUTO"||parsed!=expectedLane){error="Lane d'automation d'effet invalide.";return false;}auto& lane=sequence.effectAutomation[expectedLane];if(!(f>>lane.pad>>lane.slot>>lane.parameter)||lane.pad< -1||lane.pad>=Pads||lane.slot<0||lane.slot>=InsertSlots||lane.parameter<0||lane.parameter>=InsertParameters){error="Cible d'automation d'effet invalide.";return false;}for(auto& value:lane.values)if(!(f>>value)||value<AutomationUnset||value>AutomationResolution){error="Point d'automation d'effet invalide.";return false;}}}
         }
         s.viewBar=std::clamp(view,0,s.sequences[s.sequence].bars-1);if(!(f>>tag>>s.songLength)||tag!="SONG"||s.songLength<0||s.songLength>MaxSongSteps){error="Arrangement Song invalide.";return false;}for(int index=0;index<s.songLength;++index){if(!(f>>tag>>s.song[index].sequence>>s.song[index].repeats)||tag!="STEP"||s.song[index].sequence<0||s.song[index].sequence>=Sequences||s.song[index].repeats<1||s.song[index].repeats>128){error="Etape Song invalide.";return false;}}
     }

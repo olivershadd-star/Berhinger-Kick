@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.23.0
+        default: 0.24.0
 
 permissions:
   contents: write
@@ -62,6 +62,12 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.24.0 adds simultaneous controller roles: Maschine+ stays
+            the main surface, LPD8 supplies A-H and eight assignable FX macros,
+            and MPK Mini is routed as a melodic keyboard. AUTO now records FX
+            parameters and macro movements per step and per pattern; complete
+            bar copy/clear and KICKLAB 16 preserve those sparse automation lanes.
 
             Version 0.23.0 ports the first KICK Track Automation block. AUTO
             records Track Mixer Level or Pan at the current sequencer step,

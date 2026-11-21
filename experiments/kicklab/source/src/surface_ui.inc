@@ -68,7 +68,7 @@ Box brandPanelBox()const{return {1412,8,176,884};}
 Box brandHomeBox()const{return {1418,16,164,108};}
 Box brandControlBox()const{return {1418,138,164,494};}
 Box brandMacroBox(int macro)const{return {1427+(macro%2)*76,154+(macro/2)*67,66,58};}
-Box brandPushBox(int buttonIndex)const{return {1427+(buttonIndex%2)*76,438+(buttonIndex/2)*69,66,54};}
+Box brandPushBox(int buttonIndex)const{return {1427+(buttonIndex%2)*76,430+(buttonIndex/2)*47,66,38};}
 Box brandMasterBox()const{return {1418,650,164,234};}
 Box sequencerPanelBox()const{return {778,466,456,368};}
 Box sequencerPreviousBarBox()const{return {938,476,26,28};}
@@ -474,6 +474,18 @@ void writeTrackAutomationPoint(int track){
     status=L"AUTO WRITE · pattern "+number(snapshot.sequence+1)+L" · piste "+number(track+1)+L" · "+listEditTimeText(step)+L" · "+(mixerParameter==0?L"LEVEL":L"PAN");
 }
 
+void writeEffectAutomationPoint(int pad,int slot,int parameter,double ratio){
+    lastEffectPad=pad;lastEffectSlot=slot;lastEffectParameter=parameter;for(auto& macro:macroTargets)if(macro.pad==pad&&macro.slot==slot&&macro.parameter==parameter)macro.value=ratio;if(!automationWrite)return;const auto snapshot=engine.snapshot();
+    const int step=snapshot.playing?snapshot.playBar*lab::Steps+std::max(0,snapshot.step):snapshot.viewBar*lab::Steps+std::clamp(eventStep,0,lab::Steps-1);
+    engine.setEffectAutomationPoint(pad,slot,parameter,step,ratio);markProjectDirty();status=L"AUTO FX · pattern "+number(snapshot.sequence+1)+L" · pad "+number(pad+1)+L" · slot "+number(slot+1)+L" · "+wide(lab::insertParameterName(snapshot.edits[pad].inserts[slot].effect,parameter));
+}
+
+void handleAutomationCommand(bool clear){
+    const auto module=surface.displays[surface.focusedDisplay].module;if(clear&&module==lab::DisplayModule::Inserts&&lastEffectPad>=0){engine.clearEffectAutomation(lastEffectPad,lastEffectSlot,lastEffectParameter);markProjectDirty();status=L"Automation du dernier paramètre FX touché effacée.";return;}
+    if(clear){engine.clearTrackAutomation(stepTrack,mixerParameter==0?lab::TrackAutomationParameter::Level:lab::TrackAutomationParameter::Pan);markProjectDirty();status=L"Automation "+std::wstring(mixerParameter==0?L"LEVEL":L"PAN")+L" effacée pour la piste "+number(stepTrack+1)+L".";return;}
+    automationWrite=!automationWrite;status=automationWrite?L"AUTO WRITE actif — LEVEL, PAN, paramètres FX et macros sont enregistrés par step.":L"AUTO WRITE arrêté — les automations restent lues.";
+}
+
 void setSurfaceQLink(int display,int knob,double ratio){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks)return;
     auto& binding=surface.displays[display];ratio=std::clamp(ratio,0.,1.);if(binding.module==lab::DisplayModule::Sample){setSurfaceProgramRatio(display,knob,ratio);return;}
@@ -491,7 +503,7 @@ void setSurfaceQLink(int display,int knob,double ratio){
     if(binding.module!=lab::DisplayModule::Inserts)return;
     auto s=engine.snapshot();const int pad=std::clamp(binding.pad,0,lab::Pads-1),slot=std::clamp(binding.slot,0,lab::InsertSlots-1);
     const int parameter=binding.parameterForKnob(knob);const auto effect=s.edits[pad].inserts[slot].effect;
-    if(parameter>=0&&parameter<lab::insertParameterCount(effect))engine.setInsertParameter(pad,slot,parameter,ratio);
+    if(parameter>=0&&parameter<lab::insertParameterCount(effect)){engine.setInsertParameter(pad,slot,parameter,ratio);writeEffectAutomationPoint(pad,slot,parameter,ratio);}
 }
 
 void turnSurfaceQLink(int display,int knob,int delta){
@@ -515,7 +527,7 @@ void turnSurfaceQLink(int display,int knob,int delta){
     const auto& insert=s.edits[pad].inserts[slot];
     const int parameter=binding.parameterForKnob(knob);
     if(parameter<0||parameter>=lab::insertParameterCount(insert.effect))return;
-    engine.setInsertParameter(pad,slot,parameter,insert.parameters[parameter]+delta*.01);
+    setSurfaceQLink(display,knob,insert.parameters[parameter]+delta*.01);
 }
 
 std::wstring midiModeName(lab::MidiCcMode mode)const{
@@ -525,8 +537,7 @@ std::wstring midiModeName(lab::MidiCcMode mode)const{
 }
 
 std::wstring midiInputName()const{
-    if(midiId<0)return L"Choisir une entrée MIDI";
-    MIDIINCAPSW caps{};return midiInGetDevCapsW(UINT(midiId),&caps,sizeof(caps))==MMSYSERR_NOERROR?caps.szPname:L"Entrée MIDI active";
+    int count=0;std::wstring surfaceName;for(const auto& port:midiPorts)if(port.handle){++count;if(port.role==MidiRole::Surface)surfaceName=port.name;}if(!count)return L"Choisir des entrées MIDI";if(count==1&&!surfaceName.empty())return surfaceName;return number(count)+L" entrées · "+(surfaceName.empty()?L"sans surface":surfaceName);
 }
 
 int midiControlPages()const{return 8+(lab::MidiCommandCount+3)/4;}
@@ -651,6 +662,7 @@ bool surfaceWheel(int x,int y,int delta){
     for(int display=0;display<2;++display)for(int knob=0;knob<4;++knob)if(surfaceKnobBox(display,knob).contains(x,y)){
         surface.focusDisplay(display);dispatch({lab::SurfaceAction::QLinkTurn,knob,delta>0?1:-1,display});return true;
     }
+    for(int macro=0;macro<8;++macro)if(brandMacroBox(macro).contains(x,y)){setMacroValue(macro,macroTargets[macro].value+(delta>0?.01:-.01));return true;}
     for(int display=0;display<2;++display)if(surfaceDisplayBox(display).contains(x,y)){
         surface.focusDisplay(display);
         if(surface.displays[display].module==lab::DisplayModule::Menu)turnSurfaceMenu(delta);
@@ -855,8 +867,8 @@ bool maschineClick(int x,int y,bool right){
         case 7: dispatch({lab::SurfaceAction::PageNext});break;
         case 8: if(right||surface.shift)project(true);else fileMenu();break;
         case 9: settingsMenu();break;
-        case 10: if(right||surface.shift){engine.clearTrackAutomation(stepTrack,mixerParameter==0?lab::TrackAutomationParameter::Level:lab::TrackAutomationParameter::Pan);markProjectDirty();status=L"Automation "+std::wstring(mixerParameter==0?L"LEVEL":L"PAN")+L" effacée pour la piste "+number(stepTrack+1)+L" du pattern actif.";}else{automationWrite=!automationWrite;status=automationWrite?L"AUTO WRITE actif — ouvre Track Mixer et bouge LEVEL ou PAN.":L"AUTO WRITE arrêté — les courbes enregistrées restent lues.";}break;
-        case 11: showSurfaceMixer(mixerBank);status=L"Macro / Q-Links — Track Mixer ouvert ; AUTO enregistre LEVEL et PAN par step.";break;
+        case 10: handleAutomationCommand(right||surface.shift);break;
+        case 11: showSurfaceInserts(surface.focusedDisplay);status=L"Macro / Q-Links — touche un paramètre FX puis clic droit sur M1–M8 pour l'assigner.";break;
         }
         return true;
     }
@@ -926,8 +938,8 @@ bool maschineClick(int x,int y,bool right){
         if(right&&padMode==0){selectPad(p);sampleMenu();return true;}
         dispatch({lab::SurfaceAction::PadPress,p});return true;
     }
-    for(int macro=0;macro<8;++macro)if(brandMacroBox(macro).contains(x,y)){status=L"Macro "+number(macro+1)+L" réservée — assignation à venir.";return true;}
-    for(int buttonIndex=0;buttonIndex<4;++buttonIndex)if(brandPushBox(buttonIndex).contains(x,y)){status=L"Poussoir "+number(buttonIndex+1)+L" réservé — assignation à venir.";return true;}
+    for(int macro=0;macro<8;++macro)if(brandMacroBox(macro).contains(x,y)){if(right){if(surface.shift||lastEffectPad<0){lpdLearnKnob=macro;status=L"LPD8 Learn — tourne le potentiomètre physique destiné à M"+number(macro+1)+L".";}else{macroTargets[macro]={lastEffectPad,lastEffectSlot,lastEffectParameter,engine.snapshot().edits[lastEffectPad].inserts[lastEffectSlot].parameters[lastEffectParameter]};saveLpdProfile();status=L"M"+number(macro+1)+L" assignée au dernier paramètre FX touché. Shift + clic droit lance le MIDI Learn.";}}else setMacroValue(macro,macroTargets[macro].value);return true;}
+    for(int buttonIndex=0;buttonIndex<8;++buttonIndex)if(brandPushBox(buttonIndex).contains(x,y)){if(right){lpdLearnPad=buttonIndex;status=L"LPD8 Learn — frappe le pad physique destiné au bloc "+std::wstring(1,wchar_t(L'A'+buttonIndex))+L".";}else selectGroupBlock(buttonIndex);return true;}
     if(brandMasterBox().contains(x,y)){
         const auto box=brandMasterBox();auto snapshot=engine.snapshot();engine.setVolume(std::clamp((x-(box.x+12))/double(box.w-24),0.,1.));markProjectDirty();
         return true;
@@ -1064,7 +1076,7 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
         text(dc,{box.x+14,box.y+9,270,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  MIDI CONTROL",12,focused?accent:muted,FW_SEMIBOLD);
         text(dc,{box.x+326,box.y+9,114,24},L"PAGE "+number(binding.page+1)+L" / "+number(midiControlPages()),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
-        button(dc,surfaceMidiDeviceBox(display),midiInputName(),midiId>=0);button(dc,surfaceMidiPreviousBox(display),L"<");button(dc,surfaceMidiNextBox(display),L">");
+        bool anyMidi=false;for(const auto& port:midiPorts)anyMidi=anyMidi||port.handle;button(dc,surfaceMidiDeviceBox(display),midiInputName(),anyMidi);button(dc,surfaceMidiPreviousBox(display),L"<");button(dc,surfaceMidiNextBox(display),L">");
         text(dc,{box.x+14,box.y+90,box.w-28,22},midiLastMessage(),9,midiMessageCount?accent:muted,FW_NORMAL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const bool anyLearn=midiLearnTarget>=0||midiLearnPad>=0||midiLearnCommand>=0;std::wstring learnText=midiLearnTarget>=0?L"EN ATTENTE : bouge le contrôle K"+number(midiLearnTarget+1):midiLearnPad>=0?L"EN ATTENTE : frappe le PAD "+std::wstring(1,wchar_t(L'A'+midiLearnPad/lab::SurfacePads))+number(midiLearnPad%lab::SurfacePads+1):midiLearnCommand>=0?L"EN ATTENTE : actionne "+midiCommandLabels[midiLearnCommand]:(midiProfileLoaded?L"Profil Maschine+ chargé · clic : Learn · droit : option":L"Profil Maschine+ vide · clic : Learn · droit : option");
         text(dc,{box.x+14,box.y+114,box.w-28,22},learnText,9,anyLearn?RGB(241,184,88):muted,FW_SEMIBOLD);
@@ -1103,9 +1115,9 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
             fill(dc,{box.x+14,y,box.w-28,28},knob%2?RGB(18,31,35):RGB(17,28,33));
             text(dc,{box.x+24,y,42,28},L"P"+number(display*lab::SurfaceQLinks+knob+1),10,valid?accent:muted,FW_SEMIBOLD);
             text(dc,{box.x+68,y,220,28},valid?wide(lab::insertParameterName(insert.effect,parameter)):L"—",10,valid?ink:muted);
-            text(dc,{box.x+300,y,126,28},valid?insertValue(insert.effect,parameter,insert.parameters[parameter]):L"Non assigné",10,valid?accent:muted,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            int points=0;if(valid)for(const auto& lane:snapshot.sequences[snapshot.sequence].effectAutomation)if(lane.pad==pad&&lane.slot==slot&&lane.parameter==parameter)for(int value:lane.values)points+=value!=lab::AutomationUnset;text(dc,{box.x+300,y,126,28},valid?insertValue(insert.effect,parameter,insert.parameters[parameter])+(points?L" · A"+number(points):L""):L"Non assigné",10,points?RGB(255,133,103):(valid?accent:muted),FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }
-        text(dc,{box.x+14,box.y+270,box.w-28,16},L"HAUT/BAS : SLOT · GAUCHE/DROITE : PAGE · ENTER : EFFET",8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        text(dc,{box.x+14,box.y+270,box.w-28,16},automationWrite?L"AUTO WRITE FX · paramètres et macros enregistrés au step":L"HAUT/BAS : SLOT · GAUCHE/DROITE : PAGE · ENTER : EFFET",8,automationWrite?RGB(255,133,103):muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         return;
     }
     if(binding.module==lab::DisplayModule::Sample){
@@ -1328,11 +1340,11 @@ void paintBrandPanel(HDC dc,const lab::Snapshot& snapshot){
     round(dc,identity,RGB(11,17,27),RGB(42,69,88));fill(dc,{identity.x+8,identity.y+7,identity.w-16,2},accent);
     text(dc,{identity.x+8,identity.y+12,identity.w-16,52},L"KICK",36,ink,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     text(dc,{identity.x+8,identity.y+62,identity.w-16,18},L"ANKS Labs",12,accent,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.23.0",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.24.0",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     round(dc,controls,RGB(11,17,27),RGB(42,69,88));
-    for(int macro=0;macro<8;++macro){const auto box=brandMacroBox(macro);const int cx=box.x+box.w/2,cy=box.y+23;HBRUSH brush=CreateSolidBrush(themeButtons);HPEN edge=CreatePen(PS_SOLID,2,line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-15,cy-15,cx+15,cy+15);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);HPEN marker=CreatePen(PS_SOLID,2,muted);oldP=SelectObject(dc,marker);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx,cy-10);SelectObject(dc,oldP);DeleteObject(marker);text(dc,{box.x,box.y+40,box.w,14},L"M"+number(macro+1),8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    for(int buttonIndex=0;buttonIndex<4;++buttonIndex){const auto box=brandPushBox(buttonIndex);round(dc,box,themeButtons,line);text(dc,box,L"P"+number(buttonIndex+1),9,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    for(int macro=0;macro<8;++macro){const auto box=brandMacroBox(macro);const int cx=box.x+box.w/2,cy=box.y+23;const auto& target=macroTargets[macro];HBRUSH brush=CreateSolidBrush(themeButtons);HPEN edge=CreatePen(PS_SOLID,2,target.pad>=0?accent:line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-15,cy-15,cx+15,cy+15);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);const double angle=(-135.+270.*std::clamp(target.value,0.,1.))*3.141592653589793/180.;HPEN marker=CreatePen(PS_SOLID,2,target.pad>=0?accent:muted);oldP=SelectObject(dc,marker);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx+int(std::cos(angle)*11),cy+int(std::sin(angle)*11));SelectObject(dc,oldP);DeleteObject(marker);text(dc,{box.x,box.y+40,box.w,14},L"M"+number(macro+1),8,target.pad>=0?ink:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    for(int buttonIndex=0;buttonIndex<8;++buttonIndex){const auto box=brandPushBox(buttonIndex);round(dc,box,buttonIndex==snapshot.group?accent:themeButtons,line);text(dc,box,std::wstring(1,wchar_t(L'A'+buttonIndex)),9,buttonIndex==snapshot.group?RGB(8,18,22):muted,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
 
     round(dc,master,RGB(11,17,27),RGB(42,69,88));text(dc,{master.x+8,master.y+18,master.w-16,24},L"MASTER",13,ink,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);text(dc,{master.x+8,master.y+50,master.w-16,28},L"●",24,accent,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     paintMasterMeter(dc,snapshot.volume,snapshot.mixPeak,snapshot.preLimiterPeak,snapshot.peak,snapshot.limiterReductionDb);

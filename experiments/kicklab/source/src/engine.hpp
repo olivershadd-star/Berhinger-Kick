@@ -11,7 +11,7 @@ namespace lab {
 constexpr int Pads=16, Groups=8, Programs=16, PadLayers=4, PadColors=18, Steps=16, Block=256, Rate=48000, InsertSlots=4, InsertParameters=16;
 constexpr float MasterCeiling=0.89125094f; // -1 dBFS sample-peak ceiling.
 constexpr int Sequences=16, MaxBars=4, MaxSequenceSteps=Steps*MaxBars, MaxSongSteps=32;
-constexpr int AutomationUnset=-1, AutomationResolution=1000;
+constexpr int AutomationUnset=-1, AutomationResolution=1000, MaxEffectAutomationLanes=32;
 enum class ProgramType { Drum=0, Keygroup=1 };
 enum class EmptyPadColorMode { Off=0, Dim=1 };
 enum class PadOffColorMode { Off=0, Dim=1 };
@@ -105,6 +105,14 @@ struct TrackAutomation {
     std::array<int,MaxSequenceSteps> pan{};
     TrackAutomation(){level.fill(AutomationUnset);pan.fill(AutomationUnset);}
 };
+struct EffectAutomationLane {
+    // Sparse sequence-local lane.  Thirty-two simultaneous automated FX
+    // parameters are enough for a performance while keeping Snapshot small
+    // and deterministic (the audio thread never allocates).
+    int pad=-1,slot=0,parameter=0;
+    std::array<int,MaxSequenceSteps> values{};
+    EffectAutomationLane(){values.fill(AutomationUnset);}
+};
 enum class PerformanceMode { Drum=0, Chromatic=1, Major=2, Minor=3 };
 struct SequenceData {
     std::string name;
@@ -121,6 +129,7 @@ struct SequenceData {
     std::array<StepEvent,MaxSequenceSteps> melodyEvents{};
     std::array<TrackData,Pads> tracks{};
     std::array<TrackAutomation,Pads> trackAutomation{};
+    std::array<EffectAutomationLane,MaxEffectAutomationLanes> effectAutomation{};
     SequenceData(){
         melody.fill(-1);
         for(int track=0;track<Pads;++track){tracks[track].name="Track "+std::to_string(track+1);tracks[track].sourcePad=track;}
@@ -224,6 +233,9 @@ public:
     void setTrackAutomationPoint(int track,int absoluteStep,TrackAutomationParameter parameter,double value);
     void clearTrackAutomationPoint(int track,int absoluteStep,TrackAutomationParameter parameter);
     void clearTrackAutomation(int track,TrackAutomationParameter parameter);
+    void setEffectAutomationPoint(int pad,int slot,int parameter,int absoluteStep,double value);
+    void clearEffectAutomationPoint(int pad,int slot,int parameter,int absoluteStep);
+    void clearEffectAutomation(int pad,int slot,int parameter);
     void resetMeters();
     int performanceNote(int performancePad)const;
     // Records onto the running sequence, snapped to 1/4, 1/8 or 1/16.

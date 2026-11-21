@@ -4,11 +4,11 @@ KICK Lab adapte progressivement le code KICK publié par Music Tribe à un ordin
 
 ## Télécharger la version Windows
 
-### [Télécharger KICK Lab 0.23.0 — Windows x64 portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.23.0-preview/KickLab-Windows-x64-0.23.0-preview.zip)
+### [Télécharger KICK Lab 0.24.0 — Windows x64 portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.24.0-preview/KickLab-Windows-x64-0.24.0-preview.zip)
 
 Aucune installation n'est nécessaire : extraire complètement le ZIP puis ouvrir `KickLab.exe`.
 
-- [Page de la version 0.23.0](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.23.0-preview)
+- [Page de la version 0.24.0](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.0-preview)
 - [Toutes les versions et leurs fichiers](https://github.com/olivershadd-star/Berhinger-Kick/releases)
 - Windows 10/11 x64
 - Bibliothèque `samples` externe et personnelle
@@ -16,7 +16,7 @@ Aucune installation n'est nécessaire : extraire complètement le ZIP puis ouvri
 
 ![Interface KICK Lab organisée pour Maschine+](experiments/kicklab/APERCU-MASCHINE-PLUS.png)
 
-## Ce qui fonctionne dans la version 0.23.0
+## Ce qui fonctionne dans la version 0.24.0
 
 - moteur AudIO et sortie Windows WinMM ;
 - seize pads, Programs et kits sauvegardables ;
@@ -27,11 +27,12 @@ Aucune installation n'est nécessaire : extraire complètement le ZIP puis ouvri
 - sélection fixe de la mesure d'édition pendant la lecture ;
 - Copy/Paste/Duplicate/Clear pour les mesures, patterns, pads et kits ;
 - Track Mixer, Pad Mixer, mutes, solos et vumètres en dB ;
-- automation Level/Pan par piste et par step avec AUTO WRITE ;
+- automation Level/Pan et paramètres d'effets par pattern et par step avec AUTO WRITE ;
 - quatre inserts par pad et 31 effets Airwindows ;
 - export du pattern actif en WAV stéréo 48 kHz / 24 bits ;
 - navigation récursive dans la bibliothèque externe `samples` ;
-- profil MIDI portable `KICKMIDI 6` et intégration Maschine+ ;
+- entrées MIDI simultanées : Maschine+ principale, LPD8 A–H/macros et MPK Mini mélodique ;
+- profils MIDI portables `MaschinePlus.kickmidi` et `LPD8.kickmidi` ;
 - apparence personnalisable et fond d'écran importable.
 
 La sortie et l'export sont protégés à −1 dBFS. Le Mixer distingue le gain du pad, le niveau de piste, la somme avant Master, le niveau avant limiteur et la sortie finale.
@@ -52,6 +53,8 @@ Le dossier `samples` peut contenir des catégories, des packs et autant de sous-
 Passer Maschine+ en mode contrôleur avec `Shift + Channel/MIDI`, puis choisir de préférence l'entrée **Maschine Plus Virtual** dans KICK Lab. La page MIDI Control apprend et sauvegarde les pads, les 16 Q-Links, les boutons et les deux pages de touches Soft dans `profiles/MaschinePlus.kickmidi`.
 
 KICK Lab reste entièrement utilisable sans Maschine+.
+
+Le LPD8 et le MPK Mini se branchent au PC ou à un hub USB relié au PC. KICK Lab les ouvre en parallèle de Maschine+ : les huit pads LPD8 sélectionnent A–H, ses huit potentiomètres pilotent les macros M1–M8, et le MPK Mini joue/enregistre la source mélodique avec la quantification REC.
 
 ## Sources et organisation
 
