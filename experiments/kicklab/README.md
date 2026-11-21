@@ -4,6 +4,8 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
+La version 0.23.0 porte le premier bloc **Track Automation** de KICK. AUTO arme l’écriture ; les mouvements Level ou Pan du Track Mixer sont enregistrés sur le step courant, séparément pour chaque piste et chaque pattern. La lecture applique ces points sans écraser le réglage de base. Les automations suivent Copy Bar et les projets KICKLAB 15. Clic droit ou Shift + AUTO efface la lane active.
+
 La version 0.22.0 termine le lot d’édition **Step/Maschine** : les deux écrans affichent la piste, la mesure d’édition fixe, la tête de lecture et les 16 steps ; Bar 1–4, Follow, Track −/+, Copy/Paste/Duplicate/Clear Bar restent disponibles pendant Play. Les neuf emplacements vides deviennent 18 raccourcis contextuels pour Step, Pad/Kit, Pattern et Mixer. KICKMIDI 6 conserve le comportement Toggle/Gate, les Q-Links absolus travaillent par pas précis, et seule la page de pads active pilote KICK. Le Track Mixer distingue maintenant le gain du pad du niveau de piste et remet ses crêtes à zéro après un changement de gain.
 
 ![Surface KICK Windows organisée pour Maschine+](APERCU-MASCHINE-PLUS.png)
@@ -115,7 +117,7 @@ L'élément **Browser** suit maintenant l'arborescence réelle. Haut/bas ou la r
 
 **FILE → Exporter le pattern actif en WAV** rend exactement une boucle du pattern sélectionné avec son Program, à son tempo et sa longueur de une à quatre mesures. L'export est stéréo PCM 24 bits à 48 kHz et passe par le véritable moteur : pitch, enveloppes, niveaux, panoramiques, mutes/solos, Master et quatre inserts par pad sont inclus. Le transport est arrêté à la fin de l'export.
 
-Les projets **KICKLAB 1** à **KICKLAB 13** et les kits **KICKKIT 1–3** restent lisibles. Les nouveaux projets utilisent **KICKLAB 14** et les nouveaux kits **KICKKIT 4** pour conserver les modes Program du Color Editor en plus des Events, couches et Pad Mixer. Ils ne s'ouvrent pas dans les anciennes versions. Ces formats appartiennent au portage Windows, pas à la machine KICK.
+Les projets **KICKLAB 1** à **KICKLAB 14** et les kits **KICKKIT 1–3** restent lisibles. Les nouveaux projets utilisent **KICKLAB 15** pour conserver Track Automation ; les nouveaux kits utilisent toujours **KICKKIT 4**. Ils ne s'ouvrent pas dans les anciennes versions. Ces formats appartiennent au portage Windows, pas à la machine KICK.
 
 ## Code réutilisé et adaptations
 
@@ -155,7 +157,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 Avec MinGW-w64 : choisir le générateur `MinGW Makefiles` et `CMAKE_BUILD_TYPE=Release`. Pour tester le moteur sous Linux, omettre `-A x64` et utiliser `cmake --build build` puis `ctest --test-dir build --output-on-failure`.
 
-Les vérifications audio couvrent la lecture WAV, Reverse, les quatre couches Velocity/Cycle, les trois modes de déclenchement, Choke, Color Editor, Events et List Edit (insertion/déplacement/suppression), la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, la séparation Program/Pattern, Pad Mixer/Mutes, KICKLAB 14/KICKKIT 4 et leurs migrations, le mixage, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
+Les vérifications audio couvrent la lecture WAV, Reverse, les quatre couches Velocity/Cycle, les trois modes de déclenchement, Choke, Color Editor, Events et List Edit (insertion/déplacement/suppression), Track Automation, la découpe, Pad Perform, ADSR, les trente et un effets, les quatre inserts, Next Sequence, Song, la séparation Program/Pattern, Pad Mixer/Mutes, KICKLAB 15/KICKKIT 4 et leurs migrations, le mixage, la remise en file des buffers et la continuité sous activité graphique. Les tests automatisés ne remplacent pas un essai avec la carte son et le contrôleur MIDI de l'utilisateur.
 
 ## Licences
 

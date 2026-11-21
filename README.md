@@ -4,11 +4,11 @@ KICK Lab adapte progressivement le code KICK publié par Music Tribe à un ordin
 
 ## Télécharger la version Windows
 
-### [Télécharger KICK Lab 0.22.0 — Windows x64 portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.22.0-preview/KickLab-Windows-x64-0.22.0-preview.zip)
+### [Télécharger KICK Lab 0.23.0 — Windows x64 portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.23.0-preview/KickLab-Windows-x64-0.23.0-preview.zip)
 
 Aucune installation n'est nécessaire : extraire complètement le ZIP puis ouvrir `KickLab.exe`.
 
-- [Page de la version 0.22.0](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.22.0-preview)
+- [Page de la version 0.23.0](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.23.0-preview)
 - [Toutes les versions et leurs fichiers](https://github.com/olivershadd-star/Berhinger-Kick/releases)
 - Windows 10/11 x64
 - Bibliothèque `samples` externe et personnelle
@@ -16,7 +16,7 @@ Aucune installation n'est nécessaire : extraire complètement le ZIP puis ouvri
 
 ![Interface KICK Lab organisée pour Maschine+](experiments/kicklab/APERCU-MASCHINE-PLUS.png)
 
-## Ce qui fonctionne dans la version 0.22.0
+## Ce qui fonctionne dans la version 0.23.0
 
 - moteur AudIO et sortie Windows WinMM ;
 - seize pads, Programs et kits sauvegardables ;
@@ -27,6 +27,7 @@ Aucune installation n'est nécessaire : extraire complètement le ZIP puis ouvri
 - sélection fixe de la mesure d'édition pendant la lecture ;
 - Copy/Paste/Duplicate/Clear pour les mesures, patterns, pads et kits ;
 - Track Mixer, Pad Mixer, mutes, solos et vumètres en dB ;
+- automation Level/Pan par piste et par step avec AUTO WRITE ;
 - quatre inserts par pad et 31 effets Airwindows ;
 - export du pattern actif en WAV stéréo 48 kHz / 24 bits ;
 - navigation récursive dans la bibliothèque externe `samples` ;

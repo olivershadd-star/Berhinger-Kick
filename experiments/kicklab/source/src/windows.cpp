@@ -134,7 +134,7 @@ public:
     // Physical layout state. 0=Pad, 1=Keyboard, 2=Chords, 3=Step.
     int padMode=0,padGroup=0,stepTrack=0,eventStep=0,listEditRow=0,colorSelection=3,mixerBank=0,mixerParameter=0,padMixerBank=0,padMixerParameter=0,duplicateSourceSequence=-1;
     int editSourcePad=0,editDestinationPad=1,editPadRole=0,eraseSequence=0,eraseTrack=0,eraseStartStep=0,eraseEndStep=15;
-    bool colorAllPads=false,selectLatch=false,soloLatch=false,muteLatch=false,recordArmed=false,projectDirty=false,sequencerView=false,stepFollow=false;int recordQuantize=16,sequencerBar=0;
+    bool colorAllPads=false,selectLatch=false,soloLatch=false,muteLatch=false,recordArmed=false,automationWrite=false,projectDirty=false,sequencerView=false,stepFollow=false;int recordQuantize=16,sequencerBar=0;
     int copiedBarSequence=-1,copiedBar=-1,copiedPattern=-1,copiedPad=-1,copiedPadProgram=-1,copiedKitProgram=-1;
     COLORREF themeBackground=bg,themeButtons=RGB(28,34,45),themePads=RGB(132,161,250);ULONG_PTR gdiplusToken=0;Gdiplus::Image* wallpaperImage=nullptr;
     App(){
@@ -236,7 +236,8 @@ public:
         case T::Restart:case T::Tap:
         case T::FixedVelocity:case T::Scene:case T::Variation:
         case T::Volume:case T::Swing:case T::Lock:case T::Mod:
-        case T::Auto:case T::Macro:if(pressed)status=L"MIDI — "+midiCommandLabels[target]+L" reçu ; module KICK pas encore porté.";break;
+        case T::Auto:if(pressed){if(surface.shift){engine.clearTrackAutomation(stepTrack,mixerParameter==0?lab::TrackAutomationParameter::Level:lab::TrackAutomationParameter::Pan);markProjectDirty();status=L"MIDI — automation de la piste active effacée.";}else{automationWrite=!automationWrite;status=automationWrite?L"AUTO WRITE actif — les mouvements LEVEL/PAN du Track Mixer sont enregistrés par step.":L"AUTO WRITE arrêté — lecture des automations conservée.";}}break;
+        case T::Macro:if(pressed){showSurfaceMixer(mixerBank);status=L"Macro / Q-Links — Track Mixer ouvert ; AUTO permet d'enregistrer LEVEL et PAN.";}break;
         default:break;
         }
     }
@@ -294,7 +295,7 @@ public:
     void load(const std::wstring& path){if(path.empty())return;std::string error;if(engine.load(selected,utf8(path),error)){markProjectDirty();status=L"WAV chargé sur le pad "+padName(selected)+L". Conversion à 48 kHz si nécessaire.";play(selected);}else MessageBoxW(window,wide(error).c_str(),L"Chargement WAV",MB_OK|MB_ICONINFORMATION);}
     void sampleMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,700,L"Factory Sample Library");AppendMenuW(menu,MF_STRING,701,L"Importer depuis l'ordinateur");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,702,L"Ouvrir le dossier de la bibliothèque");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice==700)load(choose(false,false,library));else if(choice==701)load(choose(false,false));else if(choice==702)ShellExecuteW(window,L"open",library.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
     void savePadToLibrary(){auto s=engine.snapshot();if(s.paths[selected].empty()){MessageBoxW(window,L"Charge d'abord un WAV sur ce pad.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}auto source=std::filesystem::u8path(s.paths[selected]);auto folder=browsers[surface.focusedDisplay].directory;if(folder.empty()||!std::filesystem::is_directory(folder))folder=library;auto destinationText=choose(true,false,folder,source.filename().wstring());if(destinationText.empty())return;auto destination=std::filesystem::path(destinationText);std::error_code ec;if(std::filesystem::exists(destination,ec)&&std::filesystem::equivalent(source,destination,ec)){status=L"Ce WAV est déjà dans la bibliothèque : "+destination.filename().wstring();return;}ec.clear();std::filesystem::copy_file(source,destination,std::filesystem::copy_options::overwrite_existing,ec);if(ec){MessageBoxW(window,(L"Copie impossible : "+wide(ec.message())).c_str(),L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}std::string loadError;if(engine.load(selected,destination.u8string(),loadError,true)){markProjectDirty();status=L"WAV ajouté à la bibliothèque : "+destination.filename().wstring();}else status=L"WAV copié, mais impossible de rattacher le pad : "+wide(loadError);}
-    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.22.0 — "+name+(projectDirty?L" *":L"")).c_str());}
+    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.23.0 — "+name+(projectDirty?L" *":L"")).c_str());}
     void markProjectDirty(){if(!projectDirty){projectDirty=true;updateProjectTitle();}}
     bool saveProjectAs(){
         const auto suggested=currentProject.empty()?L"Nouveau-projet.kicklab":currentProject.filename().wstring();auto p=choose(true,true,currentProject.parent_path(),suggested);if(p.empty())return false;
@@ -309,7 +310,7 @@ public:
         if(!projectDirty)return true;const int answer=MessageBoxW(window,L"Le projet contient des modifications non enregistrées.\n\nOui : enregistrer avant de continuer\nNon : abandonner les modifications\nAnnuler : rester dans le projet",L"Projet KICK modifié",MB_YESNOCANCEL|MB_ICONWARNING);
         if(answer==IDCANCEL)return false;if(answer==IDYES)return saveProject(false);return true;
     }
-    void resetProjectUi(){surface=lab::SurfaceState{};selected=tab=padGroup=stepTrack=eventStep=listEditRow=mixerBank=mixerParameter=padMixerBank=padMixerParameter=sequencerBar=0;colorSelection=3;colorAllPads=false;duplicateSourceSequence=-1;padMode=0;selectLatch=soloLatch=muteLatch=recordArmed=sequencerView=stepFollow=false;songChoice=songSelected=0;songRepeats=1;editSourcePad=0;editDestinationPad=1;editPadRole=0;eraseSequence=eraseTrack=eraseStartStep=0;eraseEndStep=15;copiedBarSequence=copiedBar=copiedPattern=copiedPad=copiedPadProgram=copiedKitProgram=-1;}
+    void resetProjectUi(){surface=lab::SurfaceState{};selected=tab=padGroup=stepTrack=eventStep=listEditRow=mixerBank=mixerParameter=padMixerBank=padMixerParameter=sequencerBar=0;colorSelection=3;colorAllPads=false;duplicateSourceSequence=-1;padMode=0;selectLatch=soloLatch=muteLatch=recordArmed=automationWrite=sequencerView=stepFollow=false;songChoice=songSelected=0;songRepeats=1;editSourcePad=0;editDestinationPad=1;editPadRole=0;eraseSequence=eraseTrack=eraseStartStep=0;eraseEndStep=15;copiedBarSequence=copiedBar=copiedPattern=copiedPad=copiedPadProgram=copiedKitProgram=-1;}
     void newProject(){
         if(!confirmDiscard())return;audio.stop();engine.resetProject();resetProjectUi();currentProject.clear();projectDirty=false;audio.start(audioId);updateProjectTitle();status=L"Nouveau projet vide — la bibliothèque samples et le profil MIDI sont conservés.";
     }
@@ -515,7 +516,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(app.smoke)app.smokeDeadline=GetTickCount64()+2500;
         WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,DesignWidth,DesignHeight};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.22.0",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.23.0",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }

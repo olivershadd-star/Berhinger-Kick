@@ -466,6 +466,14 @@ void closeSurfaceModule(){
     else status=L"KICK / Retour — aucun écran enfant ouvert.";
 }
 
+void writeTrackAutomationPoint(int track){
+    if(!automationWrite)return;auto snapshot=engine.snapshot();track=std::clamp(track,0,lab::Pads-1);
+    const int step=snapshot.playing?snapshot.playBar*lab::Steps+std::max(0,snapshot.step):snapshot.viewBar*lab::Steps+std::clamp(eventStep,0,lab::Steps-1);
+    const auto& value=snapshot.sequences[snapshot.sequence].tracks[track];const auto parameter=mixerParameter==0?lab::TrackAutomationParameter::Level:lab::TrackAutomationParameter::Pan;
+    engine.setTrackAutomationPoint(track,step,parameter,mixerParameter==0?value.level:(value.pan+1.)*.5);markProjectDirty();
+    status=L"AUTO WRITE · pattern "+number(snapshot.sequence+1)+L" · piste "+number(track+1)+L" · "+listEditTimeText(step)+L" · "+(mixerParameter==0?L"LEVEL":L"PAN");
+}
+
 void setSurfaceQLink(int display,int knob,double ratio){
     if(display<0||display>=lab::SurfaceDisplays||knob<0||knob>=lab::SurfaceQLinks)return;
     auto& binding=surface.displays[display];ratio=std::clamp(ratio,0.,1.);if(binding.module==lab::DisplayModule::Sample){setSurfaceProgramRatio(display,knob,ratio);return;}
@@ -475,7 +483,7 @@ void setSurfaceQLink(int display,int knob,double ratio){
     if(binding.module==lab::DisplayModule::EditOperations){setEditOperationRatio(display,knob,ratio);return;}
     if(binding.module==lab::DisplayModule::Tempo){if(knob==0)engine.setTempo(40.+ratio*200.);else if(knob==1)engine.setTempo(std::round((40.+ratio*200.)*10.)/10.);return;}
     if(binding.module==lab::DisplayModule::Sequencer){auto snapshot=engine.snapshot();if(display==0&&knob==0)selectStepTrack(int(std::lround(ratio*15)));else if(display==0&&knob==1)selectStepBar(int(std::lround(ratio*(snapshot.sequences[snapshot.sequence].bars-1))));else if(display==0&&knob==2){engine.setSequenceBars(1+int(std::lround(ratio*3)));selectStepBar(std::min(snapshot.viewBar,int(std::lround(ratio*3))));markProjectDirty();}else if(display==0&&knob==3){recordQuantize=ratio<.333?4:ratio<.666?8:16;}return;}
-    if(binding.module==lab::DisplayModule::Mixer){const int track=mixerTrackFor(display,knob);if(mixerParameter==0)engine.setTrackLevel(track,ratio);else engine.setTrackPan(track,ratio*2.-1.);return;}
+    if(binding.module==lab::DisplayModule::Mixer){const int track=mixerTrackFor(display,knob);if(mixerParameter==0)engine.setTrackLevel(track,ratio);else engine.setTrackPan(track,ratio*2.-1.);writeTrackAutomationPoint(track);return;}
     if(binding.module==lab::DisplayModule::PadMixer){const int pad=padMixerPadFor(display,knob);if(padMixerParameter==0)engine.setPadLevel(pad,ratio*2.);else engine.setPadPan(pad,ratio*2.-1.);markProjectDirty();return;}
     if(binding.module==lab::DisplayModule::PadPerform){auto snapshot=engine.snapshot();if(knob==0)engine.setPerformanceMode(lab::PerformanceMode(std::clamp(int(std::lround(ratio*3)),0,3)));else if(knob==1)engine.setMelodicSourcePad(std::clamp(int(std::lround(ratio*15)),0,15));else if(knob==2)engine.setRootNote(24+std::clamp(int(std::lround(ratio*60)),0,60));else engine.setViewBar(std::clamp(int(std::lround(ratio*(snapshot.sequences[snapshot.sequence].bars-1))),0,snapshot.sequences[snapshot.sequence].bars-1));return;}
     if(binding.module==lab::DisplayModule::NextSequence){auto snapshot=engine.snapshot();if(knob==0)engine.selectSequence(std::clamp(int(std::lround(ratio*15)),0,15));else if(knob==1)engine.setSequenceBars(1+std::clamp(int(std::lround(ratio*3)),0,3));else if(knob==2)engine.setViewBar(std::clamp(int(std::lround(ratio*(snapshot.sequences[snapshot.sequence].bars-1))),0,snapshot.sequences[snapshot.sequence].bars-1));else engine.setPerformanceMode(lab::PerformanceMode(std::clamp(int(std::lround(ratio*3)),0,3)));return;}
@@ -493,7 +501,7 @@ void turnSurfaceQLink(int display,int knob,int delta){
     if(binding.module==lab::DisplayModule::ListEdit){auto snapshot=engine.snapshot();ListEditItem item;if(!currentListEditItem(snapshot,item))return;double step=0.;if(display==0){if(knob==0)step=1./std::max(1,snapshot.sequences[snapshot.sequence].bars*lab::Steps-1);else if(knob==1)step=1./(item.melodic?127.:double(lab::Pads-1));else if(knob==2)step=1./std::max(1,int(listEditItems(snapshot).size())-1);}else step=knob==0?1./15.:knob==1?1./126.:knob==2?.01:1./7.;if(step>0)setListEditRatio(display,knob,listEditRatio(snapshot,display,knob)+delta*step);return;}
     if(binding.module==lab::DisplayModule::ColorEditor){auto snapshot=engine.snapshot();double step=1.;if(display==0&&knob==0)step=1./(lab::PadColors-1);else if(display==1&&knob==0)step=.5;else if(display==1&&knob==1)step=1./(lab::Pads-1);else if(display==1&&knob==2)step=1./(lab::PadColors-1);setSurfaceColorRatio(display,knob,surfaceColorRatio(snapshot,display,knob)+delta*step);return;}
     if(binding.module==lab::DisplayModule::EditOperations){const auto snapshot=engine.snapshot();double step=1.;if(display==0&&(knob==0||knob==1))step=1./(lab::Pads-1);else if(display==1&&knob==0)step=1./(lab::Sequences-1);else if(display==1&&knob==1)step=1./(lab::Pads-1);else if(display==1){const int total=std::max(1,snapshot.sequences[eraseSequence].bars*lab::Steps);step=1./std::max(1,total-1);}setEditOperationRatio(display,knob,editOperationRatio(snapshot,display,knob)+delta*step);return;}
-    if(binding.module==lab::DisplayModule::Mixer){auto snapshot=engine.snapshot();const int track=mixerTrackFor(display,knob);const auto& data=snapshot.sequences[snapshot.sequence].tracks[track];if(mixerParameter==0)engine.setTrackLevel(track,data.level+delta*.01);else engine.setTrackPan(track,data.pan+delta*.02);return;}
+    if(binding.module==lab::DisplayModule::Mixer){auto snapshot=engine.snapshot();const int track=mixerTrackFor(display,knob);const auto& data=snapshot.sequences[snapshot.sequence].tracks[track];if(mixerParameter==0)engine.setTrackLevel(track,data.level+delta*.01);else engine.setTrackPan(track,data.pan+delta*.02);writeTrackAutomationPoint(track);return;}
     if(binding.module==lab::DisplayModule::PadMixer){auto snapshot=engine.snapshot();const int pad=padMixerPadFor(display,knob);const auto& edit=snapshot.edits[pad];if(padMixerParameter==0)engine.setPadLevel(pad,edit.gain+delta*.02);else engine.setPadPan(pad,edit.pan+delta*.02);markProjectDirty();return;}
     if(binding.module==lab::DisplayModule::Sample){auto snapshot=engine.snapshot();const int pad=std::clamp(binding.pad,0,lab::Pads-1);const auto& edit=snapshot.edits[pad];double ratio=surfaceProgramRatio(edit,binding.page,knob),step=.01;if(binding.page==0&&knob==1)step=1./48.;else if(binding.page==2&&knob==1)step=1./200.;else if((binding.page==2&&knob==0)||binding.page==3)step=knob<2?.5:knob==2?1./16.:1./17.;else if(binding.page==4){const auto& item=snapshot.layers[pad][std::clamp(binding.slot,0,lab::PadLayers-1)];ratio=knob==0?binding.slot/double(lab::PadLayers-1):knob==1?(item.velocityStart-1)/126.:knob==2?(item.velocityEnd-1)/126.:item.reverse?1.:0.;step=knob==0?1./3.:knob==3?1.:1./126.;}setSurfaceProgramRatio(display,knob,ratio+delta*step);return;}
     if(binding.module==lab::DisplayModule::Tempo){auto snapshot=engine.snapshot();engine.setTempo(snapshot.tempo+delta*(knob==1?.1:1.));return;}
@@ -847,8 +855,8 @@ bool maschineClick(int x,int y,bool right){
         case 7: dispatch({lab::SurfaceAction::PageNext});break;
         case 8: if(right||surface.shift)project(true);else fileMenu();break;
         case 9: settingsMenu();break;
-        case 10: status=L"Automation / List Edit — présent dans KICK, pas encore porté.";break;
-        case 11: status=L"Macro / Q-Links — utilise les huit knobs contextuels des écrans.";break;
+        case 10: if(right||surface.shift){engine.clearTrackAutomation(stepTrack,mixerParameter==0?lab::TrackAutomationParameter::Level:lab::TrackAutomationParameter::Pan);markProjectDirty();status=L"Automation "+std::wstring(mixerParameter==0?L"LEVEL":L"PAN")+L" effacée pour la piste "+number(stepTrack+1)+L" du pattern actif.";}else{automationWrite=!automationWrite;status=automationWrite?L"AUTO WRITE actif — ouvre Track Mixer et bouge LEVEL ou PAN.":L"AUTO WRITE arrêté — les courbes enregistrées restent lues.";}break;
+        case 11: showSurfaceMixer(mixerBank);status=L"Macro / Q-Links — Track Mixer ouvert ; AUTO enregistre LEVEL et PAN par step.";break;
         }
         return true;
     }
@@ -993,16 +1001,17 @@ void paintSurfaceDisplay(HDC dc,int display,const lab::Snapshot& snapshot){
     }
     if(binding.module==lab::DisplayModule::Mixer){
         text(dc,{box.x+14,box.y+9,290,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  TRACK MIXER",12,focused?accent:muted,FW_SEMIBOLD);
-        text(dc,{box.x+310,box.y+9,130,24},L"PISTES "+number(mixerBank*8+1)+L"–"+number(mixerBank*8+8),9,muted,FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
+        text(dc,{box.x+292,box.y+9,148,24},(automationWrite?L"AUTO WRITE · ":L"")+number(mixerBank*8+1)+L"–"+number(mixerBank*8+8),9,automationWrite?RGB(255,95,90):muted,automationWrite?FW_SEMIBOLD:FW_NORMAL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);fill(dc,{box.x+14,box.y+39,box.w-28,1},RGB(34,48,57));
         for(int row=0;row<4;++row){
             const int trackIndex=mixerTrackFor(display,row);const auto& track=snapshot.sequences[snapshot.sequence].tracks[trackIndex];auto b=surfaceMixerTrackBox(display,row);const bool selectedTrack=trackIndex==stepTrack;fill(dc,b,selectedTrack?RGB(31,62,59):(row%2?RGB(18,31,35):RGB(17,28,33)));
             const std::wstring type=track.program==lab::ProgramType::Drum?L"D":L"K";text(dc,{b.x+10,b.y+2,190,20},number(trackIndex+1)+L" ["+type+L"] "+wide(snapshot.names[trackIndex]),9,selectedTrack?accent:ink,FW_SEMIBOLD,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            std::wstring flags=(track.armed?std::wstring(L"REC "):std::wstring())+(track.solo?L"SOLO ":L"")+(track.mute?L"MUTE":L"");if(flags.empty())flags=L"PAD "+number(int(std::round(snapshot.edits[trackIndex].gain*100)))+L"%";text(dc,{b.x+204,b.y+2,74,20},flags,8,snapshot.edits[trackIndex].gain>1.0001?RGB(241,184,88):(track.mute?RGB(255,133,103):(track.solo?RGB(241,184,88):muted)),FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            int automationPoints=0;const auto& lane=mixerParameter==0?snapshot.sequences[snapshot.sequence].trackAutomation[trackIndex].level:snapshot.sequences[snapshot.sequence].trackAutomation[trackIndex].pan;for(int step=0;step<snapshot.sequences[snapshot.sequence].bars*lab::Steps;++step)if(lane[step]!=lab::AutomationUnset)++automationPoints;
+            std::wstring flags=(track.armed?std::wstring(L"REC "):std::wstring())+(track.solo?L"SOLO ":L"")+(track.mute?L"MUTE":L"");if(flags.empty())flags=automationPoints?L"AUTO "+number(automationPoints):L"PAD "+number(int(std::round(snapshot.edits[trackIndex].gain*100)))+L"%";text(dc,{b.x+204,b.y+2,74,20},flags,8,automationPoints?RGB(255,133,103):(snapshot.edits[trackIndex].gain>1.0001?RGB(241,184,88):(track.mute?RGB(255,133,103):(track.solo?RGB(241,184,88):muted))),FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
             const std::wstring value=mixerParameter==0?L"LEVEL "+number(int(std::round(track.level*100)))+L" %":(std::abs(track.pan)<.01?L"PAN C":track.pan<0?L"PAN L "+number(int(std::round(-track.pan*100))):L"PAN R "+number(int(std::round(track.pan*100))));text(dc,{b.x+278,b.y+2,108,20},value,9,accent,FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
             const double peak=snapshot.trackPeaks[trackIndex],peakDb=peak>0?20.*std::log10(peak):-60.;text(dc,{b.x+390,b.y+2,124,20},peak>0?L"PK "+decimal(peakDb,1)+L" dB":L"PK −∞",8,peak>1.00001?RGB(255,95,90):(peakDb> -6?RGB(241,184,88):muted),FW_SEMIBOLD,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
             const Box meter{b.x+10,b.y+29,b.w-20,10};round(dc,meter,RGB(11,18,24),line);const int lit=int((meter.w-4)*std::clamp((peakDb+48.)/54.,0.,1.));if(lit>0)fill(dc,{meter.x+2,meter.y+2,lit,meter.h-4},peak>1.00001?RGB(255,95,90):(peakDb> -6?RGB(241,184,88):accent));const int zero=meter.x+2+int((meter.w-4)*(48./54.));fill(dc,{zero,meter.y-1,1,meter.h+2},RGB(235,235,235));
         }
-        text(dc,{box.x+14,box.y+268,box.w-28,16},mixerParameter==0?L"KNOBS : LEVEL 0–100 % par pas de 1 % · bas : PAN":L"KNOBS : PAN · haut : LEVEL · gauche/droite : banques",9,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return;
+        text(dc,{box.x+14,box.y+268,box.w-28,16},automationWrite?L"AUTO WRITE : mouvements enregistrés au step du transport":(mixerParameter==0?L"KNOBS : LEVEL 0–100 % par pas de 1 % · bas : PAN":L"KNOBS : PAN · haut : LEVEL · gauche/droite : banques"),9,automationWrite?RGB(255,133,103):muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);return;
     }
     if(binding.module==lab::DisplayModule::PadMixer){
         text(dc,{box.x+14,box.y+9,290,24},L"ÉCRAN "+std::wstring(display?L"B":L"A")+L"  ·  PAD MIXER",12,focused?accent:muted,FW_SEMIBOLD);
@@ -1230,7 +1239,7 @@ void paintMaschineControls(HDC dc,const lab::Snapshot& snapshot){
         {L"BROWSER",L"Plug-in"},{L"SAMPLING",L""},{L"<",L"Page"},{L">",L"Page"},
         {L"FILE",L"Save"},{L"SETTINGS",L""},{L"AUTO",L""},{L"MACRO",L"Set"}
     }};
-    for(int i=0;i<12;++i){const bool available=i!=10;const auto module=surface.displays[0].module;hardwareButton(dc,shortcutBox(i),shortcuts[i].first,shortcuts[i].second,i==3&&(module==lab::DisplayModule::Mixer||module==lab::DisplayModule::PadMixer),available);}
+    for(int i=0;i<12;++i){const bool available=true;const auto module=surface.displays[0].module;const bool on=i==10?automationWrite:i==3&&(module==lab::DisplayModule::Mixer||module==lab::DisplayModule::PadMixer);hardwareButton(dc,shortcutBox(i),shortcuts[i].first,shortcuts[i].second,on,available);}
 
     hardwareButton(dc,utilityButtonBox(0),L"MENU",L"A + B",false,true);
     hardwareButton(dc,utilityButtonBox(1),L"KICK",L"Pads",!sequencerView,true);
@@ -1319,7 +1328,7 @@ void paintBrandPanel(HDC dc,const lab::Snapshot& snapshot){
     round(dc,identity,RGB(11,17,27),RGB(42,69,88));fill(dc,{identity.x+8,identity.y+7,identity.w-16,2},accent);
     text(dc,{identity.x+8,identity.y+12,identity.w-16,52},L"KICK",36,ink,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     text(dc,{identity.x+8,identity.y+62,identity.w-16,18},L"ANKS Labs",12,accent,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.22.0",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.23.0",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     round(dc,controls,RGB(11,17,27),RGB(42,69,88));
     for(int macro=0;macro<8;++macro){const auto box=brandMacroBox(macro);const int cx=box.x+box.w/2,cy=box.y+23;HBRUSH brush=CreateSolidBrush(themeButtons);HPEN edge=CreatePen(PS_SOLID,2,line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-15,cy-15,cx+15,cy+15);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);HPEN marker=CreatePen(PS_SOLID,2,muted);oldP=SelectObject(dc,marker);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx,cy-10);SelectObject(dc,oldP);DeleteObject(marker);text(dc,{box.x,box.y+40,box.w,14},L"M"+number(macro+1),8,muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
