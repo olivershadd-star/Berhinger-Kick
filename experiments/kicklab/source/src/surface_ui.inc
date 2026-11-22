@@ -795,6 +795,23 @@ bool surfaceClick(int x,int y,bool right){
     return false;
 }
 
+bool surfaceBrowserDoubleClick(int x,int y){
+    for(int display=0;display<lab::SurfaceDisplays;++display){
+        auto& binding=surface.displays[display];
+        if(binding.module!=lab::DisplayModule::Browser||!surfaceDisplayBox(display).contains(x,y))continue;
+        auto& browser=browsers[display];surface.focusDisplay(display);
+        for(int row=0;row<5;++row)if(surfaceBrowserFileBox(display,row).contains(x,y)){
+            const int index=browser.scroll+row;if(index<0||index>=int(browser.entries.size()))return true;
+            browser.selected=index;
+            if(browser.entries[index].directory)moveSurfaceBrowserCategory(display,1);
+            else loadSurfaceBrowserSelection(display);
+            return true;
+        }
+        return true;
+    }
+    return false;
+}
+
 bool sequencerGridClick(int x,int y,bool right){
     if(!sequencerView||!sequencerPanelBox().contains(x,y))return false;
     auto snapshot=engine.snapshot();const auto& sequence=snapshot.sequences[snapshot.sequence];sequencerBar=std::clamp(sequencerBar,0,sequence.bars-1);
@@ -1343,7 +1360,7 @@ void paintBrandPanel(HDC dc,const lab::Snapshot& snapshot){
     round(dc,identity,RGB(11,17,27),RGB(42,69,88));fill(dc,{identity.x+8,identity.y+7,identity.w-16,2},accent);
     text(dc,{identity.x+8,identity.y+12,identity.w-16,52},L"KICK",36,ink,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     text(dc,{identity.x+8,identity.y+62,identity.w-16,18},L"ANKS Labs",12,accent,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.24.1",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.24.2",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     round(dc,controls,RGB(11,17,27),RGB(42,69,88));
     for(int macro=0;macro<8;++macro){const auto box=brandMacroBox(macro);const int cx=box.x+box.w/2,cy=box.y+23;const auto& target=macroTargets[macro];HBRUSH brush=CreateSolidBrush(themeButtons);HPEN edge=CreatePen(PS_SOLID,2,target.pad>=0?accent:line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-15,cy-15,cx+15,cy+15);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);const double angle=(-135.+270.*std::clamp(target.value,0.,1.))*3.141592653589793/180.;HPEN marker=CreatePen(PS_SOLID,2,target.pad>=0?accent:muted);oldP=SelectObject(dc,marker);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx+int(std::cos(angle)*11),cy+int(std::sin(angle)*11));SelectObject(dc,oldP);DeleteObject(marker);text(dc,{box.x,box.y+40,box.w,14},L"M"+number(macro+1),8,target.pad>=0?ink:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}

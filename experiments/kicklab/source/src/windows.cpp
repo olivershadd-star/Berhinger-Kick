@@ -149,7 +149,7 @@ public:
         std::error_code ec;std::filesystem::create_directories(library,ec);std::filesystem::create_directories(kitLibrary/L"User",ec);std::filesystem::create_directories(appearanceDirectory,ec);for(auto& browser:browsers)browser.directory=library;std::filesystem::create_directories(midiProfile.parent_path(),ec);std::filesystem::create_directories(portableMidiProfile.parent_path(),ec);for(int i=0;i<8;++i){midiPorts[i].owner=this;midiPorts[i].index=i;lpdPads[i]={0,36+i};lpdKnobs[i].channel=0;lpdKnobs[i].cc=1+i;lpdKnobs[i].mode=lab::MidiCcMode::Absolute;}loadMidiDevicePreference();loadMidiProfile();loadLpdProfile();loadAppearance();SetCurrentDirectoryW(base.c_str());
     }
     ~App(){if(midiProfileLoaded||midiMessageCount)saveMidiProfile();saveLpdProfile();closeMidi();audio.stop();delete wallpaperImage;wallpaperImage=nullptr;if(gdiplusToken)Gdiplus::GdiplusShutdown(gdiplusToken);}
-    void initialise(HWND h){window=h;int loaded=0;std::string error;for(int p=0;p<16;++p){const std::array<std::wstring,16> files={L"01-Kick.wav",L"02-Snare.wav",L"03-Closed-Hat.wav",L"04-Open-Hat.wav",L"05-Clap.wav",L"06-Low-Tom.wav",L"07-Mid-Tom.wav",L"08-High-Tom.wav",L"09-Rim.wav",L"10-Shaker.wav",L"11-Claves.wav",L"12-Cowbell.wav",L"13-Bass-C.wav",L"14-Bass-E.wav",L"15-Bass-G.wav",L"16-Chime.wav"};auto path=base/L"demo-kit"/files[p];if(engine.load(p,path.u8string(),error))++loaded;}if(loaded==16)status=L"Kit chargé. Pattern vide ; le bouton Démo charge le pattern d'exemple.";else status=L"Kit de démonstration incomplet : "+number(loaded)+L"/16 fichiers.";audio.start(audioId);if(!autoConnectMidi())status+=(midiProfileLoaded?L" · Profil MIDI chargé, entrée MIDI déconnectée.":L" · Aucun profil MIDI chargé.");updateProjectTitle();SetTimer(h,1,16,nullptr);DragAcceptFiles(h,TRUE);}
+    void initialise(HWND h){window=h;int loaded=0;std::string error;for(int p=0;p<16;++p){const std::array<std::wstring,16> files={L"01-Kick.wav",L"02-Snare.wav",L"03-Closed-Hat.wav",L"04-Open-Hat.wav",L"05-Clap.wav",L"06-Low-Tom.wav",L"07-Mid-Tom.wav",L"08-High-Tom.wav",L"09-Rim.wav",L"10-Shaker.wav",L"11-Claves.wav",L"12-Cowbell.wav",L"13-Bass-C.wav",L"14-Bass-E.wav",L"15-Bass-G.wav",L"16-Chime.wav"};auto path=base/L"demo-kit"/files[p];if(engine.load(p,path.u8string(),error))++loaded;}if(smoke){std::error_code ec;const auto folder=library/L"DoubleClick";std::filesystem::create_directories(folder,ec);ec.clear();std::filesystem::copy_file(base/L"demo-kit"/L"01-Kick.wav",folder/L"Smoke.wav",std::filesystem::copy_options::overwrite_existing,ec);}if(loaded==16)status=L"Kit chargé. Pattern vide ; le bouton Démo charge le pattern d'exemple.";else status=L"Kit de démonstration incomplet : "+number(loaded)+L"/16 fichiers.";audio.start(audioId);if(!autoConnectMidi())status+=(midiProfileLoaded?L" · Profil MIDI chargé, entrée MIDI déconnectée.":L" · Aucun profil MIDI chargé.");updateProjectTitle();SetTimer(h,1,16,nullptr);DragAcceptFiles(h,TRUE);}
     void closeMidi(){for(auto& port:midiPorts)if(port.handle){midiInStop(port.handle);midiInReset(port.handle);midiInClose(port.handle);port.handle=nullptr;port.deviceId=-1;port.name.clear();}midiId=-1;}
     void closeMidiRole(MidiRole role){for(auto& port:midiPorts)if(port.handle&&port.role==role){midiInStop(port.handle);midiInReset(port.handle);midiInClose(port.handle);port.handle=nullptr;port.deviceId=-1;port.name.clear();}if(role==MidiRole::Surface)midiId=-1;}
     static void CALLBACK midiCallback(HMIDIIN,UINT message,DWORD_PTR instance,DWORD_PTR packed,DWORD_PTR){if(message==MIM_DATA){auto* port=reinterpret_cast<MidiPort*>(instance);if(port&&port->owner)PostMessageW(port->owner->window,MidiMessage,static_cast<WPARAM>(packed&0xffffff),static_cast<LPARAM>(port->index));}}
@@ -322,7 +322,7 @@ public:
     void load(const std::wstring& path){if(path.empty())return;std::string error;if(engine.load(selected,utf8(path),error)){markProjectDirty();status=L"WAV chargé sur le pad "+padName(selected)+L". Conversion à 48 kHz si nécessaire.";play(selected);}else MessageBoxW(window,wide(error).c_str(),L"Chargement WAV",MB_OK|MB_ICONINFORMATION);}
     void sampleMenu(){HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,700,L"Factory Sample Library");AppendMenuW(menu,MF_STRING,701,L"Importer depuis l'ordinateur");AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,702,L"Ouvrir le dossier de la bibliothèque");POINT p;GetCursorPos(&p);int choice=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_NONOTIFY,p.x,p.y,0,window,nullptr);DestroyMenu(menu);if(choice==700)load(choose(false,false,library));else if(choice==701)load(choose(false,false));else if(choice==702)ShellExecuteW(window,L"open",library.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
     void savePadToLibrary(){auto s=engine.snapshot();if(s.paths[selected].empty()){MessageBoxW(window,L"Charge d'abord un WAV sur ce pad.",L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}auto source=std::filesystem::u8path(s.paths[selected]);auto folder=browsers[surface.focusedDisplay].directory;if(folder.empty()||!std::filesystem::is_directory(folder))folder=library;auto destinationText=choose(true,false,folder,source.filename().wstring());if(destinationText.empty())return;auto destination=std::filesystem::path(destinationText);std::error_code ec;if(std::filesystem::exists(destination,ec)&&std::filesystem::equivalent(source,destination,ec)){status=L"Ce WAV est déjà dans la bibliothèque : "+destination.filename().wstring();return;}ec.clear();std::filesystem::copy_file(source,destination,std::filesystem::copy_options::overwrite_existing,ec);if(ec){MessageBoxW(window,(L"Copie impossible : "+wide(ec.message())).c_str(),L"Factory Sample Library",MB_OK|MB_ICONINFORMATION);return;}std::string loadError;if(engine.load(selected,destination.u8string(),loadError,true)){markProjectDirty();status=L"WAV ajouté à la bibliothèque : "+destination.filename().wstring();}else status=L"WAV copié, mais impossible de rattacher le pad : "+wide(loadError);}
-    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.24.1 — "+name+(projectDirty?L" *":L"")).c_str());}
+    void updateProjectTitle(){if(!window)return;const auto name=currentProject.empty()?L"Nouveau projet":currentProject.filename().wstring();SetWindowTextW(window,(L"KICK Lab 0.24.2 — "+name+(projectDirty?L" *":L"")).c_str());}
     void markProjectDirty(){if(!projectDirty){projectDirty=true;updateProjectTitle();}}
     bool saveProjectAs(){
         const auto suggested=currentProject.empty()?L"Nouveau-projet.kicklab":currentProject.filename().wstring();auto p=choose(true,true,currentProject.parent_path(),suggested);if(p.empty())return false;
@@ -421,10 +421,18 @@ public:
         if(maschineClick(x,y,right))return;
         if(surfaceClick(x,y,right))return;
     }
+    void doubleClick(int x,int y){
+        if(tab==0)surfaceBrowserDoubleClick(x,y);
+    }
     void smokeClick(int designX,int designY){
         const int clientX=std::clamp(designX*std::max(1,width)/DesignWidth,0,std::max(0,width-1));
         const int clientY=std::clamp(designY*std::max(1,height)/DesignHeight,0,std::max(0,height-1));
         PostMessageW(window,WM_LBUTTONDOWN,0,MAKELPARAM(clientX,clientY));
+    }
+    void smokeDoubleClick(int designX,int designY){
+        const int clientX=std::clamp(designX*std::max(1,width)/DesignWidth,0,std::max(0,width-1));
+        const int clientY=std::clamp(designY*std::max(1,height)/DesignHeight,0,std::max(0,height-1));
+        PostMessageW(window,WM_LBUTTONDBLCLK,MK_LBUTTON,MAKELPARAM(clientX,clientY));
     }
     void advanceInteractionSmokeTest(){
         // Exercise the real Win32 mouse route rather than merely opening the
@@ -445,6 +453,10 @@ public:
         case 11:smokeClick(128,626);break;             // pattern B
         case 12:smokeClick(136,345);break;             // KICK again
         case 13:smokeClick(948,696);break;             // another pad
+        case 14:smokeClick(76,153);break;              // Browser hardware button
+        case 15:smokeDoubleClick(400,141);break;       // open nested folder
+        case 16:smokeDoubleClick(400,141);break;       // load nested WAV
+        case 17:{const auto file=std::filesystem::u8path(engine.snapshot().paths[selected]).filename().wstring();if(file!=L"Smoke.wav")smokeFailed=true;break;}
         default:break;
         }
     }
@@ -517,8 +529,9 @@ case WM_DPICHANGED:{
         SWP_NOZORDER|SWP_NOACTIVATE);
     return 0;
 }
-case WM_TIMER:if(app->smoke){if(app->smokeStep<14)app->advanceInteractionSmokeTest();if(GetTickCount64()>app->smokeDeadline){DestroyWindow(h);return 0;}}if(app->stepFollow&&app->padMode==3){const auto snapshot=app->engine.snapshot();if(snapshot.playing&&snapshot.viewBar!=snapshot.playBar){app->engine.setViewBar(snapshot.playBar);app->sequencerBar=snapshot.playBar;}}InvalidateRect(h,nullptr,FALSE);return 0;
+case WM_TIMER:if(app->smoke){if(app->smokeStep<18)app->advanceInteractionSmokeTest();if(GetTickCount64()>app->smokeDeadline){DestroyWindow(h);return 0;}}if(app->stepFollow&&app->padMode==3){const auto snapshot=app->engine.snapshot();if(snapshot.playing&&snapshot.viewBar!=snapshot.playBar){app->engine.setViewBar(snapshot.playBar);app->sequencerBar=snapshot.playBar;}}InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_LBUTTONDOWN:case WM_RBUTTONDOWN:try{app->click(GET_X_LPARAM(l)*DesignWidth/std::max(1,app->width),GET_Y_LPARAM(l)*DesignHeight/std::max(1,app->height),msg==WM_RBUTTONDOWN);}catch(const std::exception& error){app->status=L"Erreur de commande : "+wide(error.what());app->smokeFailed=app->smoke;}catch(...){app->status=L"Erreur de commande Windows inconnue.";app->smokeFailed=app->smoke;}InvalidateRect(h,nullptr,FALSE);return 0;
+case WM_LBUTTONDBLCLK:try{app->doubleClick(GET_X_LPARAM(l)*DesignWidth/std::max(1,app->width),GET_Y_LPARAM(l)*DesignHeight/std::max(1,app->height));}catch(const std::exception& error){app->status=L"Erreur de double-clic : "+wide(error.what());app->smokeFailed=app->smoke;}catch(...){app->status=L"Erreur de double-clic Windows inconnue.";app->smokeFailed=app->smoke;}InvalidateRect(h,nullptr,FALSE);return 0;
 case WM_MOUSEMOVE:{int x=GET_X_LPARAM(l)*DesignWidth/app->width,y=GET_Y_LPARAM(l)*DesignHeight/app->height;if(app->surfaceDragDisplay>=0){app->surfacePointer(y);InvalidateRect(h,nullptr,FALSE);}else if(app->editorDrag){app->editorPointer(x,y);InvalidateRect(h,nullptr,FALSE);}return 0;}
 case WM_LBUTTONUP:if(app->editorDrag||app->surfaceDragDisplay>=0){app->editorDrag=0;app->surfaceDragDisplay=-1;app->surfaceDragKnob=-1;ReleaseCapture();}return 0;
 case WM_CAPTURECHANGED:app->editorDrag=0;app->surfaceDragDisplay=-1;app->surfaceDragKnob=-1;return 0;
@@ -541,9 +554,9 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int show){
         if(!setDpi||!setDpi(reinterpret_cast<HANDLE>(static_cast<INT_PTR>(-4))))SetProcessDPIAware();
         App app;app.smoke=std::wstring(command).find(L"--smoke-test")!=std::wstring::npos;
         if(app.smoke)app.smokeDeadline=GetTickCount64()+2500;
-        WNDCLASSW c{};c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
+        WNDCLASSW c{};c.style=CS_DBLCLKS;c.hInstance=instance;c.lpfnWndProc=procedure;c.lpszClassName=L"KickLabWindow";c.hCursor=LoadCursor(nullptr,IDC_ARROW);c.hIcon=LoadIcon(nullptr,IDI_APPLICATION);RegisterClassW(&c);
         RECT r{0,0,DesignWidth,DesignHeight};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);
-        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.24.1",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
+        HWND h=CreateWindowExW(0,c.lpszClassName,L"KICK Lab 0.24.2",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,&app);
         if(!h)throw std::runtime_error("Impossible de créer la fenêtre Windows.");ShowWindow(h,show);UpdateWindow(h);MSG m;BOOL result;while((result=GetMessageW(&m,nullptr,0,0))>0){TranslateMessage(&m);DispatchMessageW(&m);}return result<0?1:0;
     }catch(const std::exception& e){MessageBoxW(nullptr,wide(e.what()).c_str(),L"KICK Lab",MB_OK|MB_ICONERROR);return 1;}
 }
