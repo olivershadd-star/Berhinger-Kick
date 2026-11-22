@@ -25,6 +25,7 @@ int main(int argc,char**argv){try{
     check(surface.displays[1].parameterForKnob(0)==4,"right display page mapping failed");
     surface.selectPad(11);check(surface.selectedPad==11&&surface.displays[0].pad==11&&surface.displays[1].pad==11,"display did not follow selected pad");
     surface.displays[1].followsSelectedPad=false;surface.displays[1].pad=3;surface.selectPad(5);check(surface.displays[0].pad==5&&surface.displays[1].pad==3,"independent display binding failed");
+    surface.bindDisplayToSelectedPad(1,DisplayModule::Browser);check(surface.displays[1].module==DisplayModule::Browser&&surface.displays[1].pad==5&&surface.displays[1].followsSelectedPad,"browser did not recover from a stale independent binding");surface.selectPad(14);check(surface.displays[1].pad==14,"browser did not follow a later pad selection");
     surface.setDisplayPage(0,2);check(surface.displays[0].parameterForKnob(1)==9,"four-knob page mapping failed");
     surface.focusDisplay(1);check(surface.focusedDisplay==1,"right display focus failed");surface.focusDisplay(-4);check(surface.focusedDisplay==0,"display focus clamp failed");
     surface.menuSelections[0]=3;surface.menuSelections[1]=6;surface.focusDisplay(1);surface.focusDisplay(0);

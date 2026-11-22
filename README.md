@@ -4,13 +4,13 @@
 ### WINDOWS GROOVEBOX · OPEN-SOURCE ADAPTATION · MIDI CONTROLLER WORKFLOW
 
 ![Status](https://img.shields.io/badge/STATUS-PUBLIC_TEST_BUILD-EF343E?style=for-the-badge&labelColor=10151E)
-![Version](https://img.shields.io/badge/VERSION-0.24.0_PREVIEW-19B9FF?style=for-the-badge&labelColor=10151E)
+![Version](https://img.shields.io/badge/VERSION-0.24.1_PREVIEW-19B9FF?style=for-the-badge&labelColor=10151E)
 ![Windows](https://img.shields.io/badge/WINDOWS-10%20%2F%2011_X64-19B9FF?style=for-the-badge&labelColor=10151E)
 ![Licence](https://img.shields.io/badge/LICENCE-AGPL--3.0--or--later-F5C343?style=for-the-badge&labelColor=10151E)
 
 **ANKS LABS // BUILD. BREAK. REWIRE. LISTEN.**
 
-[![DOWNLOAD](https://img.shields.io/badge/DOWNLOAD-TEST_BUILD_0.24.0-EF343E?style=for-the-badge&labelColor=10151E)](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.0-preview)
+[![DOWNLOAD](https://img.shields.io/badge/DOWNLOAD-TEST_BUILD_0.24.1-EF343E?style=for-the-badge&labelColor=10151E)](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.1-preview)
 [![SOURCES](https://img.shields.io/badge/SOURCE-CODE-19B9FF?style=for-the-badge&labelColor=10151E)](https://github.com/olivershadd-star/Berhinger-Kick)
 [![RELEASES](https://img.shields.io/badge/ALL-BUILDS-F5C343?style=for-the-badge&labelColor=10151E)](https://github.com/olivershadd-star/Berhinger-Kick/releases)
 
@@ -36,9 +36,9 @@ The project is **not** a commercial replacement for the original hardware, nor a
 
 ## 03 // DOWNLOAD & FIRST LAUNCH
 
-### [⬇ Télécharger KICK Lab 0.24.0 preview — Windows x64 portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.24.0-preview/KickLab-Windows-x64-0.24.0-preview.zip)
+### [⬇ Télécharger KICK Lab 0.24.1 preview — Windows x64 portable](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.24.1-preview/KickLab-Windows-x64-0.24.1-preview.zip)
 
-**[Page de la release 0.24.0](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.0-preview)** · **[Historique des releases](https://github.com/olivershadd-star/Berhinger-Kick/releases)**
+**[Page de la release 0.24.1](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.1-preview)** · **[Historique des releases](https://github.com/olivershadd-star/Berhinger-Kick/releases)**
 
 **Configuration :** Windows 10/11 x64. Pas d'installateur : extraire entièrement le ZIP puis ouvrir `KickLab.exe`.
 
@@ -51,7 +51,7 @@ The project is **not** a commercial replacement for the original hardware, nor a
 
 La bibliothèque `samples` est **externe, personnelle et récursive**. Aucun sample commercial n'est inclus dans la distribution.
 
-## 04 // WHAT CURRENTLY WORKS — 0.24.0 PREVIEW
+## 04 // WHAT CURRENTLY WORKS — 0.24.1 PREVIEW
 
 | Domaine | Fonctionnalités présentes |
 |:--|:--|
@@ -94,7 +94,7 @@ La configuration dépend des ports MIDI détectés sur la machine et des modes d
 **Public preview ≠ version stable.** Les étapes suivantes constituent des objectifs de développement, pas des annonces de dates de sortie.
 
 - [x] Portage Windows portable utilisable avec souris/clavier
-- [x] Version publique de test 0.24.0
+- [x] Version publique de test 0.24.1
 - [x] Contrôle simultané Maschine+ / LPD8 / MPK Mini documenté
 - [ ] Affiner les mappings, le comportement en conditions réelles et les retours des testeurs
 - [ ] Poursuivre les parties du portage encore incomplètes

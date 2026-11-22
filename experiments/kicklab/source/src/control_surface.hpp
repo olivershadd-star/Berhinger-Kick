@@ -213,6 +213,13 @@ public:
             if (binding.followsSelectedPad) binding.pad = selectedPad;
     }
 
+    void bindDisplayToSelectedPad(int display, DisplayModule module) {
+        auto& binding = displays[std::clamp(display, 0, SurfaceDisplays - 1)];
+        binding.module = module;
+        binding.pad = selectedPad;
+        binding.followsSelectedPad = true;
+    }
+
     void focusDisplay(int display) {
         focusedDisplay = std::clamp(display, 0, SurfaceDisplays - 1);
     }

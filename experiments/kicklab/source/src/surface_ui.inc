@@ -450,13 +450,16 @@ void moveSurfaceBrowserCategory(int display,int delta){
 void loadSurfaceBrowserSelection(int display){
     display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& browser=browsers[display];if(browser.entries.empty()){status=L"Browser KICK — ce dossier est vide.";return;}
     if(browser.selected<0||browser.selected>=int(browser.entries.size()))return;if(browser.entries[browser.selected].directory){moveSurfaceBrowserCategory(display,1);return;}
-    auto& binding=surface.displays[display];const int pad=std::clamp(binding.pad,0,lab::Pads-1);std::string error;engine.stopPreview();const auto file=browser.entries[browser.selected].path;
+    // The selected pad is the single load destination. A display may have
+    // previously hosted Sequencer/Programs, whose bindings intentionally do
+    // not follow pad selection; never reuse that stale display-local pad here.
+    const int pad=std::clamp(selected,0,lab::Pads-1);surface.displays[display].pad=pad;std::string error;engine.stopPreview();const auto file=browser.entries[browser.selected].path;
     if(engine.load(pad,file.u8string(),error,true)){selectPad(pad);markProjectDirty();status=L"Sample chargé sur le pad "+padName(pad)+L" sans modifier ses réglages : "+file.filename().wstring();}
     else status=L"Chargement impossible : "+wide(error);
 }
 
 void showSurfaceBrowser(int display){
-    display=std::clamp(display,0,lab::SurfaceDisplays-1);auto& binding=surface.displays[display];binding.module=lab::DisplayModule::Browser;binding.pad=selected;binding.page=0;surface.focusDisplay(display);if(browsers[display].directory.empty())browsers[display].directory=library;refreshSurfaceBrowser(display,true);
+    display=std::clamp(display,0,lab::SurfaceDisplays-1);surface.bindDisplayToSelectedPad(display,lab::DisplayModule::Browser);auto& binding=surface.displays[display];binding.page=0;surface.focusDisplay(display);if(browsers[display].directory.empty())browsers[display].directory=library;refreshSurfaceBrowser(display,true);
     status=L"Browser KICK — haut/bas : parcourir · droite/Enter : ouvrir ou charger · gauche : dossier parent.";
 }
 
@@ -1340,7 +1343,7 @@ void paintBrandPanel(HDC dc,const lab::Snapshot& snapshot){
     round(dc,identity,RGB(11,17,27),RGB(42,69,88));fill(dc,{identity.x+8,identity.y+7,identity.w-16,2},accent);
     text(dc,{identity.x+8,identity.y+12,identity.w-16,52},L"KICK",36,ink,FW_BOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     text(dc,{identity.x+8,identity.y+62,identity.w-16,18},L"ANKS Labs",12,accent,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.24.0",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    text(dc,{identity.x+8,identity.y+82,identity.w-16,14},L"0.24.1",9,muted,FW_NORMAL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     round(dc,controls,RGB(11,17,27),RGB(42,69,88));
     for(int macro=0;macro<8;++macro){const auto box=brandMacroBox(macro);const int cx=box.x+box.w/2,cy=box.y+23;const auto& target=macroTargets[macro];HBRUSH brush=CreateSolidBrush(themeButtons);HPEN edge=CreatePen(PS_SOLID,2,target.pad>=0?accent:line);auto oldB=SelectObject(dc,brush),oldP=SelectObject(dc,edge);Ellipse(dc,cx-15,cy-15,cx+15,cy+15);SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(edge);const double angle=(-135.+270.*std::clamp(target.value,0.,1.))*3.141592653589793/180.;HPEN marker=CreatePen(PS_SOLID,2,target.pad>=0?accent:muted);oldP=SelectObject(dc,marker);MoveToEx(dc,cx,cy,nullptr);LineTo(dc,cx+int(std::cos(angle)*11),cy+int(std::sin(angle)*11));SelectObject(dc,oldP);DeleteObject(marker);text(dc,{box.x,box.y+40,box.w,14},L"M"+number(macro+1),8,target.pad>=0?ink:muted,FW_SEMIBOLD,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}

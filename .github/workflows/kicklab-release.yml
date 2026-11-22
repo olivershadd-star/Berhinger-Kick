@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.24.0
+        default: 0.24.1
 
 permissions:
   contents: write
@@ -62,6 +62,11 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.24.1 fixes Browser sample assignment after switching from
+            a display module with an independent pad binding. Browser now
+            follows the visible pad again and rechecks the active pad at the
+            exact moment Load is pressed, preventing stale pad-2 assignments.
 
             Version 0.24.0 adds simultaneous controller roles: Maschine+ stays
             the main surface, LPD8 supplies A-H and eight assignable FX macros,

@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.24.0 étend **AUTO** aux paramètres d'effets et aux huit macros. Les lanes FX sont propres à chaque pattern, suivent Copy/Clear Bar et sont conservées par KICKLAB 16. Trois rôles MIDI peuvent fonctionner simultanément : Maschine+ comme surface principale, LPD8 comme extension A–H + M1–M8 et MPK Mini comme clavier mélodique.
+La version 0.24.1 resynchronise le **Browser** avec le pad visible après un passage par Step, Programs ou un autre écran indépendant. Elle conserve l'extension **AUTO** aux paramètres d'effets et aux huit macros de la version 0.24.0, ainsi que les trois rôles MIDI simultanés : Maschine+, LPD8 et MPK Mini.
 
 La version 0.22.0 termine le lot d’édition **Step/Maschine** : les deux écrans affichent la piste, la mesure d’édition fixe, la tête de lecture et les 16 steps ; Bar 1–4, Follow, Track −/+, Copy/Paste/Duplicate/Clear Bar restent disponibles pendant Play. Les neuf emplacements vides deviennent 18 raccourcis contextuels pour Step, Pad/Kit, Pattern et Mixer. KICKMIDI 6 conserve le comportement Toggle/Gate, les Q-Links absolus travaillent par pas précis, et seule la page de pads active pilote KICK. Le Track Mixer distingue maintenant le gain du pad du niveau de piste et remet ses crêtes à zéro après un changement de gain.
 
