@@ -40,16 +40,16 @@ The project is **not** a commercial replacement for the original hardware, nor a
 
 **[Page de la release 0.24.0](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.0-preview)** · **[Historique des releases](https://github.com/olivershadd-star/Berhinger-Kick/releases)**
 
-**Configuration :** Windows 10/11 x64. Pas d'installateur : extraire entièrement le ZIP puis ouvrir \`KickLab.exe\`.
+**Configuration :** Windows 10/11 x64. Pas d'installateur : extraire entièrement le ZIP puis ouvrir `KickLab.exe`.
 
 1. Extraire l'archive dans un dossier où KICK Lab peut écrire.
-2. Garder \`demo-kit\` à côté de \`KickLab.exe\`.
-3. Créer ou conserver un dossier \`samples\` à côté de l'exécutable.
+2. Garder `demo-kit` à côté de `KickLab.exe`.
+3. Créer ou conserver un dossier `samples` à côté de l'exécutable.
 4. Charger des WAV via Browser ou par clic droit sur un pad.
 5. Choisir un pattern A–H et composer en modes Pad, Keyboard ou Step.
-6. Utiliser File/Save pour sauvegarder un projet \`.kicklab\`, un kit \`.kickkit\` ou exporter un WAV.
+6. Utiliser File/Save pour sauvegarder un projet `.kicklab`, un kit `.kickkit` ou exporter un WAV.
 
-La bibliothèque \`samples\` est **externe, personnelle et récursive**. Aucun sample commercial n'est inclus dans la distribution.
+La bibliothèque `samples` est **externe, personnelle et récursive**. Aucun sample commercial n'est inclus dans la distribution.
 
 ## 04 // WHAT CURRENTLY WORKS — 0.24.0 PREVIEW
 
@@ -82,10 +82,10 @@ L'objectif n'est pas de recopier physiquement la surface KICK : il s'agit de ret
 
 ### Connexion MIDI
 
-- Passer Maschine+ en **mode contrôleur** (\`Shift + Channel/MIDI\`) et sélectionner de préférence **Maschine Plus Virtual** dans KICK Lab.
-- La page **MIDI Control** permet d'apprendre et sauvegarder les affectations Maschine+ dans \`profiles/MaschinePlus.kickmidi\`.
+- Passer Maschine+ en **mode contrôleur** (`Shift + Channel/MIDI`) et sélectionner de préférence **Maschine Plus Virtual** dans KICK Lab.
+- La page **MIDI Control** permet d'apprendre et sauvegarder les affectations Maschine+ dans `profiles/MaschinePlus.kickmidi`.
 - Brancher **LPD8 et MPK Mini au PC** (directement ou via un hub relié au PC), et non pas comme des extensions USB virtuelles de Maschine+ : KICK Lab ouvre leurs entrées MIDI en parallèle.
-- Les affectations LPD8 sont conservées dans \`profiles/LPD8.kickmidi\`.
+- Les affectations LPD8 sont conservées dans `profiles/LPD8.kickmidi`.
 
 La configuration dépend des ports MIDI détectés sur la machine et des modes de chaque contrôleur.
 
@@ -106,25 +106,25 @@ La configuration dépend des ports MIDI détectés sur la machine et des modes d
 
 | Emplacement | Rôle |
 |:--|:--|
-| [\`experiments/kicklab/\`](experiments/kicklab/) | Application Windows active et documentation |
-| [\`upstream/0700-AAM/\`](upstream/0700-AAM/) | Sources originales de référence Music Tribe |
-| [\`port/\`](port/) | Adaptateurs et recherches du port complet |
-| [\`docs/\`](docs/) | Analyses et documentation |
-| [\`.github/workflows/\`](.github/workflows/) | Compilation et tests Windows automatisés |
+| [`experiments/kicklab/`](experiments/kicklab/) | Application Windows active et documentation |
+| [`upstream/0700-AAM/`](upstream/0700-AAM/) | Sources originales de référence Music Tribe |
+| [`port/`](port/) | Adaptateurs et recherches du port complet |
+| [`docs/`](docs/) | Analyses et documentation |
+| [`.github/workflows/`](.github/workflows/) | Compilation et tests Windows automatisés |
 
-La branche \`main\` constitue la base publique du projet. Les fichiers de **GitHub Actions** sont des artefacts de test/validation ; pour obtenir une version destinée aux utilisateurs, passer par **Releases**.
+La branche `main` constitue la base publique du projet. Les fichiers de **GitHub Actions** sont des artefacts de test/validation ; pour obtenir une version destinée aux utilisateurs, passer par **Releases**.
 
 ## 08 // BUILD FROM SOURCE
 
 Sur Windows avec Visual Studio 2022 et les outils CMake nécessaires :
 
-\`\`\`powershell
+```powershell
 cmake -S . -B build -A x64
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
-\`\`\`
+```
 
-Sortie attendue : \`build/incremental-port/Release/KickLab.exe\`.
+Sortie attendue : `build/incremental-port/Release/KickLab.exe`.
 
 ## 09 // LICENCE, ATTRIBUTION & DISCLAIMER
 
