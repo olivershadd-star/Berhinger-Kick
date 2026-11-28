@@ -4,7 +4,7 @@
 
 Prototype communautaire indépendant utilisant le moteur **AudIO** et des effets **Airwindows** publiés dans [MusicTribeOpenSource/0700-AAM](https://github.com/MusicTribeOpenSource/0700-AAM).
 
-La version 0.24.2 ajoute le **double-clic souris** au Browser : ouverture immédiate des dossiers et chargement des WAV dans le pad actif. Elle conserve la resynchronisation du pad de la version 0.24.1, l'extension **AUTO** aux paramètres d'effets et les trois rôles MIDI simultanés : Maschine+, LPD8 et MPK Mini.
+La version 0.24.3 consolide les tests de la machine : Browser et Pad Edit suivent toujours le pad visible, l'ouverture d'un projet efface les états transitoires de l'interface, les modifications persistantes signalent correctement le projet comme modifié, les instantanés audio restent cohérents et le rafraîchissement graphique ne recopie plus tout le projet à 60 Hz. Elle conserve le **double-clic souris** du Browser, l'extension **AUTO** aux paramètres d'effets et les trois rôles MIDI simultanés : Maschine+, LPD8 et MPK Mini.
 
 La version 0.22.0 termine le lot d’édition **Step/Maschine** : les deux écrans affichent la piste, la mesure d’édition fixe, la tête de lecture et les 16 steps ; Bar 1–4, Follow, Track −/+, Copy/Paste/Duplicate/Clear Bar restent disponibles pendant Play. Les neuf emplacements vides deviennent 18 raccourcis contextuels pour Step, Pad/Kit, Pattern et Mixer. KICKMIDI 6 conserve le comportement Toggle/Gate, les Q-Links absolus travaillent par pas précis, et seule la page de pads active pilote KICK. Le Track Mixer distingue maintenant le gain du pad du niveau de piste et remet ses crêtes à zéro après un changement de gain.
 

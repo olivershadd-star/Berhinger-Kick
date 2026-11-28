@@ -214,10 +214,18 @@ public:
     }
 
     void bindDisplayToSelectedPad(int display, DisplayModule module) {
-        auto& binding = displays[std::clamp(display, 0, SurfaceDisplays - 1)];
-        binding.module = module;
-        binding.pad = selectedPad;
-        binding.followsSelectedPad = true;
+        bindDisplay(display, module, selectedPad, 0, 0, true);
+    }
+
+    // Every screen declares its complete binding when it opens.  This avoids
+    // inheriting a stale pad-follow policy, slot or page from the module that
+    // previously occupied the same physical display.
+    void bindDisplay(int display, DisplayModule module, int pad = 0,
+                     int slot = 0, int page = 0,
+                     bool followsSelectedPad = false) {
+        displays[std::clamp(display, 0, SurfaceDisplays - 1)] =
+            {module, std::clamp(pad, 0, SurfacePads - 1),
+             std::max(0, slot), std::max(0, page), followsSelectedPad};
     }
 
     void focusDisplay(int display) {

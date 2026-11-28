@@ -4,13 +4,13 @@
 ### ORIGINAL DRUM MACHINE · WINDOWS PORT · SEQUENCER DEVELOPMENT
 
 ![Status](https://img.shields.io/badge/STATUS-PUBLIC_TEST_BUILD-EF343E?style=for-the-badge&labelColor=10151E)
-![Version](https://img.shields.io/badge/VERSION-0.24.2_PREVIEW-19B9FF?style=for-the-badge&labelColor=10151E)
+![Version](https://img.shields.io/badge/VERSION-0.24.3_PREVIEW-19B9FF?style=for-the-badge&labelColor=10151E)
 ![Windows](https://img.shields.io/badge/WINDOWS-10%20%2F%2011_X64-19B9FF?style=for-the-badge&labelColor=10151E)
 ![Licence](https://img.shields.io/badge/LICENCE-AGPL--3.0--or--later-F5C343?style=for-the-badge&labelColor=10151E)
 
 **ANKS LABS // BUILD. BREAK. REWIRE. LISTEN.**
 
-[![DOWNLOAD](https://img.shields.io/badge/DOWNLOAD-TEST_BUILD_0.24.2-EF343E?style=for-the-badge&labelColor=10151E)](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.2-preview)
+[![DOWNLOAD](https://img.shields.io/badge/DOWNLOAD-TEST_BUILD_0.24.3-EF343E?style=for-the-badge&labelColor=10151E)](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.3-preview)
 [![SOURCES](https://img.shields.io/badge/SOURCE-CODE-19B9FF?style=for-the-badge&labelColor=10151E)](https://github.com/olivershadd-star/Berhinger-Kick)
 [![RELEASES](https://img.shields.io/badge/ALL-BUILDS-F5C343?style=for-the-badge&labelColor=10151E)](https://github.com/olivershadd-star/Berhinger-Kick/releases)
 
@@ -67,9 +67,9 @@ Le premier grand objectif consiste à **reconstruire, compléter et améliorer l
 
 ## 04 // DOWNLOAD & FIRST LAUNCH — TÉLÉCHARGEMENT
 
-### [⬇ Download / Télécharger KICK 0.24.2 preview — Windows x64](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.24.2-preview/KickLab-Windows-x64-0.24.2-preview.zip)
+### [⬇ Download / Télécharger KICK 0.24.3 preview — Windows x64](https://github.com/olivershadd-star/Berhinger-Kick/releases/download/v0.24.3-preview/KickLab-Windows-x64-0.24.3-preview.zip)
 
-[Release 0.24.2](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.2-preview) · [All releases / Toutes les versions](https://github.com/olivershadd-star/Berhinger-Kick/releases)
+[Release 0.24.3](https://github.com/olivershadd-star/Berhinger-Kick/releases/tag/v0.24.3-preview) · [All releases / Toutes les versions](https://github.com/olivershadd-star/Berhinger-Kick/releases)
 
 **EN — Quick start**
 
@@ -91,11 +91,13 @@ Le premier grand objectif consiste à **reconstruire, compléter et améliorer l
 
 **Samples / Échantillons :** the `samples` library is external and belongs to the user; no commercial samples are included. / La bibliothèque `samples` est externe et personnelle ; aucun son commercial n'est fourni.
 
-## 05 // WHAT WORKS IN 0.24.2? — FONCTIONS DE LA PREVIEW
+## 05 // WHAT WORKS IN 0.24.3? — FONCTIONS DE LA PREVIEW
 
 The following features are documented for the current **test build**. Some workflows still require additional testing and refinement.
 
 Les fonctions suivantes sont documentées pour la **version de test** actuelle. Certains comportements demandent encore des corrections et validations.
+
+**0.24.3 stabilization / stabilisation :** Pad Edit and Browser reliably follow the visible pad; opening a project clears transient interface state; persistent edits are correctly marked for saving; engine snapshots are coherent; and the UI no longer copies the complete project 60 times per second.
 
 | Area / Domaine | Current capabilities / Fonctions actuelles |
 |:--|:--|
@@ -136,7 +138,7 @@ Les fonctions suivantes sont documentées pour la **version de test** actuelle. 
 **Public preview ≠ stable release. / Preview publique ≠ version stable.**
 
 - [x] Windows standalone port usable with mouse and keyboard / Portage Windows utilisable à la souris et au clavier
-- [x] Public test build 0.24.2 / Version de test 0.24.2
+- [x] Public test build 0.24.3 / Version de test 0.24.3
 - [x] Maschine+ and LPD8 mapping workflow documented / Mappings Maschine+ et LPD8 documentés
 - [ ] Complete and stabilize the original KICK port / Finaliser et fiabiliser le portage de KICK
 - [ ] Rebuild and refine the drum-machine sequencer / Reconstruire et améliorer le séquenceur de boîte à rythmes

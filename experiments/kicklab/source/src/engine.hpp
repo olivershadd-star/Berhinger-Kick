@@ -253,6 +253,12 @@ public:
     void setRepeatVoice(int pad,int semitones,bool held);
     void holdArpeggioNote(int sourcePad,int note,bool held);
     Snapshot snapshot();
+    // Fill an existing object so the Windows paint path can keep the large
+    // project projection on the heap instead of constructing it on its stack.
+    void snapshotInto(Snapshot& destination);
+    // Refresh only transport, meters and voice progress. Returns false when a
+    // Program/sequence/view change requires a new complete projection.
+    bool refreshRuntimeSnapshot(Snapshot& destination);
     // Exactly Block stereo frames; UI waveform copies do not hold render locks.
     void render(float* interleaved);
     bool save(const std::string&,std::string& error);

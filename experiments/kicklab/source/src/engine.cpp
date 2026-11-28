@@ -593,13 +593,24 @@ void Engine::setNoteRepeat(bool enabled,bool arpeggiator){std::scoped_lock lock(
 void Engine::setRepeatDivision(int division){std::lock_guard<std::mutex> lock(impl->mutex);impl->state.repeatDivision=division<=4?4:division<=8?8:division<=16?16:32;impl->untilRepeat=0;}
 void Engine::setRepeatVoice(int pad,int semitones,bool held){if(pad<0||pad>=Pads)return;std::scoped_lock lock(impl->mutex,impl->audioMutex);if(held){impl->repeatPad=pad;impl->repeatPitch=std::clamp(semitones,-48,48);impl->untilRepeat=0;}else if(impl->repeatPad==pad)impl->repeatPad=-1;}
 void Engine::holdArpeggioNote(int sourcePad,int note,bool held){if(sourcePad<0||sourcePad>=Pads||note<0||note>127)return;std::scoped_lock lock(impl->mutex,impl->audioMutex);impl->arpSource=sourcePad;impl->arpHeld[note]=held;if(held&&impl->arpIndex<0)impl->untilRepeat=0;if(!held&&note==impl->arpIndex)impl->arpIndex=-1;}
-Snapshot Engine::snapshot(){
-    Snapshot result;
-    {std::lock_guard<std::mutex> lock(impl->mutex);const auto& state=impl->state;result.active=state.active;result.edits=state.edits;result.progress=state.progress;result.sequences=state.sequences;result.programs=state.programs;result.song=state.song;
+void Engine::snapshotInto(Snapshot& result){
+    // Audio can change the active sample layer at a pattern boundary or on a
+    // velocity/cycle trigger. Keep state and layer metadata under one coherent
+    // lock scope so the UI never observes half of two different Programs.
+    {std::scoped_lock lock(impl->mutex,impl->metadataMutex);const auto& state=impl->state;result.active=state.active;result.edits=state.edits;result.progress=state.progress;result.sequences=state.sequences;result.programs=state.programs;result.song=state.song;
      result.tempo=state.tempo;result.volume=state.volume;result.playing=state.playing;result.songPlaying=state.songPlaying;result.noteRepeat=state.noteRepeat;result.arpeggiator=state.arpeggiator;result.repeatDivision=state.repeatDivision;result.step=state.step;result.playBar=state.playBar;result.viewBar=state.viewBar;result.sequence=state.sequence;result.queuedSequence=state.queuedSequence;result.group=state.group;result.queuedGroup=state.queuedGroup;result.program=state.program;result.queuedProgram=state.queuedProgram;result.selectedTrack=state.selectedTrack;result.songLength=state.songLength;result.songPosition=state.songPosition;result.songRepeat=state.songRepeat;result.mixPeak=state.mixPeak;result.peak=state.peak;result.preLimiterPeak=state.preLimiterPeak;result.limiterReductionDb=state.limiterReductionDb;result.trackPeaks=state.trackPeaks;
-     const auto& sequence=state.sequences[state.sequence];const int first=state.viewBar*Steps;result.melody.fill(-1);for(int p=0;p<Pads;++p)for(int step=0;step<Steps;++step)result.pattern[p][step]=sequence.drum[p][first+step];for(int step=0;step<Steps;++step)result.melody[step]=sequence.melody[first+step];}
-    {std::lock_guard<std::mutex> lock(impl->metadataMutex);for(int pad=0;pad<Pads;++pad){const auto& bank=impl->banks[result.program][pad];const auto& primary=bank.layers[0];result.names[pad]=primary.name;result.paths[pad]=primary.path;result.waveforms[pad]=primary.waveform;result.durations[pad]=primary.duration;for(int layer=0;layer<PadLayers;++layer){const auto& source=bank.layers[layer];result.layers[pad][layer]={source.name,source.path,source.duration,source.velocityStart,source.velocityEnd,source.reverse,source.loaded};}}}
-    return result;
+     const auto& sequence=state.sequences[state.sequence];const int first=state.viewBar*Steps;result.melody.fill(-1);for(int p=0;p<Pads;++p)for(int step=0;step<Steps;++step)result.pattern[p][step]=sequence.drum[p][first+step];for(int step=0;step<Steps;++step)result.melody[step]=sequence.melody[first+step];
+     for(int pad=0;pad<Pads;++pad){const auto& bank=impl->banks[result.program][pad];const auto& primary=bank.layers[0];result.names[pad]=primary.name;result.paths[pad]=primary.path;result.waveforms[pad]=primary.waveform;result.durations[pad]=primary.duration;for(int layer=0;layer<PadLayers;++layer){const auto& source=bank.layers[layer];result.layers[pad][layer]={source.name,source.path,source.duration,source.velocityStart,source.velocityEnd,source.reverse,source.loaded};}}}
+}
+Snapshot Engine::snapshot(){Snapshot result;snapshotInto(result);return result;}
+bool Engine::refreshRuntimeSnapshot(Snapshot& result){
+    std::lock_guard<std::mutex> lock(impl->mutex);const auto& state=impl->state;
+    if(result.sequence!=state.sequence||result.group!=state.group||result.program!=state.program||result.viewBar!=state.viewBar)return false;
+    result.active=state.active;result.progress=state.progress;result.trackPeaks=state.trackPeaks;
+    result.tempo=state.tempo;result.volume=state.volume;result.playing=state.playing;result.songPlaying=state.songPlaying;result.noteRepeat=state.noteRepeat;result.arpeggiator=state.arpeggiator;result.repeatDivision=state.repeatDivision;
+    result.step=state.step;result.playBar=state.playBar;result.queuedSequence=state.queuedSequence;result.queuedGroup=state.queuedGroup;result.queuedProgram=state.queuedProgram;result.selectedTrack=state.selectedTrack;
+    result.songPosition=state.songPosition;result.songRepeat=state.songRepeat;result.mixPeak=state.mixPeak;result.peak=state.peak;result.preLimiterPeak=state.preLimiterPeak;result.limiterReductionDb=state.limiterReductionDb;
+    return true;
 }
 void Engine::render(float* out){
     std::fill(out,out+Block*2,0.f);
@@ -768,7 +779,10 @@ bool Engine::exportCurrentPatternWav(const std::string& path,std::string& error)
         }
         written+=count;
     }
-    stop();file.flush();const bool success=bool(file)&&written==frames;file.close();
+    // Export uses the real engine offline. Restore the musician's transport
+    // intent afterwards instead of leaving a running session silently stopped.
+    stop();setRepeatDivision(before.repeatDivision);if(before.noteRepeat)setNoteRepeat(true,before.arpeggiator);if(before.playing)setPlaying(true);
+    file.flush();const bool success=bool(file)&&written==frames;file.close();
     if(!success){std::error_code ignored;std::filesystem::remove(std::filesystem::u8path(path),ignored);error="Erreur pendant l'export WAV.";return false;}
     return true;
 }

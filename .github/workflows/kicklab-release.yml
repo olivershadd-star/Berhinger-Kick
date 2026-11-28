@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build and publish
         required: true
-        default: 0.24.2
+        default: 0.24.3
 
 permissions:
   contents: write
@@ -62,6 +62,14 @@ jobs:
             This preview rebuilds the Windows surface around the Maschine+ layout
             while retaining the stable AudIO engine, dual KICK screens, Pad
             Edit, ADSR, four insert slots and 31 Airwindows effects.
+
+            Version 0.24.3 is a stabilization batch: explicit screen bindings
+            prevent stale-pad state in Pad Edit and Browser; opening a project
+            clears transient UI, clipboard and latch state; audio/program
+            snapshots are coherent; persistent mixer, mode and FX edits mark
+            the project for saving; painting uses a cached project snapshot plus
+            lightweight realtime refresh; Step drag-and-drop routing is fixed;
+            and WAV export restores the user's transport intent.
 
             Version 0.24.2 adds native mouse double-click navigation to the
             Browser: folders open immediately and WAV files load directly into
